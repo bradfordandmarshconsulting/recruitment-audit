@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import os
 import traceback
 from pathlib import Path
@@ -23,6 +24,7 @@ from recruitment_audit import (
 )
 
 app = Flask(__name__)
+BASE_DIR = Path(__file__).resolve().parent
 
 FALLBACK_SECTORS = [
     "Accounting / Audit",
@@ -85,8 +87,9 @@ def yes_no_to_bool(value: str | None) -> bool:
 
 def get_sector_options() -> list[str]:
     candidates = [
-        Path("uk_recruitment_benchmark_framework.xlsx"),
+        BASE_DIR / "uk_recruitment_benchmark_framework.xlsx",
         Path.cwd() / "uk_recruitment_benchmark_framework.xlsx",
+        Path("uk_recruitment_benchmark_framework.xlsx"),
     ]
     for file_path in candidates:
         if file_path.exists():
@@ -958,12 +961,18 @@ def generate():
 
     except Exception as exc:
         traceback_text = traceback.format_exc()
+        expose_traceback = os.environ.get("FLASK_DEBUG", "").lower() in {"1", "true", "yes"}
+        detail_html = (
+            f"<pre>{html.escape(traceback_text)}</pre>"
+            if expose_traceback
+            else "<p>Please verify the API key, benchmark workbook and required Python packages, then try again.</p>"
+        )
         body = f"""
         <div class="status error">
             <h2>Report generation failed</h2>
-            <p><strong>Error type:</strong> {type(exc).__name__}</p>
-            <p><strong>Error:</strong> {exc!r}</p>
-            <pre>{traceback_text}</pre>
+            <p><strong>Error type:</strong> {html.escape(type(exc).__name__)}</p>
+            <p><strong>Error:</strong> {html.escape(str(exc))}</p>
+            {detail_html}
             <a class="back-link" href="/">Return to the form</a>
         </div>
         """
