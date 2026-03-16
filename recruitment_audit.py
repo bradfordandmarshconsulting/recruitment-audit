@@ -562,7 +562,26 @@ def save_word_report(
 
 
 def _normalise_report(report: dict, fallback_scores: list[int]) -> dict:
-    sections_by_id = report.get("sections", {}) or {}
+    sections_value = report.get("sections", {}) or {}
+    if isinstance(sections_value, list):
+        normalised_sections = []
+        for index, section in enumerate(sections_value):
+            section = section or {}
+            normalised_sections.append(
+                {
+                    "title": str(section.get("title", SECTION_ORDER[index])),
+                    "score": int(section.get("score", fallback_scores[index])),
+                    "current_state": _ensure_list(section.get("current_state"), 2),
+                    "key_risks": _ensure_list(section.get("key_risks"), 2),
+                    "commercial_impact": _ensure_list(section.get("commercial_impact"), 1),
+                    "immediate_actions": _ensure_list(section.get("immediate_actions"), 2),
+                    "structural_improvements": _ensure_list(section.get("structural_improvements"), 2),
+                }
+            )
+        report["sections"] = normalised_sections
+        return report
+
+    sections_by_id = sections_value
     sections = []
     for index, section_id in enumerate(SECTION_IDS):
         title = SECTION_ID_TO_TITLE[section_id]
