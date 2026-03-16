@@ -370,12 +370,12 @@ def render_page(title: str, body: str) -> str:
         <div class="loading-overlay" id="loadingOverlay">
             <div class="loading-card">
                 <div class="loading-head">
-                    <div class="loading-pill"><span class="spinner"></span> Advisory engine running</div>
+                    <div class="loading-pill"><span class="spinner"></span> Generating report</div>
                     <div id="loadingPercent">12%</div>
                 </div>
                 <h3>Building the recruitment audit report</h3>
                 <p>
-                    Analysing benchmark position, operating discipline, conversion drag, interview delay and early-tenure risk before assembling the downloadable board-ready report.
+                    Reviewing your inputs, comparing benchmark position, and assembling the final recruitment audit report.
                 </p>
 
                 <div class="loading-track">
@@ -384,14 +384,14 @@ def render_page(title: str, body: str) -> str:
 
                 <div class="loading-meta">
                     <div id="loadingStatus">Capturing assessment profile</div>
-                    <div>Word report output</div>
+                    <div>Preparing download</div>
                 </div>
 
                 <div class="loading-list">
-                    <div class="loading-list-item is-active"><span>Reviewing operating context</span><span>01</span></div>
-                    <div class="loading-list-item"><span>Scoring maturity and controls</span><span>02</span></div>
-                    <div class="loading-list-item"><span>Generating charts and benchmark commentary</span><span>03</span></div>
-                    <div class="loading-list-item"><span>Preparing downloadable report</span><span>04</span></div>
+                    <div class="loading-list-item is-active"><span>Reviewing company information</span><span>01</span></div>
+                    <div class="loading-list-item"><span>Scoring recruitment process maturity</span><span>02</span></div>
+                    <div class="loading-list-item"><span>Building charts and benchmark comparison</span><span>03</span></div>
+                    <div class="loading-list-item"><span>Preparing final report</span><span>04</span></div>
                 </div>
             </div>
         </div>
@@ -582,32 +582,34 @@ def form():
             <div class="brand-name">Recruitment Advisory Platform</div>
             <div class="brand-sub">Operating model review, recruitment diagnostics and advisory reporting</div>
         </div>
-        <div class="trust-pill">Confidential assessment · advisory-grade output</div>
+        <div class="trust-pill">Diagnostic workflow · benchmark-led output</div>
     </div>
 
     <div class="hero">
         <div class="hero-grid">
             <div>
-                <div class="hero-eyebrow">Premium guided assessment</div>
-                <h1>Turn recruitment data into a board-ready operating model audit.</h1>
+                <div class="hero-eyebrow">Recruitment operating model audit</div>
+                <h1>Convert hiring data, process controls and benchmark signals into a technical recruitment audit.</h1>
                 <p>
-                    A guided three-stage advisory workflow that captures organisation context, diagnoses recruiting efficiency,
-                    evaluates operating discipline and produces a polished Word report with scoring, benchmark commentary and strategic recommendations.
+                    This assessment is designed to evaluate how a recruitment function actually operates in practice. It captures company context, hiring demand,
+                    process discipline and performance metrics, then translates those inputs into a structured audit covering delivery speed, conversion efficiency,
+                    candidate experience, process governance and retention risk. The final output is a downloadable report with scored sections, benchmark comparison,
+                    visual analysis and prioritised recommendations.
                 </p>
             </div>
 
             <div class="hero-metrics">
                 <div class="hero-card">
-                    <div class="hero-card-label">Assessment style</div>
-                    <div class="hero-card-value">Progressive, guided and low-friction — one stage at a time, with live readiness tracking.</div>
+                    <div class="hero-card-label">What the audit measures</div>
+                    <div class="hero-card-value">The workflow assesses workforce planning, funnel performance, sourcing efficiency, interview design, offer control, onboarding quality and process accountability.</div>
                 </div>
                 <div class="hero-card">
-                    <div class="hero-card-label">Output quality</div>
-                    <div class="hero-card-value">A client-ready report with charts, benchmark context, maturity scoring and prioritised advisory actions.</div>
+                    <div class="hero-card-label">How the audit works</div>
+                    <div class="hero-card-value">Inputs are captured across three stages, normalised into a scoring framework, compared against benchmark references, and assembled into a single technical report.</div>
                 </div>
                 <div class="hero-card">
-                    <div class="hero-card-label">Signals of value</div>
-                    <div class="hero-card-value">Built for founders, HR leaders and advisory teams reviewing recruitment efficiency, control and retention risk.</div>
+                    <div class="hero-card-label">Why organisations use it</div>
+                    <div class="hero-card-value">It helps leadership teams identify where recruitment is slowing down, where process quality is inconsistent, and where operating changes will improve hiring outcomes fastest.</div>
                 </div>
             </div>
         </div>
@@ -654,9 +656,9 @@ def form():
                     <div class="section-head">
                         <div>
                             <div class="section-kicker">Stage 1 · Organisation context</div>
-                            <h2 class="section-title">Set the operating picture the audit should interpret.</h2>
+                            <h2 class="section-title">Define the business context the audit will use as its operating baseline.</h2>
                             <p class="section-copy">
-                                Capture the business context, talent demand and role profile first so the final report reads like an informed advisory diagnosis rather than a generic form output.
+                                This stage establishes the operating environment behind recruitment performance, including company profile, hiring demand, role mix and market context. That baseline shapes how the final report interprets delivery risk and process capability.
                             </p>
                         </div>
                         <div class="section-aside">
@@ -709,7 +711,7 @@ def form():
                     </div>
 
                     <div class="note">
-                        Best practice: use the current-state operating picture, not the future-state aspiration. The strongest advisory report reflects what leadership is actually experiencing today.
+                        Use current-state information rather than target-state plans. The more accurately this reflects live operating conditions, the more credible the final audit will be.
                     </div>
                 </section>
 
@@ -717,9 +719,9 @@ def form():
                     <div class="section-head">
                         <div>
                             <div class="section-kicker">Stage 2 · Recruitment performance</div>
-                            <h2 class="section-title">Capture the metrics that reveal drag, leakage and delivery risk.</h2>
+                            <h2 class="section-title">Capture the performance metrics that reveal delay, conversion loss and hiring risk.</h2>
                             <p class="section-copy">
-                                These performance inputs drive the diagnostic commentary on speed, funnel efficiency, conversion quality, interview drag and early-tenure risk.
+                                These inputs are used to assess recruitment throughput, funnel quality, offer conversion, interview friction and early-tenure stability. They form the quantitative layer of the audit and anchor the benchmark comparison.
                             </p>
                         </div>
                         <div class="section-aside">
@@ -790,7 +792,7 @@ def form():
                     </div>
 
                     <div class="note">
-                        These metrics are used to identify bottlenecks, conversion inefficiency, excessive interview friction and repeat-hiring burden created by attrition.
+                        These metrics are used to identify bottlenecks, conversion inefficiency, process drag and repeat-hiring pressure created by attrition or delayed decision making.
                     </div>
                 </section>
 
@@ -798,9 +800,9 @@ def form():
                     <div class="section-head">
                         <div>
                             <div class="section-kicker">Stage 3 · Operating discipline</div>
-                            <h2 class="section-title">Assess the governance and consistency behind the hiring process.</h2>
+                            <h2 class="section-title">Assess the level of control, standardisation and accountability in the hiring process.</h2>
                             <p class="section-copy">
-                                These control questions indicate whether the recruitment model operates with structure, ownership, standardisation and decision discipline in practice.
+                                These control questions test whether the recruitment model is governed consistently in practice. They indicate how far hiring activity depends on repeatable process design rather than individual manager behaviour.
                             </p>
                         </div>
                         <div class="section-aside">
@@ -816,13 +818,13 @@ def form():
                     </div>
 
                     <div class="note">
-                        Answer according to what is truly embedded in day-to-day practice, not what exists only informally or on paper.
+                        Answer according to what is consistently used in day-to-day operation, not what exists only in policy documents or informal discussion.
                     </div>
                 </section>
 
                 <div class="footer-bar">
                     <div class="footer-copy">
-                        Guided completion improves output quality. Each stage feeds the final scoring, benchmark commentary and advisory narrative in the generated Word report.
+                        Each stage contributes directly to the scoring model, benchmark comparison and final recommendations in the completed audit report.
                     </div>
                     <div class="button-row">
                         <button class="button button-ghost" type="button" data-prev-step>Back</button>
@@ -835,8 +837,8 @@ def form():
 
         <aside class="sidebar">
             <div class="sidebar-card">
-                <div class="sidebar-kicker">Live profile</div>
-                <h3 class="sidebar-title">Assessment overview</h3>
+                <div class="sidebar-kicker">Assessment summary</div>
+                <h3 class="sidebar-title">Current operating profile</h3>
                 <p id="stageReadiness">Organisation profile: 0% complete</p>
 
                 <div class="summary-list">
@@ -848,15 +850,15 @@ def form():
                 </div>
 
                 <div class="metric-chip-row">
-                    <div class="chip"><span class="chip-dot"></span> Confidential review</div>
-                    <div class="chip"><span class="chip-dot"></span> Board-ready output</div>
+                    <div class="chip"><span class="chip-dot"></span> Multi-factor scoring</div>
+                    <div class="chip"><span class="chip-dot"></span> Benchmark comparison</div>
                     <div class="chip" id="disciplineChip"><span class="chip-dot"></span> Controls pending</div>
                 </div>
             </div>
 
             <div class="sidebar-card">
-                <div class="sidebar-kicker">Capture status</div>
-                <h3 class="sidebar-title">What is ready</h3>
+                <div class="sidebar-kicker">Completion status</div>
+                <h3 class="sidebar-title">Assessment progress by stage</h3>
                 <div class="capture-list">
                     <div class="capture-item" data-capture-step="1"><strong>Organisation context</strong><span class="capture-state">0% ready</span></div>
                     <div class="capture-item" data-capture-step="2"><strong>Performance metrics</strong><span class="capture-state">0% ready</span></div>
@@ -865,12 +867,12 @@ def form():
             </div>
 
             <div class="sidebar-card">
-                <div class="sidebar-kicker">Why this feels premium</div>
-                <h3 class="sidebar-title">Advisory trust cues</h3>
+                <div class="sidebar-kicker">What the audit delivers</div>
+                <h3 class="sidebar-title">Included in the final report</h3>
                 <div class="trust-grid">
-                    <div class="trust-row"><div class="trust-mark">✓</div><div>Structured flow reduces form fatigue and guides users through the assessment logically.</div></div>
-                    <div class="trust-row"><div class="trust-mark">✓</div><div>Live readiness and profile panels make the interface feel intelligent, not static.</div></div>
-                    <div class="trust-row"><div class="trust-mark">✓</div><div>Submission experience signals that benchmark review, scoring and report generation are actively underway.</div></div>
+                    <div class="trust-row"><div class="trust-mark">✓</div><div>Section-by-section scoring across strategy, operational performance and process governance.</div></div>
+                    <div class="trust-row"><div class="trust-mark">✓</div><div>Benchmark comparison, chart output and interpretation of the submitted performance data.</div></div>
+                    <div class="trust-row"><div class="trust-mark">✓</div><div>Priority actions aimed at improving hiring speed, decision quality, process consistency and retention outcomes.</div></div>
                 </div>
             </div>
         </aside>

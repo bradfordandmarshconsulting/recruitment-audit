@@ -107,6 +107,10 @@ The report must feel coherent from start to finish:
 - recommendations should be specific enough to act on next week
 - acknowledge strengths without overpraising them
 - where data is weak or missing, say so plainly
+- vary sentence openings and sentence length so the writing does not sound templated
+- explain what the operating data implies, not just what the numbers are
+- use a senior advisory tone suitable for leadership review, with clear commercial implications
+- make the strengths and weaknesses feel specific to the company profile supplied
 """.strip()
 
 REPORT_SCHEMA = {
@@ -377,6 +381,15 @@ def generate_report_json(client, data: dict, benchmark_summary: dict) -> dict:
 
 
 def _build_user_prompt(data: dict, benchmark_summary: dict) -> str:
+    strongest_sections = sorted(
+        zip(SECTION_ORDER, data["section_scores"]),
+        key=lambda item: item[1],
+        reverse=True,
+    )[:3]
+    weakest_sections = sorted(
+        zip(SECTION_ORDER, data["section_scores"]),
+        key=lambda item: item[1],
+    )[:3]
     section_scorecard = "\n".join(
         f"- {title}: {score}/10. {note}"
         for title, score, note in zip(SECTION_ORDER, data["section_scores"], data["section_notes"])
@@ -410,11 +423,19 @@ Benchmark summary
 Calculated scorecard
 {section_scorecard}
 
+Strongest areas
+{chr(10).join(f"- {title}: {score}/10" for title, score in strongest_sections)}
+
+Weakest areas
+{chr(10).join(f"- {title}: {score}/10" for title, score in weakest_sections)}
+
 Output requirements
 - Use the same score for each detailed section as the supplied scorecard.
 - Make the executive overview flow as a narrative, not as bullets.
 - Keep strengths, problems and plans crisp and commercially grounded.
 - Do not invent client facts that are not implied by the supplied data.
+- Make the detailed sections feel connected rather than written in isolation.
+- Where a benchmark gap is material, say what it means operationally.
 """.strip()
 
 
@@ -521,15 +542,19 @@ def save_word_report(
     benchmark_chart: Path,
 ) -> Path:
     output_path = _output_dir() / f"{_slug(data['company_name'])}_recruitment_audit.docx"
+    report = _normalise_report(report, data["section_scores"])
     document = Document()
     _set_document_defaults(document)
     _add_cover_page(document, data)
     _add_executive_snapshot(document, data, report)
+    _add_key_findings_panel(document, data, report)
     _add_score_summary(document, data)
+    _add_scoring_methodology(document, data, benchmark_summary)
     _add_benchmark_snapshot(document, benchmark_summary)
+    _add_priority_matrix(document, data, report)
     _add_chart_section(document, [overall_chart, section_chart, benchmark_chart])
     document.add_page_break()
-    _add_detailed_findings(document, report)
+    _add_detailed_findings(document, data, report)
     _add_roadmap(document, report)
     _add_closing_page(document, report)
     document.save(output_path)
@@ -636,7 +661,7 @@ def _add_cover_page(document: Document, data: dict) -> None:
 
 
 def _add_executive_snapshot(document: Document, data: dict, report: dict) -> None:
-    _add_heading(document, "Executive overview", level=1)
+    _add_section_banner(document, "Executive overview")
     _add_paragraph(document, report["executive_overview"], after=6)
 
     cards = document.add_table(rows=1, cols=3)
@@ -658,8 +683,26 @@ def _add_executive_snapshot(document: Document, data: dict, report: dict) -> Non
     document.add_paragraph("")
 
 
+def _add_key_findings_panel(document: Document, data: dict, report: dict) -> None:
+    strongest = max(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])
+    weakest = min(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])
+    problem = report["top_problems"][0] if report.get("top_problems") else "No priority issue identified."
+    table = document.add_table(rows=1, cols=3)
+    table.autofit = True
+    cards = [
+        ("Strongest area", f"{strongest[0]}\n{strongest[1]}/10", GREEN_FILL, GREEN),
+        ("Most urgent weakness", f"{weakest[0]}\n{weakest[1]}/10", RED_FILL, RED),
+        ("Primary diagnosis", problem, AMBER_FILL, AMBER),
+    ]
+    for index, (label, value, fill, color) in enumerate(cards):
+        cell = table.cell(0, index)
+        _shade_cell(cell, fill)
+        _set_cell(cell, f"{label}\n{value}", color=color)
+    document.add_paragraph("")
+
+
 def _add_score_summary(document: Document, data: dict) -> None:
-    _add_heading(document, "Score summary", level=1)
+    _add_section_banner(document, "Score summary")
     table = document.add_table(rows=1, cols=2)
     table.autofit = True
     header = table.rows[0].cells
@@ -676,12 +719,49 @@ def _add_score_summary(document: Document, data: dict) -> None:
     document.add_paragraph("")
 
 
+def _add_scoring_methodology(document: Document, data: dict, benchmark_summary: dict) -> None:
+    _add_section_banner(document, "Scoring methodology")
+    _add_paragraph(
+        document,
+        (
+            "The audit uses a 120-point framework across twelve operating areas, with each section scored out of 10. "
+            "Scores are informed by three inputs: the performance metrics submitted, the process-control responses supplied in the assessment, "
+            "and the benchmark position available for the selected sector. Higher scores indicate more repeatable control, stronger delivery discipline and lower operating risk."
+        ),
+        after=4,
+    )
+
+    table = document.add_table(rows=1, cols=3)
+    table.autofit = True
+    header = table.rows[0].cells
+    for idx, label in enumerate(["Score band", "Interpretation", "Typical implication"]):
+        _set_cell(header[idx], label, bold=True, color=PRIMARY)
+        _shade_cell(header[idx], LIGHT_BG)
+
+    rows = [
+        ("7-10", "Established or strong", "Controls are embedded and performance risk is lower.", GREEN_FILL, GREEN),
+        ("4-6", "Functional but inconsistent", "Capability exists, but execution quality is uneven or delayed.", AMBER_FILL, AMBER),
+        ("1-3", "Material weakness", "The process is exposed to avoidable delay, quality leakage or governance risk.", RED_FILL, RED),
+    ]
+    for band, interpretation, implication, fill, color in rows:
+        cells = table.add_row().cells
+        _shade_cell(cells[0], fill)
+        _set_cell(cells[0], band, bold=True, color=color)
+        _set_cell(cells[1], interpretation)
+        _set_cell(cells[2], implication)
+
+    strongest_benchmark = benchmark_summary.get("comparisons", [])[:1]
+    if strongest_benchmark:
+        document.add_paragraph("")
+    document.add_paragraph("")
+
+
 def _add_benchmark_snapshot(document: Document, benchmark_summary: dict) -> None:
     comparisons = benchmark_summary.get("comparisons", [])
     if not comparisons:
         return
 
-    _add_heading(document, "Benchmark snapshot", level=1)
+    _add_section_banner(document, "Benchmark snapshot")
     table = document.add_table(rows=1, cols=4)
     table.autofit = True
     header = table.rows[0].cells
@@ -701,8 +781,37 @@ def _add_benchmark_snapshot(document: Document, benchmark_summary: dict) -> None
     document.add_paragraph("")
 
 
+def _add_priority_matrix(document: Document, data: dict, report: dict) -> None:
+    _add_section_banner(document, "Priority matrix")
+    _add_paragraph(
+        document,
+        "The matrix below highlights the most commercially important improvement areas based on the lowest-scoring sections and the actions attached to them.",
+        after=4,
+    )
+
+    priorities = _build_priority_matrix(data, report)
+    table = document.add_table(rows=1, cols=5)
+    table.autofit = True
+    header = table.rows[0].cells
+    for idx, label in enumerate(["Priority area", "Urgency", "Impact", "Why it matters", "First move"]):
+        _set_cell(header[idx], label, bold=True, color=PRIMARY)
+        _shade_cell(header[idx], LIGHT_BG)
+
+    for item in priorities:
+        cells = table.add_row().cells
+        urgency_fill = {"Immediate": RED_FILL, "Next 30 days": AMBER_FILL, "Planned": GREEN_FILL}[item["urgency"]]
+        urgency_color = {"Immediate": RED, "Next 30 days": AMBER, "Planned": GREEN}[item["urgency"]]
+        _set_cell(cells[0], item["title"])
+        _shade_cell(cells[1], urgency_fill)
+        _set_cell(cells[1], item["urgency"], bold=True, color=urgency_color)
+        _set_cell(cells[2], item["impact"])
+        _set_cell(cells[3], item["why"])
+        _set_cell(cells[4], item["action"])
+    document.add_paragraph("")
+
+
 def _add_chart_section(document: Document, chart_paths: list[Path]) -> None:
-    _add_heading(document, "Charts and visual analysis", level=1)
+    _add_section_banner(document, "Charts and visual analysis")
     captions = [
         "Overall score against the full 120-point framework.",
         "Section-by-section scoring profile.",
@@ -721,11 +830,12 @@ def _add_chart_section(document: Document, chart_paths: list[Path]) -> None:
             run.font.color.rgb = MUTED
 
 
-def _add_detailed_findings(document: Document, report: dict) -> None:
-    _add_heading(document, "Detailed findings", level=1)
-    for section in report["sections"]:
+def _add_detailed_findings(document: Document, data: dict, report: dict) -> None:
+    _add_section_banner(document, "Detailed findings")
+    for section, note in zip(report["sections"], data["section_notes"]):
         _add_heading(document, section["title"], level=2)
         _add_metric_callout(document, f"Score: {section['score']}/10", section["score"])
+        _add_supporting_note(document, note)
         for key, label in SECTION_KEYS.items():
             _add_heading(document, label, level=3)
             _add_bullets(document, section[key])
@@ -733,7 +843,7 @@ def _add_detailed_findings(document: Document, report: dict) -> None:
 
 def _add_roadmap(document: Document, report: dict) -> None:
     document.add_section(WD_SECTION.NEW_PAGE)
-    _add_heading(document, "Priorities and roadmap", level=1)
+    _add_section_banner(document, "Priorities and roadmap")
 
     _add_heading(document, "Top 5 strengths", level=2)
     _add_bullets(document, report["top_strengths"])
@@ -753,10 +863,19 @@ def _add_roadmap(document: Document, report: dict) -> None:
 
 def _add_closing_page(document: Document, report: dict) -> None:
     document.add_section(WD_SECTION.NEW_PAGE)
-    _add_heading(document, "Overall recruitment score", level=1)
+    _add_section_banner(document, "Overall recruitment score")
     _add_paragraph(document, report["overall_recruitment_score"], after=8)
-    _add_heading(document, "Final verdict", level=1)
+    _add_section_banner(document, "Final verdict")
     _add_paragraph(document, report["final_verdict"], after=6)
+
+
+def _add_section_banner(document: Document, title: str) -> None:
+    table = document.add_table(rows=1, cols=1)
+    table.autofit = True
+    cell = table.cell(0, 0)
+    _shade_cell(cell, LIGHT_BG)
+    _set_cell(cell, title, bold=True, color=PRIMARY)
+    document.add_paragraph("")
 
 
 def _add_heading(document: Document, title: str, level: int) -> None:
@@ -779,6 +898,16 @@ def _add_paragraph(document: Document, text: str, after: float = 3) -> None:
     run.font.name = "Aptos"
     run.font.size = Pt(10.4)
     run.font.color.rgb = TEXT
+
+
+def _add_supporting_note(document: Document, text: str) -> None:
+    paragraph = document.add_paragraph()
+    paragraph.paragraph_format.space_after = Pt(4)
+    run = paragraph.add_run(text.strip())
+    run.italic = True
+    run.font.name = "Aptos"
+    run.font.size = Pt(9.6)
+    run.font.color.rgb = MUTED
 
 
 def _add_bullets(document: Document, items: list[str]) -> None:
@@ -1017,3 +1146,38 @@ def _status_colors(status: str) -> tuple[RGBColor, str]:
 
 def _fmt(value: float | None, suffix: str) -> str:
     return "not provided" if value is None else f"{value:.1f}{suffix}"
+
+
+def _build_priority_matrix(data: dict, report: dict) -> list[dict[str, str]]:
+    sections = report.get("sections", [])
+    if isinstance(sections, dict):
+        sections = [
+            {
+                "title": SECTION_ID_TO_TITLE.get(section_id, section_id.replace("_", " ").title()),
+                **section,
+            }
+            for section_id, section in sections.items()
+        ]
+
+    priorities = []
+    for section in sorted(sections, key=lambda item: item["score"])[:4]:
+        if section["score"] <= 4:
+            urgency = "Immediate"
+            impact = "High"
+        elif section["score"] <= 6:
+            urgency = "Next 30 days"
+            impact = "High"
+        else:
+            urgency = "Planned"
+            impact = "Medium"
+
+        priorities.append(
+            {
+                "title": section["title"],
+                "urgency": urgency,
+                "impact": impact,
+                "why": section["commercial_impact"][0],
+                "action": section["immediate_actions"][0],
+            }
+        )
+    return priorities
