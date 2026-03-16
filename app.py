@@ -338,7 +338,7 @@ def render_page(title: str, body: str) -> str:
             .loading-card h3 {{ margin: 0 0 10px; font-size: 28px; letter-spacing: -0.04em; }}
             .loading-card p {{ margin: 0; color: var(--muted); line-height: 1.75; }}
             .loading-track {{ width: 100%; height: 12px; border-radius: 999px; background: rgba(148, 163, 184, 0.18); overflow: hidden; margin: 20px 0 14px; }}
-            .loading-fill {{ height: 100%; width: 10%; border-radius: 999px; background: linear-gradient(90deg, #0f172a, #334155, #a16207); transition: width 0.6s ease; }}
+            .loading-fill {{ height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #0f172a, #334155, #a16207); transition: width 0.35s ease; }}
             .loading-meta {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 13px; margin-bottom: 12px; }}
             .loading-list {{ display: grid; gap: 9px; margin-top: 14px; }}
             .loading-list-item {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 16px; background: rgba(248, 250, 252, 0.9); border: 1px solid rgba(148, 163, 184, 0.12); color: var(--muted); font-size: 13px; }}
@@ -371,7 +371,7 @@ def render_page(title: str, body: str) -> str:
             <div class="loading-card">
                 <div class="loading-head">
                     <div class="loading-pill"><span class="spinner"></span> Generating report</div>
-                    <div id="loadingPercent">12%</div>
+                    <div id="loadingPercent">0%</div>
                 </div>
                 <h3>Building the recruitment audit report</h3>
                 <p>
@@ -383,7 +383,7 @@ def render_page(title: str, body: str) -> str:
                 </div>
 
                 <div class="loading-meta">
-                    <div id="loadingStatus">Capturing assessment profile</div>
+                    <div id="loadingStatus">Preparing submission</div>
                     <div>Preparing download</div>
                 </div>
 
@@ -414,6 +414,7 @@ def render_page(title: str, body: str) -> str:
                 const summaryHiring = document.getElementById("summaryHiring");
                 const summaryRoles = document.getElementById("summaryRoles");
                 const yesNoFields = Array.from(document.querySelectorAll(".yes-no-field select"));
+                let isSubmitting = false;
                 let currentStep = 1;
 
                 function fieldsForStep(step) {{
@@ -517,32 +518,107 @@ def render_page(title: str, body: str) -> str:
                     field.addEventListener("change", updateProgress);
                 }});
 
+                function setLoadingState(pct, text, activeIndex) {{
+                    const overlay = document.getElementById("loadingOverlay");
+                    const loadingFill = document.getElementById("loadingFill");
+                    const loadingPercent = document.getElementById("loadingPercent");
+                    const loadingStatus = document.getElementById("loadingStatus");
+                    const loadingItems = Array.from(document.querySelectorAll(".loading-list-item"));
+                    if (overlay) overlay.style.display = "flex";
+                    if (loadingFill) loadingFill.style.width = pct + "%";
+                    if (loadingPercent) loadingPercent.textContent = pct + "%";
+                    if (loadingStatus) loadingStatus.textContent = text;
+                    loadingItems.forEach((item, itemIndex) => item.classList.toggle("is-active", itemIndex === activeIndex));
+                }}
+
+                async function downloadReport(event) {{
+                    if (isSubmitting) {{
+                        event.preventDefault();
+                        return;
+                    }}
+                    isSubmitting = true;
+                    const submitButtons = Array.from(form.querySelectorAll('button[type="submit"], button[data-next-step], button[data-prev-step]'));
+                    submitButtons.forEach((button) => button.disabled = true);
+
+                    let visualProgress = 0;
+                    let phaseIndex = 0;
+                    const phases = [
+                        {{ target: 18, text: "Reviewing company information", index: 0 }},
+                        {{ target: 42, text: "Scoring recruitment process maturity", index: 1 }},
+                        {{ target: 71, text: "Building charts and benchmark comparison", index: 2 }},
+                        {{ target: 92, text: "Preparing final report", index: 3 }},
+                    ];
+
+                    setLoadingState(0, "Preparing submission", 0);
+                    const timer = window.setInterval(() => {{
+                        const phase = phases[Math.min(phaseIndex, phases.length - 1)];
+                        if (visualProgress < phase.target) {{
+                            visualProgress += 1;
+                        }} else if (phaseIndex < phases.length - 1) {{
+                            phaseIndex += 1;
+                        }}
+                        const active = phases[Math.min(phaseIndex, phases.length - 1)];
+                        setLoadingState(visualProgress, active.text, active.index);
+                    }}, 140);
+
+                    try {{
+                        const response = await fetch(form.action, {{
+                            method: "POST",
+                            body: new FormData(form),
+                        }});
+
+                        if (!response.ok) {{
+                            const errorHtml = await response.text();
+                            document.open();
+                            document.write(errorHtml);
+                            document.close();
+                            return;
+                        }}
+
+                        visualProgress = 96;
+                        setLoadingState(96, "Finalising download", 3);
+
+                        const blob = await response.blob();
+                        const disposition = response.headers.get("Content-Disposition") || "";
+                        const match = disposition.match(/filename=([^;]+)/i);
+                        const filename = match ? match[1].trim().replace(/^\"|\"$/g, "") : "recruitment_audit.docx";
+
+                        visualProgress = 100;
+                        setLoadingState(100, "Report ready. Starting download", 3);
+
+                        const url = window.URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.href = url;
+                        link.download = filename;
+                        document.body.appendChild(link);
+                        link.click();
+                        link.remove();
+                        window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+                        window.setTimeout(() => {{
+                            const overlay = document.getElementById("loadingOverlay");
+                            if (overlay) overlay.style.display = "none";
+                            isSubmitting = false;
+                            submitButtons.forEach((button) => button.disabled = false);
+                        }}, 900);
+                    }} catch (error) {{
+                        const overlay = document.getElementById("loadingOverlay");
+                        if (overlay) overlay.style.display = "none";
+                        isSubmitting = false;
+                        submitButtons.forEach((button) => button.disabled = false);
+                        window.alert("The report could not be generated. Please try again.");
+                    }} finally {{
+                        window.clearInterval(timer);
+                    }}
+                }}
+
                 if (form) {{
                     form.addEventListener("submit", function(event) {{
                         if (!validateStep(currentStep)) {{
                             event.preventDefault();
                             return;
                         }}
-                        const overlay = document.getElementById("loadingOverlay");
-                        const loadingFill = document.getElementById("loadingFill");
-                        const loadingPercent = document.getElementById("loadingPercent");
-                        const loadingStatus = document.getElementById("loadingStatus");
-                        const loadingItems = Array.from(document.querySelectorAll(".loading-list-item"));
-                        const states = [
-                            {{ pct: 18, text: "Capturing assessment profile" }},
-                            {{ pct: 42, text: "Scoring maturity and performance" }},
-                            {{ pct: 68, text: "Generating benchmarks and charts" }},
-                            {{ pct: 92, text: "Assembling Word report" }}
-                        ];
-                        if (overlay) overlay.style.display = "flex";
-                        states.forEach((state, index) => {{
-                            window.setTimeout(() => {{
-                                if (loadingFill) loadingFill.style.width = state.pct + "%";
-                                if (loadingPercent) loadingPercent.textContent = state.pct + "%";
-                                if (loadingStatus) loadingStatus.textContent = state.text;
-                                loadingItems.forEach((item, itemIndex) => item.classList.toggle("is-active", itemIndex === index));
-                            }}, index * 750);
-                        }});
+                        event.preventDefault();
+                        downloadReport(event);
                     }});
                 }}
                 showStep(1);
