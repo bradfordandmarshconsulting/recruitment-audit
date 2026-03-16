@@ -3,14 +3,13 @@ from __future__ import annotations
 import html
 import os
 import traceback
-from pathlib import Path
 
-import pandas as pd
 from flask import Flask, request, send_file
 from openai import OpenAI
 
 from recruitment_audit import (
     get_api_key,
+    list_benchmark_sectors,
     load_benchmarks,
     build_benchmark_summary,
     auto_score_sections,
@@ -24,7 +23,6 @@ from recruitment_audit import (
 )
 
 app = Flask(__name__)
-BASE_DIR = Path(__file__).resolve().parent
 
 FALLBACK_SECTORS = [
     "Accounting / Audit",
@@ -86,31 +84,12 @@ def yes_no_to_bool(value: str | None) -> bool:
 
 
 def get_sector_options() -> list[str]:
-    candidates = [
-        BASE_DIR / "uk_recruitment_benchmark_framework.xlsx",
-        Path.cwd() / "uk_recruitment_benchmark_framework.xlsx",
-        Path("uk_recruitment_benchmark_framework.xlsx"),
-    ]
-    for file_path in candidates:
-        if file_path.exists():
-            try:
-                df = pd.read_excel(file_path, sheet_name="Benchmarks")
-                if "sector" in df.columns:
-                    sectors = (
-                        df["sector"]
-                        .dropna()
-                        .astype(str)
-                        .str.strip()
-                        .replace("", pd.NA)
-                        .dropna()
-                        .drop_duplicates()
-                        .sort_values()
-                        .tolist()
-                    )
-                    if sectors:
-                        return sectors
-            except Exception:
-                pass
+    try:
+        sectors = list_benchmark_sectors()
+        if sectors:
+            return sectors
+    except Exception:
+        pass
     return FALLBACK_SECTORS
 
 
@@ -125,31 +104,33 @@ def render_page(title: str, body: str) -> str:
         <title>{title}</title>
         <style>
             :root {{
-                --bg: #f3f5f9;
-                --bg-strong: #e9eef6;
+                --bg: #f4efe8;
+                --bg-strong: #e6dfd6;
                 --panel: rgba(255, 255, 255, 0.92);
                 --panel-strong: #ffffff;
-                --panel-soft: #f8fafc;
-                --ink: #0f172a;
-                --muted: #64748b;
-                --muted-2: #94a3b8;
-                --line: rgba(148, 163, 184, 0.22);
-                --line-strong: rgba(100, 116, 139, 0.35);
-                --brand: #0f172a;
-                --brand-2: #1e293b;
-                --accent: #a16207;
-                --accent-soft: rgba(161, 98, 7, 0.12);
+                --panel-soft: #f8f3ed;
+                --ink: #142033;
+                --muted: #5d6778;
+                --muted-2: #8f98a6;
+                --line: rgba(89, 103, 122, 0.20);
+                --line-strong: rgba(48, 61, 79, 0.34);
+                --brand: #142033;
+                --brand-2: #2b3950;
+                --accent: #b88d57;
+                --accent-soft: rgba(184, 141, 87, 0.14);
                 --success: #047857;
                 --success-soft: rgba(4, 120, 87, 0.10);
                 --error: #b91c1c;
                 --error-soft: rgba(185, 28, 28, 0.08);
-                --shadow-xl: 0 30px 80px rgba(15, 23, 42, 0.14);
-                --shadow-lg: 0 20px 48px rgba(15, 23, 42, 0.10);
-                --shadow-md: 0 12px 28px rgba(15, 23, 42, 0.08);
+                --shadow-xl: 0 34px 88px rgba(20, 32, 51, 0.15);
+                --shadow-lg: 0 22px 52px rgba(20, 32, 51, 0.11);
+                --shadow-md: 0 12px 28px rgba(20, 32, 51, 0.08);
                 --radius-2xl: 28px;
                 --radius-xl: 22px;
                 --radius-lg: 18px;
                 --radius-md: 14px;
+                --font-sans: "Aptos", "Inter", "Segoe UI", sans-serif;
+                --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
             }}
 
             * {{ box-sizing: border-box; }}
@@ -157,24 +138,36 @@ def render_page(title: str, body: str) -> str:
                 margin: 0;
                 padding: 0;
                 min-height: 100%;
-                font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                font-family: var(--font-sans);
                 color: var(--ink);
                 background:
-                    radial-gradient(circle at top left, rgba(161, 98, 7, 0.08), transparent 28%),
-                    radial-gradient(circle at top right, rgba(15, 23, 42, 0.05), transparent 24%),
-                    linear-gradient(180deg, #f8fafc 0%, var(--bg) 52%, #edf2f8 100%);
+                    radial-gradient(circle at top left, rgba(184, 141, 87, 0.16), transparent 28%),
+                    radial-gradient(circle at top right, rgba(20, 32, 51, 0.08), transparent 24%),
+                    linear-gradient(180deg, #fbf7f2 0%, var(--bg) 48%, #ede6de 100%);
             }}
             body {{ min-height: 100vh; }}
             .shell {{ max-width: 1320px; margin: 0 auto; padding: 28px 20px 72px; }}
             .topbar {{ display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 20px; }}
-            .brand {{ display: flex; flex-direction: column; gap: 5px; }}
+            .brand-lockup {{ display: flex; align-items: center; gap: 16px; }}
+            .brand-mark {{
+                width: 62px; height: 62px; border-radius: 18px; display: grid; place-items: center;
+                background: linear-gradient(160deg, var(--brand) 0%, #243248 100%);
+                color: white; font-family: var(--font-display); font-size: 23px; letter-spacing: 0.04em;
+                box-shadow: 0 16px 34px rgba(20, 32, 51, 0.20);
+                position: relative; overflow: hidden;
+            }}
+            .brand-mark:after {{
+                content: ""; position: absolute; inset: 1px; border-radius: 17px;
+                border: 1px solid rgba(255,255,255,0.10);
+            }}
+            .brand {{ display: flex; flex-direction: column; gap: 4px; }}
             .brand-overline {{ font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }}
-            .brand-name {{ font-size: 21px; font-weight: 800; letter-spacing: -0.03em; }}
-            .brand-sub {{ color: var(--muted); font-size: 14px; }}
+            .brand-name {{ font-size: 24px; font-weight: 700; letter-spacing: -0.03em; font-family: var(--font-display); }}
+            .brand-sub {{ color: var(--muted); font-size: 14px; max-width: 56ch; }}
             .trust-pill {{
-                border: 1px solid rgba(15, 23, 42, 0.08);
-                background: rgba(255,255,255,0.72);
-                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+                border: 1px solid rgba(20, 32, 51, 0.08);
+                background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(255,255,255,0.70));
+                box-shadow: 0 10px 24px rgba(20, 32, 51, 0.06);
                 backdrop-filter: blur(14px);
                 color: var(--brand);
                 border-radius: 999px;
@@ -186,7 +179,7 @@ def render_page(title: str, body: str) -> str:
             }}
             .hero {{
                 position: relative; overflow: hidden;
-                background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.96));
+                background: linear-gradient(135deg, rgba(20, 32, 51, 0.99), rgba(43, 57, 80, 0.97));
                 color: white; border: 1px solid rgba(255,255,255,0.08);
                 border-radius: 34px; box-shadow: var(--shadow-xl); padding: 34px; margin-bottom: 20px;
             }}
@@ -194,17 +187,23 @@ def render_page(title: str, body: str) -> str:
                 content: ""; position: absolute; inset: 0;
                 background:
                     radial-gradient(circle at 12% 18%, rgba(255,255,255,0.10), transparent 18%),
-                    radial-gradient(circle at 88% 22%, rgba(161, 98, 7, 0.18), transparent 20%),
+                    radial-gradient(circle at 88% 22%, rgba(184, 141, 87, 0.24), transparent 20%),
                     linear-gradient(180deg, rgba(255,255,255,0.03), transparent 38%);
                 pointer-events: none;
             }}
             .hero-grid {{ position: relative; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.9fr); gap: 26px; align-items: stretch; }}
+            .hero-badge-row {{ display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }}
+            .hero-badge {{
+                display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 999px;
+                background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.10);
+                font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+            }}
             .hero-eyebrow {{
                 display: inline-flex; margin-bottom: 14px; padding: 9px 12px; border-radius: 999px;
                 background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.08);
                 font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
             }}
-            .hero h1 {{ margin: 0 0 14px; font-size: clamp(34px, 5vw, 56px); line-height: 1.02; letter-spacing: -0.05em; max-width: 12ch; }}
+            .hero h1 {{ margin: 0 0 14px; font-size: clamp(34px, 5vw, 58px); line-height: 0.98; letter-spacing: -0.05em; max-width: 12ch; font-family: var(--font-display); font-weight: 700; }}
             .hero p {{ margin: 0; max-width: 68ch; color: rgba(255,255,255,0.80); font-size: 16px; line-height: 1.8; }}
             .hero-metrics {{ display: grid; gap: 14px; align-content: start; }}
             .hero-card {{
@@ -215,6 +214,13 @@ def render_page(title: str, body: str) -> str:
             .hero-card:hover {{ transform: translateY(-2px); border-color: rgba(255,255,255,0.18); box-shadow: 0 18px 40px rgba(15, 23, 42, 0.20); }}
             .hero-card-label {{ font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.64); margin-bottom: 10px; font-weight: 700; }}
             .hero-card-value {{ font-size: 14px; line-height: 1.7; color: rgba(255,255,255,0.92); }}
+            .hero-proof-grid {{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }}
+            .hero-proof {{
+                padding: 14px 16px; border-radius: 18px; background: rgba(255,255,255,0.06);
+                border: 1px solid rgba(255,255,255,0.10);
+            }}
+            .hero-proof-label {{ font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.62); margin-bottom: 8px; font-weight: 700; }}
+            .hero-proof-value {{ font-size: 14px; color: rgba(255,255,255,0.92); line-height: 1.6; }}
 
             .progress-shell {{ position: sticky; top: 12px; z-index: 30; margin-bottom: 18px; }}
             .progress-bar {{
@@ -254,7 +260,7 @@ def render_page(title: str, body: str) -> str:
 
             .section-head {{ display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 26px; }}
             .section-kicker {{ display: inline-flex; align-items: center; gap: 8px; margin-bottom: 10px; color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }}
-            .section-title {{ margin: 0 0 10px; font-size: 34px; letter-spacing: -0.045em; line-height: 1.04; }}
+            .section-title {{ margin: 0 0 10px; font-size: 34px; letter-spacing: -0.045em; line-height: 1.04; font-family: var(--font-display); font-weight: 700; }}
             .section-copy {{ margin: 0; max-width: 62ch; color: var(--muted); line-height: 1.8; font-size: 15px; }}
             .section-aside {{ min-width: 220px; background: rgba(15, 23, 42, 0.03); border: 1px solid rgba(15, 23, 42, 0.06); border-radius: 18px; padding: 16px; color: var(--muted); line-height: 1.8; font-size: 13px; }}
 
@@ -296,9 +302,23 @@ def render_page(title: str, body: str) -> str:
                 background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,255,255,0.88));
                 border: 1px solid rgba(255,255,255,0.72); border-radius: 24px; padding: 22px; box-shadow: var(--shadow-md); backdrop-filter: blur(14px);
             }}
+            .sidebar-card.brand-card {{
+                background: linear-gradient(165deg, rgba(20, 32, 51, 0.98), rgba(39, 52, 73, 0.95));
+                color: white;
+            }}
+            .sidebar-card.brand-card .sidebar-kicker {{ color: rgba(184, 141, 87, 0.92); }}
+            .sidebar-card.brand-card .sidebar-title,
+            .sidebar-card.brand-card p,
+            .sidebar-card.brand-card .sidebar-copy {{ color: rgba(255,255,255,0.88); }}
             .sidebar-kicker {{ color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: 0.10em; text-transform: uppercase; margin-bottom: 10px; }}
-            .sidebar-title {{ margin: 0 0 10px; font-size: 22px; letter-spacing: -0.04em; }}
+            .sidebar-title {{ margin: 0 0 10px; font-size: 22px; letter-spacing: -0.04em; font-family: var(--font-display); font-weight: 700; }}
             .sidebar-copy, .sidebar-card p {{ margin: 0; color: var(--muted); line-height: 1.75; font-size: 14px; }}
+            .sidebar-mark {{
+                width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; margin-bottom: 14px;
+                background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.10);
+                font-family: var(--font-display); font-size: 22px; letter-spacing: 0.04em;
+            }}
+            .sidebar-rule {{ width: 56px; height: 2px; background: rgba(184, 141, 87, 0.92); margin: 16px 0; }}
             .summary-list {{ display: grid; gap: 10px; margin-top: 18px; }}
             .summary-item {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 16px; background: rgba(248, 250, 252, 0.88); border: 1px solid rgba(148, 163, 184, 0.10); }}
             .summary-label {{ color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }}
@@ -335,7 +355,7 @@ def render_page(title: str, body: str) -> str:
             .loading-head {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }}
             .loading-pill {{ display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 999px; background: rgba(15, 23, 42, 0.05); color: var(--brand); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }}
             .spinner {{ width: 16px; height: 16px; border-radius: 999px; border: 2.5px solid rgba(15, 23, 42, 0.14); border-top-color: #111827; animation: spin 0.9s linear infinite; }}
-            .loading-card h3 {{ margin: 0 0 10px; font-size: 28px; letter-spacing: -0.04em; }}
+            .loading-card h3 {{ margin: 0 0 10px; font-size: 28px; letter-spacing: -0.04em; font-family: var(--font-display); font-weight: 700; }}
             .loading-card p {{ margin: 0; color: var(--muted); line-height: 1.75; }}
             .loading-track {{ width: 100%; height: 12px; border-radius: 999px; background: rgba(148, 163, 184, 0.18); overflow: hidden; margin: 20px 0 14px; }}
             .loading-fill {{ height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #0f172a, #334155, #a16207); transition: width 0.35s ease; }}
@@ -350,7 +370,7 @@ def render_page(title: str, body: str) -> str:
                 .sidebar {{ position: static; }}
             }}
             @media (max-width: 980px) {{
-                .hero-grid, .grid, .stepper {{ grid-template-columns: 1fr; }}
+                .hero-grid, .grid, .stepper, .hero-proof-grid {{ grid-template-columns: 1fr; }}
                 .topbar, .section-head, .footer-bar, .progress-top {{ flex-direction: column; align-items: flex-start; }}
                 .section-aside {{ min-width: 0; width: 100%; }}
                 .stage, .footer-bar {{ padding-left: 22px; padding-right: 22px; }}
@@ -359,6 +379,7 @@ def render_page(title: str, body: str) -> str:
                 .hero {{ padding: 26px; }}
                 .hero h1 {{ font-size: 36px; max-width: none; }}
                 .shell {{ padding-top: 20px; }}
+                .brand-lockup {{ align-items: flex-start; }}
             }}
         </style>
     </head>
@@ -373,6 +394,7 @@ def render_page(title: str, body: str) -> str:
                     <div class="loading-pill"><span class="spinner"></span> Generating report</div>
                     <div id="loadingPercent">0%</div>
                 </div>
+                <div class="brand-overline" style="margin-bottom: 8px;">Bradford &amp; Marsh Consulting</div>
                 <h3>Building the recruitment audit report</h3>
                 <p>
                     Reviewing your inputs, comparing benchmark position, and assembling the final recruitment audit report.
@@ -653,17 +675,25 @@ def form():
 
     body = f"""
     <div class="topbar">
-        <div class="brand">
-            <div class="brand-overline">Bradford & Marsh Consulting</div>
-            <div class="brand-name">Recruitment Advisory Platform</div>
-            <div class="brand-sub">Operating model review, recruitment diagnostics and advisory reporting</div>
+        <div class="brand-lockup">
+            <div class="brand-mark">B&amp;M</div>
+            <div class="brand">
+                <div class="brand-overline">Bradford & Marsh Consulting</div>
+                <div class="brand-name">Recruitment Audit Studio</div>
+                <div class="brand-sub">Client-ready operating model diagnostics, benchmark interpretation and advisory reporting for leadership teams.</div>
+            </div>
         </div>
-        <div class="trust-pill">Diagnostic workflow · benchmark-led output</div>
+        <div class="trust-pill">Confidential diagnostic workflow · benchmark-led output</div>
     </div>
 
     <div class="hero">
         <div class="hero-grid">
             <div>
+                <div class="hero-badge-row">
+                    <div class="hero-badge">Brand-led interface</div>
+                    <div class="hero-badge">Board-ready report output</div>
+                    <div class="hero-badge">UK recruitment benchmarks</div>
+                </div>
                 <div class="hero-eyebrow">Recruitment operating model audit</div>
                 <h1>Convert hiring data, process controls and benchmark signals into a technical recruitment audit.</h1>
                 <p>
@@ -672,6 +702,21 @@ def form():
                     candidate experience, process governance and retention risk. The final output is a downloadable report with scored sections, benchmark comparison,
                     visual analysis and prioritised recommendations.
                 </p>
+
+                <div class="hero-proof-grid">
+                    <div class="hero-proof">
+                        <div class="hero-proof-label">Advisory lens</div>
+                        <div class="hero-proof-value">Frames the output as a consulting diagnostic rather than a generic form export.</div>
+                    </div>
+                    <div class="hero-proof">
+                        <div class="hero-proof-label">Data treatment</div>
+                        <div class="hero-proof-value">Normalises live inputs against sector benchmarks before scoring each operating area.</div>
+                    </div>
+                    <div class="hero-proof">
+                        <div class="hero-proof-label">Decision support</div>
+                        <div class="hero-proof-value">Produces a Word report that can go straight into stakeholder review.</div>
+                    </div>
+                </div>
             </div>
 
             <div class="hero-metrics">
@@ -912,6 +957,17 @@ def form():
         </form>
 
         <aside class="sidebar">
+            <div class="sidebar-card brand-card">
+                <div class="sidebar-mark">B&amp;M</div>
+                <div class="sidebar-kicker">Bradford & Marsh</div>
+                <h3 class="sidebar-title">Consulting-grade recruitment diagnostic</h3>
+                <p>
+                    The interface captures the operating context needed for a proper advisory report, not just a headline score. Outputs are structured for client discussion, leadership review and next-step planning.
+                </p>
+                <div class="sidebar-rule"></div>
+                <p class="sidebar-copy">Use current-state inputs and live metrics so the report reflects actual operating conditions rather than policy intent.</p>
+            </div>
+
             <div class="sidebar-card">
                 <div class="sidebar-kicker">Assessment summary</div>
                 <h3 class="sidebar-title">Current operating profile</h3>

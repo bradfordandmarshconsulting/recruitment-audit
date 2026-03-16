@@ -24,7 +24,9 @@ from docx.shared import Inches, Pt, RGBColor
 
 BASE_DIR = Path(__file__).resolve().parent
 BENCHMARK_FILE = BASE_DIR / "uk_recruitment_benchmark_framework.xlsx"
+BENCHMARK_CSV_FILE = BASE_DIR / "uk_recruitment_benchmarks.csv"
 OUTPUT_DIR = Path(os.environ.get("AUDIT_OUTPUT_DIR", "/tmp/BradfordMarshAI"))
+BENCHMARK_ENV_VAR = "RECRUITMENT_BENCHMARK_FILE"
 
 SECTION_ORDER = [
     "Recruitment strategy and workforce planning",
@@ -77,19 +79,32 @@ SECTION_KEYS = {
     "structural_improvements": "Structural improvements",
 }
 
+BRAND_NAME = "Bradford & Marsh Consulting"
+BRAND_STRAPLINE = "Recruitment advisory and operating model diagnostics"
+REPORT_TITLE = "Recruitment Operating Model Audit"
+CONFIDENTIAL_LABEL = "Confidential client report"
+
+PRIMARY_HEX = "182647"
+SECONDARY_HEX = "4F627A"
+ACCENT_HEX = "C19A6B"
+TEXT_HEX = "242424"
+MUTED_HEX = "66707A"
+WHITE_HEX = "FFFFFF"
+LIGHT_BG = "F6F8FB"
+SOFT_BG = "F8FAFC"
+GREEN_FILL = "DCFCE7"
+AMBER_FILL = "FEF3C7"
+RED_FILL = "FEE2E2"
+
 PRIMARY = RGBColor(24, 38, 71)
 SECONDARY = RGBColor(79, 98, 122)
 ACCENT = RGBColor(193, 154, 107)
 TEXT = RGBColor(36, 36, 36)
 MUTED = RGBColor(102, 112, 122)
-LIGHT_BG = "F6F8FB"
-SOFT_BG = "F8FAFC"
+WHITE = RGBColor(255, 255, 255)
 GREEN = RGBColor(22, 101, 52)
 AMBER = RGBColor(180, 83, 9)
 RED = RGBColor(185, 28, 28)
-GREEN_FILL = "DCFCE7"
-AMBER_FILL = "FEF3C7"
-RED_FILL = "FEE2E2"
 RAG_BANDS = [
     (0, 4, "#dc2626"),
     (4, 7, "#d97706"),
@@ -236,13 +251,23 @@ def parse_time_to_hire_days(value: str | None) -> float | None:
     return round(numeric, 1)
 
 
-def load_benchmarks(sector: str) -> pd.DataFrame:
-    if not BENCHMARK_FILE.exists():
-        raise FileNotFoundError(f"Benchmark workbook not found: {BENCHMARK_FILE}")
+def list_benchmark_sectors() -> list[str]:
+    df = _load_benchmark_table()
+    return (
+        df["sector"]
+        .dropna()
+        .astype(str)
+        .str.strip()
+        .replace("", pd.NA)
+        .dropna()
+        .drop_duplicates()
+        .sort_values()
+        .tolist()
+    )
 
-    df = pd.read_excel(BENCHMARK_FILE, sheet_name="Benchmarks")
-    df.columns = [str(col).strip() for col in df.columns]
-    df["sector"] = df["sector"].astype(str).str.strip()
+
+def load_benchmarks(sector: str) -> pd.DataFrame:
+    df = _load_benchmark_table()
 
     if sector.strip():
         matches = df[df["sector"].str.contains(sector.strip(), case=False, na=False)]
@@ -251,6 +276,84 @@ def load_benchmarks(sector: str) -> pd.DataFrame:
 
     national = df[df["region"].astype(str).str.contains("UK National", case=False, na=False)]
     return national.reset_index(drop=True) if not national.empty else df.reset_index(drop=True)
+
+
+def _load_benchmark_table() -> pd.DataFrame:
+    benchmark_path = _resolve_benchmark_file()
+    if benchmark_path.suffix.lower() == ".csv":
+        df = pd.read_csv(benchmark_path)
+    else:
+        df = pd.read_excel(benchmark_path, sheet_name="Benchmarks")
+    return _normalise_benchmark_columns(df)
+
+
+def _resolve_benchmark_file() -> Path:
+    candidates = []
+    configured = os.environ.get(BENCHMARK_ENV_VAR, "").strip()
+    if configured:
+        candidates.append(Path(configured).expanduser())
+
+    candidates.extend(
+        [
+            BENCHMARK_FILE,
+            BENCHMARK_CSV_FILE,
+            Path.cwd() / "uk_recruitment_benchmark_framework.xlsx",
+            Path.cwd() / "uk_recruitment_benchmarks.csv",
+            Path.home() / "Desktop" / "uk_recruitment_benchmarks.csv",
+        ]
+    )
+
+    for path in candidates:
+        if path.exists():
+            return path
+
+    searched = ", ".join(str(path) for path in candidates)
+    raise FileNotFoundError(f"Benchmark dataset not found. Checked: {searched}")
+
+
+def _normalise_benchmark_columns(df: pd.DataFrame) -> pd.DataFrame:
+    renamed = df.copy()
+    renamed.columns = [str(col).strip() for col in renamed.columns]
+    renamed = renamed.rename(
+        columns={
+            "avg_time_to_hire": "avg_time_to_hire_days",
+            "avg_applications": "avg_applications_per_role",
+            "avg_offer_acceptance": "avg_offer_acceptance_pct",
+            "avg_attrition": "avg_attrition_pct",
+            "avg_application_to_interview": "avg_application_to_interview_pct",
+            "avg_interview_to_offer": "avg_interview_to_offer_pct",
+        }
+    )
+
+    if "sector" not in renamed.columns:
+        raise ValueError("Benchmark data must include a 'sector' column.")
+
+    defaults = {
+        "company_size_band": "All sizes",
+        "region": "UK National",
+        "avg_time_to_hire_days": pd.NA,
+        "avg_time_to_fill_days": pd.NA,
+        "avg_applications_per_role": pd.NA,
+        "avg_offer_acceptance_pct": pd.NA,
+        "avg_attrition_pct": pd.NA,
+        "avg_application_to_interview_pct": pd.NA,
+        "avg_interview_to_offer_pct": pd.NA,
+        "salary_competitiveness_index": pd.NA,
+        "data_quality_note": "Imported benchmark dataset.",
+        "source_basis": "Benchmark import",
+    }
+    for column, default in defaults.items():
+        if column not in renamed.columns:
+            renamed[column] = default
+
+    renamed["sector"] = renamed["sector"].astype(str).str.strip()
+    renamed["company_size_band"] = (
+        renamed["company_size_band"].fillna("All sizes").astype(str).str.strip().replace("", "All sizes")
+    )
+    renamed["region"] = (
+        renamed["region"].fillna("UK National").astype(str).str.strip().replace("", "UK National")
+    )
+    return renamed
 
 
 def build_benchmark_summary(metrics: dict, benchmark: pd.DataFrame) -> dict:
@@ -557,6 +660,7 @@ def save_word_report(
     _add_detailed_findings(document, data, report)
     _add_roadmap(document, report)
     _add_closing_page(document, report)
+    _apply_brand_headers_and_footers(document, data)
     document.save(output_path)
     return output_path
 
@@ -631,9 +735,33 @@ def _set_document_defaults(document: Document) -> None:
 
 
 def _add_cover_page(document: Document, data: dict) -> None:
+    masthead = document.add_table(rows=1, cols=2)
+    masthead.autofit = True
+    left = masthead.cell(0, 0)
+    right = masthead.cell(0, 1)
+    _shade_cell(left, PRIMARY_HEX)
+    _shade_cell(right, LIGHT_BG)
+    _set_cell(left, f"{BRAND_NAME}\n{BRAND_STRAPLINE}", bold=True, color=WHITE, size=11.5)
+    _set_cell(
+        right,
+        f"{CONFIDENTIAL_LABEL}\nPrepared on {datetime.now().strftime('%d %B %Y')}",
+        bold=True,
+        color=PRIMARY,
+        size=10.5,
+    )
+
+    mark = document.add_paragraph()
+    mark.paragraph_format.space_before = Pt(36)
+    mark.paragraph_format.space_after = Pt(6)
+    mark_run = mark.add_run("B&M")
+    mark_run.bold = True
+    mark_run.font.name = "Aptos"
+    mark_run.font.size = Pt(28)
+    mark_run.font.color.rgb = ACCENT
+
     p = document.add_paragraph()
-    p.paragraph_format.space_before = Pt(54)
-    run = p.add_run("Recruitment Operating Model Audit")
+    p.paragraph_format.space_after = Pt(4)
+    run = p.add_run(REPORT_TITLE)
     run.bold = True
     run.font.name = "Aptos"
     run.font.size = Pt(24)
@@ -647,14 +775,11 @@ def _add_cover_page(document: Document, data: dict) -> None:
     run2.font.size = Pt(17)
     run2.font.color.rgb = SECONDARY
 
-    p3 = document.add_paragraph()
-    p3.paragraph_format.space_after = Pt(16)
-    run3 = p3.add_run(
-        f"Prepared by Bradford & Marsh Consulting on {datetime.now().strftime('%d %B %Y')}"
+    _add_paragraph(
+        document,
+        "This report evaluates recruitment operating maturity, benchmark position and delivery risk, with priority actions designed for leadership review.",
+        after=12,
     )
-    run3.font.name = "Aptos"
-    run3.font.size = Pt(11)
-    run3.font.color.rgb = MUTED
 
     table = document.add_table(rows=4, cols=2)
     table.autofit = True
@@ -665,17 +790,16 @@ def _add_cover_page(document: Document, data: dict) -> None:
         ("Annual hiring volume", data["annual_hiring_volume"]),
     ]
     for i, (label, value) in enumerate(rows):
-        _set_cell(table.cell(i, 0), label, bold=True, color=PRIMARY)
-        _set_cell(table.cell(i, 1), value)
         _shade_cell(table.cell(i, 0), LIGHT_BG)
+        _set_cell(table.cell(i, 0), label, bold=True, color=PRIMARY)
+        _set_cell(table.cell(i, 1), value, size=10.3)
 
     document.add_paragraph("")
-    brand = document.add_paragraph()
-    brand_run = brand.add_run("Bradford & Marsh Consulting")
-    brand_run.bold = True
-    brand_run.font.name = "Aptos"
-    brand_run.font.size = Pt(11)
-    brand_run.font.color.rgb = ACCENT
+    _add_paragraph(
+        document,
+        f"Prepared by {BRAND_NAME}. Distribution should be limited to the client leadership team and relevant hiring stakeholders.",
+        after=0,
+    )
     document.add_page_break()
 
 
@@ -886,14 +1010,19 @@ def _add_closing_page(document: Document, report: dict) -> None:
     _add_paragraph(document, report["overall_recruitment_score"], after=8)
     _add_section_banner(document, "Final verdict")
     _add_paragraph(document, report["final_verdict"], after=6)
+    _add_paragraph(
+        document,
+        f"{BRAND_NAME} can use this audit as the working baseline for a follow-on process redesign, benchmarking refresh or leadership implementation plan.",
+        after=0,
+    )
 
 
 def _add_section_banner(document: Document, title: str) -> None:
     table = document.add_table(rows=1, cols=1)
     table.autofit = True
     cell = table.cell(0, 0)
-    _shade_cell(cell, LIGHT_BG)
-    _set_cell(cell, title, bold=True, color=PRIMARY)
+    _shade_cell(cell, PRIMARY_HEX)
+    _set_cell(cell, title, bold=True, color=WHITE, size=11.2)
     document.add_paragraph("")
 
 
@@ -958,17 +1087,77 @@ def _shade_cell(cell, fill: str) -> None:
     tc_pr.append(shd)
 
 
-def _set_cell(cell, text: str, bold: bool = False, color: RGBColor = TEXT) -> None:
+def _set_cell(
+    cell,
+    text: str,
+    bold: bool = False,
+    color: RGBColor = TEXT,
+    size: float = 10.0,
+    alignment=WD_ALIGN_PARAGRAPH.LEFT,
+) -> None:
     cell.text = ""
     paragraph = cell.paragraphs[0]
-    paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    paragraph.alignment = alignment
     paragraph.paragraph_format.space_after = Pt(0)
     run = paragraph.add_run(text)
     run.bold = bold
     run.font.name = "Aptos"
-    run.font.size = Pt(10.0)
+    run.font.size = Pt(size)
     run.font.color.rgb = color
     cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+
+
+def _apply_brand_headers_and_footers(document: Document, data: dict) -> None:
+    generated_on = datetime.now().strftime("%d %B %Y")
+    for section in document.sections:
+        section.header.is_linked_to_previous = False
+        section.footer.is_linked_to_previous = False
+        section.top_margin = Inches(0.6)
+        section.bottom_margin = Inches(0.6)
+        section.left_margin = Inches(0.75)
+        section.right_margin = Inches(0.75)
+
+        header = section.header.paragraphs[0]
+        header.text = ""
+        header.paragraph_format.space_after = Pt(0)
+        header.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        header_run = header.add_run(f"{BRAND_NAME}  |  {REPORT_TITLE}")
+        header_run.bold = True
+        header_run.font.name = "Aptos"
+        header_run.font.size = Pt(8.6)
+        header_run.font.color.rgb = SECONDARY
+
+        footer = section.footer.paragraphs[0]
+        footer.text = ""
+        footer.paragraph_format.space_after = Pt(0)
+        footer.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        footer_run = footer.add_run(
+            f"{CONFIDENTIAL_LABEL}  |  {data['company_name']}  |  {generated_on}  |  Page "
+        )
+        footer_run.font.name = "Aptos"
+        footer_run.font.size = Pt(8.2)
+        footer_run.font.color.rgb = MUTED
+        _append_page_number(footer)
+
+
+def _append_page_number(paragraph) -> None:
+    begin = OxmlElement("w:fldChar")
+    begin.set(qn("w:fldCharType"), "begin")
+
+    instr = OxmlElement("w:instrText")
+    instr.set(qn("xml:space"), "preserve")
+    instr.text = " PAGE "
+
+    end = OxmlElement("w:fldChar")
+    end.set(qn("w:fldCharType"), "end")
+
+    run = paragraph.add_run()
+    run._r.append(begin)
+    run._r.append(instr)
+    run._r.append(end)
+    run.font.name = "Aptos"
+    run.font.size = Pt(8.2)
+    run.font.color.rgb = MUTED
 
 
 def _output_dir() -> Path:
