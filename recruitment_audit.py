@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import math
 import os
 import re
 from datetime import datetime
@@ -22,7 +21,7 @@ from docx.shared import Inches, Pt, RGBColor
 from openai import OpenAI
 
 MODEL_NAME = "gpt-4.1"
-BENCHMARK_FILE = Path.home() / "Desktop" / "uk_recruitment_benchmark_framework.xlsx"
+BENCHMARK_FILE = Path("uk_recruitment_benchmark_framework.xlsx")
 
 BRAND_NAME = "Bradford & Marsh Consulting"
 BRAND_TAGLINE = "Recruitment Audit & Talent Advisory"
@@ -34,6 +33,7 @@ SUBTITLE_SIZE = 11.5
 H1_SIZE = 15.5
 H2_SIZE = 12.5
 H3_SIZE = 10.5
+SMALL_SIZE = 9.0
 
 TEXT_RGB = RGBColor(17, 24, 39)
 MUTED_RGB = RGBColor(75, 85, 99)
@@ -47,11 +47,13 @@ DARK = "#111827"
 GOLD = "#A16207"
 LIGHT_GREY = "#E5E7EB"
 MID_GREY = "#CBD5E1"
+
 HEADER_FILL = "111827"
 SUBHEADER_FILL = "F3F4F6"
 GOOD_FILL = "DCFCE7"
 AMBER_FILL = "FEF3C7"
 RISK_FILL = "FEE2E2"
+CALLOUT_FILL = "F8FAFC"
 
 SECTIONS = [
     "Recruitment strategy and workforce planning",
@@ -77,15 +79,29 @@ REQUIRED_BENCHMARK_COLUMNS = {
 }
 
 SYSTEM_PROMPT = """
-You are writing as an elite recruitment operations consultant operating at the top end of the advisory market.
+You are writing as an elite recruitment operating-model consultant at the top end of the advisory market.
 
 Write in plain, professional British English.
-Be clinical, evidence-led, commercially sharp and precise.
-Do not use hype, marketing language, generic HR phrasing or filler.
+The tone should be clinical, authoritative, commercially hard-edged and highly specific.
+Do not sound like generic HR consultancy output.
+Do not sound like software-generated filler.
+Do not use hype, clichés, vague encouragement or bland “positive foundation” language.
 Do not invent facts.
-Do not soften weak performance.
-Use the supplied scores exactly as provided.
-Use the supplied diagnostic evidence actively. The report should feel like a high-end operating diagnosis, not a generic audit.
+Do not change the supplied scores.
+
+The report must feel as if an expensive specialist has reviewed:
+- operating discipline
+- funnel efficiency
+- decision friction
+- conversion leakage
+- hiring quality risk
+- early-tenure failure
+- commercial drag
+
+Use the supplied diagnostic evidence actively.
+Explain cause and effect clearly.
+Make judgements.
+Write with synthesis, not with fragmented bullet-like phrasing.
 
 Return valid JSON only.
 
@@ -122,11 +138,20 @@ Rules:
 - top_5_strengths must contain exactly 5 items
 - top_5_problems must contain exactly 5 items
 - overall_score must match the supplied totals exactly
-- current_state must describe what the operating reality appears to be now
-- key_risks must focus on specific process, speed, governance, conversion and retention risks
-- commercial_impact must translate issues into operational drag, hiring inefficiency, vacancy burden, interview load or repeat-hiring cost where supported
-- quick_wins must be immediately executable
-- medium_term_improvements must be structural improvements over the next 1-2 quarters
+- each section field should be written as compact advisory prose, not as bullets
+- current_state should diagnose what appears to be true operationally now
+- key_risks should focus on the most serious operational, commercial and hiring-quality risks
+- commercial_impact should translate issues into business terms such as delay, wasted management time, repeat-hiring burden, vacancy drag, conversion inefficiency or churn cost
+- quick_wins should describe specific practical actions that can start immediately
+- medium_term_improvements should describe structural changes over the next 1-2 quarters
+- executive_summary must synthesise the operating picture, not merely restate scores
+- final_verdict must read like a sharp board-level conclusion
+
+Avoid obvious templated phrases such as:
+- “this is a positive foundation”
+- “there is room to improve”
+- “best practice would suggest”
+- “a key area of opportunity”
 """.strip()
 
 
@@ -177,12 +202,10 @@ def parse_time_to_hire_days(value: str | None) -> float | None:
 
 
 def output_dir() -> Path:
-    desktop = Path.home() / "Desktop"
-    if desktop.exists() and desktop.is_dir():
-        return desktop
-    fallback = Path.home() / "recruitment_audit_outputs"
-    fallback.mkdir(parents=True, exist_ok=True)
-    return fallback
+    root = Path.cwd()
+    reports = root / "generated_reports"
+    reports.mkdir(parents=True, exist_ok=True)
+    return reports
 
 
 def get_api_key() -> str:
@@ -256,7 +279,7 @@ def build_benchmark_summary(metrics: dict[str, float | None], benchmark: pd.Seri
     if benchmark is None:
         return (
             "No external benchmark data was available for the selected sector. "
-            "Comparative analysis has therefore been limited to the information supplied and established good practice."
+            "Comparative analysis has therefore been limited to the supplied information and established good practice."
         )
 
     lines = [f"Sector benchmark matched: {xml_safe_text(benchmark['sector'])}"]
@@ -275,14 +298,6 @@ def build_benchmark_summary(metrics: dict[str, float | None], benchmark: pd.Seri
     return "\n".join(lines)
 
 
-def band_from_value(value: float, low: float, high: float) -> str:
-    if value <= low:
-        return "low"
-    if value >= high:
-        return "high"
-    return "moderate"
-
-
 def derive_diagnostics(data: dict[str, Any], benchmark: pd.Series | None) -> dict[str, Any]:
     m = data["metrics"]
     f = data["process_flags"]
@@ -296,27 +311,30 @@ def derive_diagnostics(data: dict[str, Any], benchmark: pd.Series | None) -> dic
     feedback_days = m.get("interview_feedback_time_days")
 
     annual_hires = parse_numeric_value(str(data.get("annual_hiring_volume", ""))) or 0.0
-    salary = m.get("average_salary")  # optional future field
 
     application_to_interview_pct = None
     if applications and interviewed is not None and applications > 0:
         application_to_interview_pct = round((interviewed / applications) * 100, 1)
 
-    estimated_interviews_per_hire = None
+    interview_to_hire_ratio = None
+    if interviewed is not None:
+        interview_to_hire_ratio = round(interviewed, 1)
+
+    total_interviews_per_hire = None
     if interviewed is not None and stages is not None:
-        estimated_interviews_per_hire = round(interviewed * stages, 1)
+        total_interviews_per_hire = round(interviewed * stages, 1)
 
     annual_interview_hours = None
-    if estimated_interviews_per_hire is not None and annual_hires:
-        annual_interview_hours = round(estimated_interviews_per_hire * annual_hires, 1)
+    if total_interviews_per_hire is not None and annual_hires:
+        annual_interview_hours = round(total_interviews_per_hire * annual_hires, 1)
 
-    estimated_backfills = None
+    attrition_backfills = None
     if attrition is not None and annual_hires:
-        estimated_backfills = round((attrition / 100) * annual_hires, 1)
+        attrition_backfills = round((attrition / 100) * annual_hires, 1)
 
     vacancy_weeks = None
-    if estimated_backfills is not None and time_to_hire is not None:
-        vacancy_weeks = round((estimated_backfills * time_to_hire) / 7, 1)
+    if attrition_backfills is not None and time_to_hire is not None:
+        vacancy_weeks = round((attrition_backfills * time_to_hire) / 7, 1)
 
     bench_time = safe_float(benchmark.get("avg_time_to_hire_days")) if benchmark is not None else None
     bench_apps = safe_float(benchmark.get("avg_applications_per_role")) if benchmark is not None else None
@@ -415,18 +433,21 @@ def derive_diagnostics(data: dict[str, Any], benchmark: pd.Series | None) -> dic
         primary_bottleneck = sorted(bottleneck_candidates, key=lambda x: x[1], reverse=True)[0][0]
 
     maturity_points = 0
-    maturity_points += 1 if f.get("has_hiring_plan") else 0
-    maturity_points += 1 if f.get("tracks_metrics") else 0
-    maturity_points += 1 if f.get("has_employer_brand") else 0
-    maturity_points += 1 if f.get("standardised_job_specs") else 0
-    maturity_points += 1 if f.get("multi_channel_sourcing") else 0
-    maturity_points += 1 if f.get("structured_screening") else 0
-    maturity_points += 1 if f.get("structured_interviews") else 0
-    maturity_points += 1 if f.get("fast_offer_process") else 0
-    maturity_points += 1 if f.get("formal_onboarding") else 0
-    maturity_points += 1 if f.get("collects_candidate_feedback") else 0
-    maturity_points += 1 if f.get("named_process_owner") else 0
-    maturity_points += 1 if f.get("hiring_manager_training") else 0
+    for key in [
+        "has_hiring_plan",
+        "tracks_metrics",
+        "has_employer_brand",
+        "standardised_job_specs",
+        "multi_channel_sourcing",
+        "structured_screening",
+        "structured_interviews",
+        "fast_offer_process",
+        "formal_onboarding",
+        "collects_candidate_feedback",
+        "named_process_owner",
+        "hiring_manager_training",
+    ]:
+        maturity_points += 1 if f.get(key) else 0
 
     if maturity_points <= 3:
         maturity_level = "Level 1 - Reactive"
@@ -437,34 +458,25 @@ def derive_diagnostics(data: dict[str, Any], benchmark: pd.Series | None) -> dic
     else:
         maturity_level = "Level 4 - Managed"
 
-    likely_failure_pattern = []
+    failure_mechanisms = []
     if retention_signal in {"severe retention failure", "high retention risk"}:
-        likely_failure_pattern.append("early retention is destroying downstream value")
+        failure_mechanisms.append("early retention is erasing downstream value")
     if funnel_signal in {"severe conversion leakage", "weak conversion"}:
-        likely_failure_pattern.append("top-of-funnel quality or screening alignment is weak")
+        failure_mechanisms.append("top-of-funnel quality or screening alignment is weak")
     if interview_signal == "high process friction":
-        likely_failure_pattern.append("interview process drag is slowing decisions")
+        failure_mechanisms.append("interview drag is slowing decisions")
     if offer_signal in {"high offer risk", "weak competitiveness"}:
-        likely_failure_pattern.append("offer conversion is not strong enough")
-    if not likely_failure_pattern:
-        likely_failure_pattern.append("the process appears functional but under-optimised")
-
-    vacancy_cost_estimate = None
-    replacement_cost_estimate = None
-    if salary and time_to_hire:
-        daily_salary = salary / 260
-        vacancy_cost_estimate = round(daily_salary * time_to_hire, 0)
-    if salary and estimated_backfills is not None:
-        replacement_cost_estimate = round((salary * 0.30) * estimated_backfills, 0)
+        failure_mechanisms.append("offer conversion is not strong enough")
+    if not failure_mechanisms:
+        failure_mechanisms.append("the process appears serviceable but under-optimised")
 
     return {
         "application_to_interview_pct": application_to_interview_pct,
-        "estimated_interviews_per_hire": estimated_interviews_per_hire,
+        "interview_to_hire_ratio": interview_to_hire_ratio,
+        "total_interviews_per_hire": total_interviews_per_hire,
         "annual_interview_hours": annual_interview_hours,
-        "estimated_backfills": estimated_backfills,
+        "attrition_backfills": attrition_backfills,
         "vacancy_weeks": vacancy_weeks,
-        "vacancy_cost_estimate": vacancy_cost_estimate,
-        "replacement_cost_estimate": replacement_cost_estimate,
         "funnel_signal": funnel_signal,
         "speed_signal": speed_signal,
         "offer_signal": offer_signal,
@@ -473,7 +485,7 @@ def derive_diagnostics(data: dict[str, Any], benchmark: pd.Series | None) -> dic
         "primary_bottleneck": primary_bottleneck,
         "maturity_points": maturity_points,
         "maturity_level": maturity_level,
-        "likely_failure_pattern": "; ".join(likely_failure_pattern),
+        "failure_pattern": "; ".join(failure_mechanisms),
         "benchmark_time": bench_time,
         "benchmark_apps": bench_apps,
         "benchmark_offer": bench_offer,
@@ -490,7 +502,7 @@ def auto_score_sections(data: dict[str, Any], benchmark: pd.Series | None) -> tu
     bench_time = d["benchmark_time"]
     bench_apps = d["benchmark_apps"]
     bench_offer = d["benchmark_offer"]
-    bench_attrition = d["benchmark_attrition"]
+    bench_attr = d["benchmark_attrition"]
 
     scores: list[int] = []
     notes: list[str] = []
@@ -508,7 +520,7 @@ def auto_score_sections(data: dict[str, Any], benchmark: pd.Series | None) -> tu
         score += 1.0
     if d["retention_signal"] == "severe retention failure":
         score -= 1.0
-    add(score, "Scored from planning discipline, ownership clarity, KPI visibility and whether downstream outcomes support the planning model.")
+    add(score, "Derived from planning discipline, ownership clarity, KPI visibility and whether downstream outcomes support the planning model.")
 
     score = 4.0
     if f["tracks_metrics"]:
@@ -523,7 +535,7 @@ def auto_score_sections(data: dict[str, Any], benchmark: pd.Series | None) -> tu
             score -= 1.0
         elif d["application_to_interview_pct"] >= 25:
             score += 1.0
-    add(score, "Scored from KPI maturity, benchmarked metrics and observed funnel efficiency rather than raw volumes alone.")
+    add(score, "Derived from KPI maturity, benchmarked metrics and observed funnel efficiency rather than raw volume alone.")
 
     score = 4.0
     if f["has_employer_brand"]:
@@ -537,7 +549,7 @@ def auto_score_sections(data: dict[str, Any], benchmark: pd.Series | None) -> tu
             score -= 1.0
     if m["offer_acceptance"] is not None and m["offer_acceptance"] < 60:
         score -= 1.0
-    add(score, "Scored from employer brand maturity, market pull and indirect competitiveness signals such as application volume and offer conversion.")
+    add(score, "Derived from employer brand maturity, market pull and indirect competitiveness signals such as application volume and offer conversion.")
 
     score = 4.0
     if f["standardised_job_specs"]:
@@ -546,7 +558,7 @@ def auto_score_sections(data: dict[str, Any], benchmark: pd.Series | None) -> tu
         score += 1.0
     if d["application_to_interview_pct"] is not None and d["application_to_interview_pct"] < 10:
         score -= 1.0
-    add(score, "Scored from specification consistency and whether the advert-to-interview yield suggests role clarity or mismatch.")
+    add(score, "Derived from specification consistency and whether the advert-to-interview yield suggests role clarity or mismatch.")
 
     score = 4.0
     if f["multi_channel_sourcing"]:
@@ -554,7 +566,7 @@ def auto_score_sections(data: dict[str, Any], benchmark: pd.Series | None) -> tu
     score += compare_higher_better(m["applications_per_role"], bench_apps)
     if d["funnel_signal"] == "severe conversion leakage":
         score -= 1.0
-    add(score, "Scored from channel breadth, applicant flow and whether sourcing appears to be producing usable candidate volume.")
+    add(score, "Derived from channel breadth, applicant flow and whether sourcing appears to be producing usable candidate volume.")
 
     score = 4.0
     if f["structured_screening"]:
@@ -570,7 +582,7 @@ def auto_score_sections(data: dict[str, Any], benchmark: pd.Series | None) -> tu
             score += 1.0
         elif m["interview_feedback_time_days"] >= 7:
             score -= 1.0
-    add(score, "Scored from screening consistency, response speed and whether candidate flow is converting efficiently into interviews.")
+    add(score, "Derived from screening consistency, response speed and whether candidate flow converts efficiently into interviews.")
 
     score = 4.0
     if f["structured_interviews"]:
@@ -588,7 +600,7 @@ def auto_score_sections(data: dict[str, Any], benchmark: pd.Series | None) -> tu
         score -= 1.0
     if d["retention_signal"] == "severe retention failure":
         score -= 1.0
-    add(score, "Scored from assessment structure, stage load, feedback speed and whether downstream outcomes undermine the claimed quality of assessment.")
+    add(score, "Derived from assessment structure, stage load, feedback speed and whether downstream outcomes undermine claimed interview quality.")
 
     score = 4.0
     if f["fast_offer_process"]:
@@ -597,21 +609,21 @@ def auto_score_sections(data: dict[str, Any], benchmark: pd.Series | None) -> tu
     score += compare_lower_better(m["time_to_hire_days"], bench_time)
     if m["interview_feedback_time_days"] is not None and m["interview_feedback_time_days"] >= 7:
         score -= 1.0
-    add(score, "Scored from decision speed, offer conversion and whether the process appears fast enough to protect preferred candidates.")
+    add(score, "Derived from decision speed, offer conversion and whether the process appears fast enough to protect preferred candidates.")
 
     score = 4.0
     if f["formal_onboarding"]:
         score += 4.0
-    score += compare_lower_better(m["first_year_attrition"], bench_attrition)
+    score += compare_lower_better(m["first_year_attrition"], bench_attr)
     if m["first_year_attrition"] is not None:
         if m["first_year_attrition"] >= 40:
             score -= 3.0
         elif m["first_year_attrition"] >= 25:
             score -= 2.0
-    add(score, "Scored from onboarding structure and hard retention outcomes rather than process intent alone.")
+    add(score, "Derived from onboarding structure and hard retention outcomes rather than process intent alone.")
 
     score = 4.0
-    score += compare_lower_better(m["first_year_attrition"], bench_attrition)
+    score += compare_lower_better(m["first_year_attrition"], bench_attr)
     if m["first_year_attrition"] is not None:
         if m["first_year_attrition"] <= 10:
             score += 2.0
@@ -621,7 +633,7 @@ def auto_score_sections(data: dict[str, Any], benchmark: pd.Series | None) -> tu
             score -= 3.0
         elif m["first_year_attrition"] >= 25:
             score -= 2.0
-    add(score, "Scored primarily from first-year attrition as a direct indicator of hiring quality and retention risk.")
+    add(score, "Derived primarily from first-year attrition as a direct indicator of hiring quality and retention risk.")
 
     score = 4.0
     if f["collects_candidate_feedback"]:
@@ -635,7 +647,7 @@ def auto_score_sections(data: dict[str, Any], benchmark: pd.Series | None) -> tu
         score -= 1.0
     if m["interview_feedback_time_days"] is not None and m["interview_feedback_time_days"] >= 7:
         score -= 1.0
-    add(score, "Scored from journey speed, process friction and whether the candidate experience is likely to sustain or damage conversion.")
+    add(score, "Derived from journey speed, process friction and whether the candidate experience is likely to sustain or damage conversion.")
 
     score = 4.0
     if f["named_process_owner"]:
@@ -646,7 +658,7 @@ def auto_score_sections(data: dict[str, Any], benchmark: pd.Series | None) -> tu
         score += 1.0
     if d["retention_signal"] == "severe retention failure":
         score -= 1.0
-    add(score, "Scored from accountability, governance discipline and whether operational outcomes suggest the process is genuinely controlled.")
+    add(score, "Derived from accountability, governance discipline and whether operational outcomes suggest the process is genuinely controlled.")
 
     return scores, notes
 
@@ -661,22 +673,20 @@ def build_diagnostic_snapshot(data: dict[str, Any]) -> str:
         f"Offer signal: {d['offer_signal']}",
         f"Retention signal: {d['retention_signal']}",
         f"Interview friction signal: {d['interview_signal']}",
-        f"Likely failure pattern: {d['likely_failure_pattern']}",
+        f"Failure pattern: {d['failure_pattern']}",
     ]
     if d["application_to_interview_pct"] is not None:
         lines.append(f"Application-to-interview conversion: {d['application_to_interview_pct']}%")
-    if d["estimated_interviews_per_hire"] is not None:
-        lines.append(f"Estimated interviews per hire: {d['estimated_interviews_per_hire']}")
+    if d["interview_to_hire_ratio"] is not None:
+        lines.append(f"Candidates interviewed per hire: {d['interview_to_hire_ratio']}")
+    if d["total_interviews_per_hire"] is not None:
+        lines.append(f"Total interviews per hire: {d['total_interviews_per_hire']}")
     if d["annual_interview_hours"] is not None:
         lines.append(f"Estimated annual interview hours: {d['annual_interview_hours']}")
-    if d["estimated_backfills"] is not None:
-        lines.append(f"Estimated annual backfills driven by attrition: {d['estimated_backfills']}")
+    if d["attrition_backfills"] is not None:
+        lines.append(f"Estimated annual backfills driven by attrition: {d['attrition_backfills']}")
     if d["vacancy_weeks"] is not None:
-        lines.append(f"Estimated vacancy weeks from repeat hiring load: {d['vacancy_weeks']}")
-    if d["vacancy_cost_estimate"] is not None:
-        lines.append(f"Approximate vacancy cost per role: £{d['vacancy_cost_estimate']:,.0f}")
-    if d["replacement_cost_estimate"] is not None:
-        lines.append(f"Approximate annual replacement cost proxy: £{d['replacement_cost_estimate']:,.0f}")
+        lines.append(f"Estimated vacancy weeks from repeat-hiring load: {d['vacancy_weeks']}")
     return "\n".join(lines)
 
 
@@ -723,8 +733,8 @@ def build_user_prompt(data: dict[str, Any], benchmark_summary: str) -> str:
             f"Total Score: {data['total_score']}/120",
             f"Percentage: {data['percentage_score']}%",
             "",
-            "Write with a clinical, premium consultancy tone.",
-            "Make the narrative feel diagnostic and specific, not generic.",
+            "Make the writing feel authored, expensive and judgment-led.",
+            "Explain mechanisms, not just symptoms.",
             "Do not change any score.",
         ]
     )
@@ -826,23 +836,20 @@ def set_cell_shading(cell, fill: str) -> None:
     tc_pr.append(shd)
 
 
-def set_cell_text(cell, text: str, bold: bool = False, color: RGBColor = TEXT_RGB, size: float = FONT_SIZE) -> None:
-    cell.text = ""
-    paragraph = cell.paragraphs[0]
-    paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    run = paragraph.add_run(xml_safe_text(text))
-    run.bold = bold
-    run.font.name = FONT_NAME
-    run.font.size = Pt(size)
-    run.font.color.rgb = color
-    cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
-
-
 def style_run(run, bold: bool = False, size: float = FONT_SIZE, color: RGBColor = TEXT_RGB) -> None:
     run.bold = bold
     run.font.name = FONT_NAME
     run.font.size = Pt(size)
     run.font.color.rgb = color
+
+
+def set_cell_text(cell, text: str, bold: bool = False, color: RGBColor = TEXT_RGB, size: float = FONT_SIZE) -> None:
+    cell.text = ""
+    paragraph = cell.paragraphs[0]
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    run = paragraph.add_run(xml_safe_text(text))
+    style_run(run, bold=bold, size=size, color=color)
+    cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
 
 
 def add_text_paragraph(
@@ -852,23 +859,15 @@ def add_text_paragraph(
     size: float = FONT_SIZE,
     center: bool = False,
     colour: RGBColor = TEXT_RGB,
+    space_after: float = 6,
 ) -> None:
     p = doc.add_paragraph()
-    p.paragraph_format.space_after = Pt(6)
+    p.paragraph_format.space_after = Pt(space_after)
     p.paragraph_format.line_spacing = 1.15
     if center:
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = p.add_run(xml_safe_text(text))
     style_run(run, bold=bold, size=size, color=colour)
-
-
-def add_divider(doc: Document, width: int = 30) -> None:
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p.paragraph_format.space_before = Pt(4)
-    p.paragraph_format.space_after = Pt(8)
-    run = p.add_run("—" * width)
-    style_run(run, size=10, color=MUTED_RGB)
 
 
 def add_heading_clean(doc: Document, text: str, level: int) -> None:
@@ -878,6 +877,15 @@ def add_heading_clean(doc: Document, text: str, level: int) -> None:
     for run in p.runs:
         run.font.name = FONT_NAME
         run.font.color.rgb = TEXT_RGB
+
+
+def add_divider(doc: Document, width: int = 30) -> None:
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(4)
+    p.paragraph_format.space_after = Pt(10)
+    run = p.add_run("—" * width)
+    style_run(run, size=10, color=MUTED_RGB)
 
 
 def add_list_block(doc: Document, items: list[str]) -> None:
@@ -919,10 +927,26 @@ def add_cover_page(doc: Document, data: dict[str, Any]) -> None:
     add_client_summary_table(doc, data)
 
 
+def add_callout_table(doc: Document, title: str, text: str) -> None:
+    table = doc.add_table(rows=1, cols=1)
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    table.style = "Table Grid"
+    cell = table.rows[0].cells[0]
+    set_cell_shading(cell, CALLOUT_FILL)
+    cell.text = ""
+    p1 = cell.paragraphs[0]
+    r1 = p1.add_run(xml_safe_text(title))
+    style_run(r1, bold=True, size=10.5, color=TEXT_RGB)
+    p2 = cell.add_paragraph()
+    p2.paragraph_format.space_before = Pt(2)
+    p2.paragraph_format.space_after = Pt(2)
+    r2 = p2.add_run(xml_safe_text(text))
+    style_run(r2, size=10.5, color=TEXT_RGB)
+
+
 def create_section_score_chart(company_name: str, scores: list[int]) -> Path:
     labels = [str(i) for i in range(1, 13)]
     colours = [score_colour(v, 10) for v in scores]
-
     fig, ax = plt.subplots(figsize=(8.4, 4.8))
     x = list(range(len(labels)))
     bars = ax.bar(x, scores, color=colours, width=0.62)
@@ -1080,8 +1104,7 @@ def add_diagnostic_snapshot_table(doc: Document, diagnostics: dict[str, Any]) ->
     table.style = "Table Grid"
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
 
-    headers = ["Diagnostic", "Value"]
-    for idx, header in enumerate(headers):
+    for idx, header in enumerate(["Diagnostic", "Value"]):
         cell = table.rows[0].cells[idx]
         set_cell_shading(cell, HEADER_FILL)
         set_cell_text(cell, header, bold=True, color=WHITE_RGB, size=9)
@@ -1094,19 +1117,21 @@ def add_diagnostic_snapshot_table(doc: Document, diagnostics: dict[str, Any]) ->
         ("Offer signal", diagnostics["offer_signal"]),
         ("Retention signal", diagnostics["retention_signal"]),
         ("Interview friction", diagnostics["interview_signal"]),
-        ("Failure pattern", diagnostics["likely_failure_pattern"]),
+        ("Failure pattern", diagnostics["failure_pattern"]),
     ]
 
     if diagnostics["application_to_interview_pct"] is not None:
         items.append(("Application-to-interview conversion", f"{diagnostics['application_to_interview_pct']}%"))
-    if diagnostics["estimated_interviews_per_hire"] is not None:
-        items.append(("Estimated interviews per hire", str(diagnostics["estimated_interviews_per_hire"])))
+    if diagnostics["interview_to_hire_ratio"] is not None:
+        items.append(("Candidates interviewed per hire", str(diagnostics["interview_to_hire_ratio"])))
+    if diagnostics["total_interviews_per_hire"] is not None:
+        items.append(("Total interviews per hire", str(diagnostics["total_interviews_per_hire"])))
     if diagnostics["annual_interview_hours"] is not None:
         items.append(("Estimated annual interview hours", str(diagnostics["annual_interview_hours"])))
-    if diagnostics["estimated_backfills"] is not None:
-        items.append(("Attrition-driven backfills", str(diagnostics["estimated_backfills"])))
+    if diagnostics["attrition_backfills"] is not None:
+        items.append(("Attrition-driven backfills", str(diagnostics["attrition_backfills"])))
     if diagnostics["vacancy_weeks"] is not None:
-        items.append(("Vacancy weeks from repeat hiring load", str(diagnostics["vacancy_weeks"])))
+        items.append(("Vacancy weeks from repeat-hiring load", str(diagnostics["vacancy_weeks"])))
 
     for label, value in items:
         row = table.add_row()
@@ -1143,11 +1168,10 @@ def save_word_report(
     styles["Heading 3"].font.size = Pt(H3_SIZE)
 
     add_cover_page(doc, data)
-
     doc.add_section(WD_SECTION.NEW_PAGE)
 
     add_heading_clean(doc, "Executive overview", level=1)
-    add_text_paragraph(doc, report["executive_summary"])
+    add_callout_table(doc, "Board-level readout", report["executive_summary"])
 
     add_divider(doc)
     add_heading_clean(doc, "Overall recruitment score", level=1)
@@ -1175,10 +1199,10 @@ def save_word_report(
         doc,
         f"Recruitment audit for {data['company_name']} ({data['sector']}, {data['location']}, {data['headcount']} employees)"
     )
-    add_text_paragraph(doc, f"Note on benchmarks: {benchmark_summary}")
+    add_text_paragraph(doc, f"Benchmark note: {benchmark_summary}")
 
     add_heading_clean(doc, "Key funnel metrics observed", level=2)
-    funnel_lines = [
+    for line in [
         f"Applications per role: {data['raw_metrics']['applications_per_role']}",
         f"Candidates reaching interview: {data['raw_metrics']['candidates_reaching_interview']}",
         f"Offer acceptance rate: {data['raw_metrics']['offer_acceptance']}",
@@ -1186,35 +1210,34 @@ def save_word_report(
         f"Interview stages: {data['raw_metrics']['interview_stages']}",
         f"Interview feedback: {data['raw_metrics']['interview_feedback_time']}",
         f"First-year attrition: {data['raw_metrics']['first_year_attrition']}",
-    ]
-    for line in funnel_lines:
+    ]:
         add_text_paragraph(doc, line)
 
     add_divider(doc)
     add_heading_clean(doc, "Section score summary", level=1)
     add_score_summary_table(doc, data["section_scores"])
 
-    add_divider(doc)
     for i, section in enumerate(report["sections"], start=1):
+        doc.add_page_break()
         add_heading_clean(doc, f"{i}) {section['title']}", level=1)
-        add_text_paragraph(doc, f"Score: {section['score']}/10", bold=True)
+        add_callout_table(doc, "Score", f"{section['score']}/10")
 
         add_heading_clean(doc, "Current state", level=2)
-        add_text_paragraph(doc, section["current_state"])
+        add_text_paragraph(doc, section["current_state"], space_after=8)
 
         add_heading_clean(doc, "Key risks", level=2)
-        add_text_paragraph(doc, section["key_risks"])
+        add_text_paragraph(doc, section["key_risks"], space_after=8)
 
         add_heading_clean(doc, "Commercial impact", level=2)
-        add_text_paragraph(doc, section["commercial_impact"])
+        add_text_paragraph(doc, section["commercial_impact"], space_after=8)
 
-        add_heading_clean(doc, "Quick wins", level=2)
-        add_text_paragraph(doc, section["quick_wins"])
+        add_heading_clean(doc, "Immediate actions", level=2)
+        add_text_paragraph(doc, section["quick_wins"], space_after=8)
 
-        add_heading_clean(doc, "Medium term improvements", level=2)
-        add_text_paragraph(doc, section["medium_term_improvements"])
+        add_heading_clean(doc, "Structural improvements", level=2)
+        add_text_paragraph(doc, section["medium_term_improvements"], space_after=8)
 
-    add_divider(doc)
+    doc.add_page_break()
     add_heading_clean(doc, "Top 5 strengths", level=1)
     add_list_block(doc, report["top_5_strengths"])
 
@@ -1234,7 +1257,7 @@ def save_word_report(
 
     add_divider(doc)
     add_heading_clean(doc, "Final verdict", level=1)
-    add_text_paragraph(doc, report["final_verdict"])
+    add_callout_table(doc, "Advisory conclusion", report["final_verdict"])
 
     doc.save(path)
     return path
