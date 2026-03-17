@@ -41,7 +41,9 @@ BENCHMARK_CSV_FILE = BASE_DIR / "uk_recruitment_benchmarks.csv"
 OUTPUT_DIR = Path(os.environ.get("AUDIT_OUTPUT_DIR", "/tmp/BradfordMarshAI"))
 BENCHMARK_ENV_VAR = "RECRUITMENT_BENCHMARK_FILE"
 BRAND_LOGO = BASE_DIR / "public" / "brand" / "bradford-marsh-logo.png"
+SIGNATURE_IMAGE = BASE_DIR / "public" / "brand" / "michael-marsh-signature.png"
 SIGNATURE_CANDIDATES = [
+    SIGNATURE_IMAGE,
     Path("/mnt/data/a_digital_image_features_a_stylized_signature_of_t.png"),
     Path("/Users/michaelmarsh/Desktop/a_digital_image_features_a_stylized_signature_of_t.png"),
 ]
@@ -1170,17 +1172,21 @@ def _add_md_letter(story: list, styles: StyleSheet1, data: dict) -> None:
     for paragraph in paragraphs:
         story.append(Paragraph(paragraph, styles["Body"]))
 
-    signature = _signature_image(44)
+    signature = _signature_image(34)
+    sign_off_block = []
     if signature:
         signature.hAlign = "LEFT"
-        story.append(Spacer(1, 4 * mm))
-        story.append(signature)
-        story.append(Spacer(1, 4 * mm))
+        sign_off_block.append(Spacer(1, 3 * mm))
+        sign_off_block.append(signature)
+        sign_off_block.append(Spacer(1, 3 * mm))
     else:
-        story.append(Spacer(1, 5 * mm))
-    story.append(Paragraph(MANAGING_DIRECTOR_NAME, styles["BodyTight"]))
-    story.append(Paragraph(MANAGING_DIRECTOR_TITLE, styles["BodyTight"]))
-    story.append(Paragraph(BRAND_NAME, styles["Body"]))
+        sign_off_block.append(Spacer(1, 3 * mm))
+        sign_off_block.append(Paragraph("[signature]", styles["Small"]))
+        sign_off_block.append(Spacer(1, 3 * mm))
+    sign_off_block.append(Paragraph(MANAGING_DIRECTOR_NAME, styles["BodyTight"]))
+    sign_off_block.append(Paragraph(MANAGING_DIRECTOR_TITLE, styles["BodyTight"]))
+    sign_off_block.append(Paragraph(BRAND_NAME, styles["Body"]))
+    story.append(KeepTogether(sign_off_block))
     story.append(PageBreak())
 
 
