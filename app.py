@@ -684,8 +684,8 @@ def form():
             <div class="brand-mark">B&amp;M</div>
             <div class="brand">
                 <div class="brand-overline">Bradford & Marsh Consulting</div>
-                <div class="brand-name">Recruitment Audit Studio</div>
-                <div class="brand-sub">Client-ready operating model diagnostics, benchmark interpretation and advisory reporting for leadership teams.</div>
+                <div class="brand-name">Recruitment Operating Model Audit</div>
+                <div class="brand-sub">A structured review of how your hiring function performs in practice, with clear scoring, UK benchmark comparison and a board-ready Word report.</div>
             </div>
         </div>
         <div class="trust-pill">Confidential diagnostic workflow · benchmark-led output</div>
@@ -695,31 +695,30 @@ def form():
         <div class="hero-grid">
             <div>
                 <div class="hero-badge-row">
-                    <div class="hero-badge">Brand-led interface</div>
-                    <div class="hero-badge">Board-ready report output</div>
-                    <div class="hero-badge">UK recruitment benchmarks</div>
+                    <div class="hero-badge">Board-ready report</div>
+                    <div class="hero-badge">UK benchmark comparison</div>
+                    <div class="hero-badge">12 scored areas</div>
                 </div>
                 <div class="hero-eyebrow">Recruitment operating model audit</div>
-                <h1>Convert hiring data, process controls and benchmark signals into a technical recruitment audit.</h1>
+                <h1>Recruitment Operating Model Audit</h1>
                 <p>
-                    This assessment is designed to evaluate how a recruitment function actually operates in practice. It captures company context, hiring demand,
-                    process discipline and performance metrics, then translates those inputs into a structured audit covering delivery speed, conversion efficiency,
-                    candidate experience, process governance and retention risk. The final output is a downloadable report with scored sections, benchmark comparison,
-                    visual analysis and prioritised recommendations.
+                    This audit gives leadership a clear view of how recruitment is actually operating across the business. It captures your hiring profile,
+                    process inputs and performance data, then shows where delays, inconsistency and avoidable hiring risk are affecting results.
+                    The output is a professionally written report that sets out what is working, where the gaps are and what should be addressed first.
                 </p>
 
                 <div class="hero-proof-grid">
                     <div class="hero-proof">
-                        <div class="hero-proof-label">Advisory lens</div>
-                        <div class="hero-proof-value">Frames the output as a consulting diagnostic rather than a generic form export.</div>
+                        <div class="hero-proof-label">Clear view of recruitment performance</div>
+                        <div class="hero-proof-value">The audit scores twelve areas of recruitment delivery so you can see, in one place, how your hiring function is performing across planning, process quality, speed, conversion and accountability.</div>
                     </div>
                     <div class="hero-proof">
-                        <div class="hero-proof-label">Data treatment</div>
-                        <div class="hero-proof-value">Normalises live inputs against sector benchmarks before scoring each operating area.</div>
+                        <div class="hero-proof-label">UK benchmark comparison</div>
+                        <div class="hero-proof-value">Your key metrics are compared against relevant UK benchmark data to show where performance is in line, where it is falling short and where the gap is commercially significant.</div>
                     </div>
                     <div class="hero-proof">
-                        <div class="hero-proof-label">Decision support</div>
-                        <div class="hero-proof-value">Produces a Word report that can go straight into stakeholder review.</div>
+                        <div class="hero-proof-label">Report ready for leadership review</div>
+                        <div class="hero-proof-value">The final output is a structured Word report with scoring, charts, findings and recommendations, written for directors, senior stakeholders and hiring leaders.</div>
                     </div>
                 </div>
             </div>
@@ -727,15 +726,15 @@ def form():
             <div class="hero-metrics">
                 <div class="hero-card">
                     <div class="hero-card-label">What the audit measures</div>
-                    <div class="hero-card-value">The workflow assesses workforce planning, funnel performance, sourcing efficiency, interview design, offer control, onboarding quality and process accountability.</div>
+                    <div class="hero-card-value">The audit reviews recruitment from end to end. It covers workforce planning, funnel performance, sourcing, screening, interview design, offer process, onboarding, early attrition, candidate experience and process ownership.</div>
                 </div>
                 <div class="hero-card">
                     <div class="hero-card-label">How the audit works</div>
-                    <div class="hero-card-value">Inputs are captured across three stages, normalised into a scoring framework, compared against benchmark references, and assembled into a single technical report.</div>
+                    <div class="hero-card-value">You provide current-state information on hiring demand, recruitment process and operating performance. Those inputs are assessed across twelve scoring areas and compared against UK benchmark data where relevant.</div>
                 </div>
                 <div class="hero-card">
                     <div class="hero-card-label">Why organisations use it</div>
-                    <div class="hero-card-value">It helps leadership teams identify where recruitment is slowing down, where process quality is inconsistent, and where operating changes will improve hiring outcomes fastest.</div>
+                    <div class="hero-card-value">It shows where hiring is slowing down, where process quality is uneven and where poor structure is affecting cost, speed and hiring outcomes. It gives leadership an evidence-based basis for deciding what to improve first.</div>
                 </div>
             </div>
         </div>
@@ -990,12 +989,12 @@ def form():
             <div class="sidebar-card brand-card">
                 <div class="sidebar-mark">B&amp;M</div>
                 <div class="sidebar-kicker">Bradford & Marsh</div>
-                <h3 class="sidebar-title">Consulting-grade recruitment diagnostic</h3>
+                <h3 class="sidebar-title">A structured assessment of how your hiring function actually performs</h3>
                 <p>
-                    The interface captures the operating context needed for a proper advisory report, not just a headline score. Outputs are structured for client discussion, leadership review and next-step planning.
+                    This audit evaluates how your recruitment process operates in reality, not how it is intended to work.
                 </p>
                 <div class="sidebar-rule"></div>
-                <p class="sidebar-copy">Use current-state inputs and live metrics so the report reflects actual operating conditions rather than policy intent.</p>
+                <p class="sidebar-copy">It captures your hiring demand, process structure and performance data, then produces a board-ready report showing what is working, what is not and what needs to change first.</p>
             </div>
 
             <div class="sidebar-card">
