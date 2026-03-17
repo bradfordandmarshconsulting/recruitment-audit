@@ -13,6 +13,7 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.ticker import MaxNLocator
 from docx import Document
 from docx.enum.section import WD_SECTION
 from docx.enum.table import WD_ALIGN_VERTICAL
@@ -525,7 +526,7 @@ Company profile
 - Location: {data['location']}
 - Headcount: {data['headcount']}
 - Annual hiring volume: {data['annual_hiring_volume']}
-- Key roles hired: {data['key_roles_hired']}
+- Key roles / job titles hired: {data['key_roles_hired']}
 
 Metrics supplied
 {metrics_block}
@@ -573,10 +574,11 @@ def create_section_score_chart(company_name: str, section_scores: list[int]) -> 
     ax.set_yticks(positions, labels)
     ax.invert_yaxis()
     ax.grid(axis="x", alpha=0.16, linestyle="--")
-    ax.set_title(f"{company_name} section score profile", fontsize=15, pad=14, color="#142033", fontweight="bold")
+    ax.set_title("Section score profile", fontsize=15, pad=14, color="#142033", fontweight="bold")
     ax.set_xlabel("Score out of 10", color="#5d6778")
     for pos, score in enumerate(section_scores):
         ax.text(min(score + 0.18, 9.7), pos, f"{score}/10", va="center", fontsize=9, color="#142033", fontweight="bold")
+    fig.text(0.125, 0.955, company_name, fontsize=10.2, color="#5d6778")
     fig.text(0.125, 0.93, "Twelve operating areas scored against the audit framework", fontsize=9.5, color="#5d6778")
     fig.tight_layout(rect=(0, 0, 1, 0.95))
     fig.savefig(path, dpi=220, bbox_inches="tight", facecolor=fig.get_facecolor())
@@ -594,21 +596,35 @@ def create_overall_score_chart(company_name: str, total_score: int) -> Path:
     rating = _rating_for_score(score)
     fill_color = _score_hex(round((score / max_score) * 10))
 
-    fig, ax = plt.subplots(figsize=(9.2, 3.3))
+    fig, ax = plt.subplots(figsize=(9.0, 1.95))
     _apply_chart_style(fig, ax)
-    ax.barh([0], [max_score], color="#e5e7eb", height=0.48)
-    ax.barh([0], [score], color=fill_color, height=0.48)
+    ax.barh([0], [max_score], color="#e5e7eb", height=0.34)
+    ax.barh([0], [score], color=fill_color, height=0.34)
     ax.set_xlim(0, max_score)
+    ax.set_ylim(-0.42, 0.42)
     ax.set_yticks([])
     ax.set_xticks(range(0, max_score + 1, 20))
-    ax.grid(axis="x", alpha=0.18, linestyle="--")
-    ax.set_title(f"{company_name} overall recruitment score", fontsize=15, pad=14, color="#142033", fontweight="bold")
-    ax.text(min(score + 2, max_score - 2), 0, f"{score}/120 ({pct}%)", va="center", ha="left", fontsize=10, color="#142033", fontweight="bold")
-    ax.text(0, -0.50, f"Rating: {rating}", fontsize=10, color=fill_color, fontweight="bold")
-    fig.text(0.125, 0.90, "Overall score against the full 120-point framework", fontsize=9.5, color="#5d6778")
+    ax.tick_params(axis="x", labelsize=9, colors="#5d6778")
+    ax.grid(axis="x", alpha=0.12, linestyle="--")
+    fig.text(0.125, 0.92, company_name, fontsize=10.2, color="#5d6778")
+    fig.text(0.125, 0.82, "Overall recruitment score", fontsize=15, color="#142033", fontweight="bold")
+    fig.text(0.125, 0.74, "Overall score against the full 120-point framework", fontsize=9.2, color="#5d6778")
+    fig.text(0.89, 0.84, f"{score}/120", ha="right", fontsize=14.2, color="#142033", fontweight="bold")
+    fig.text(0.89, 0.76, f"{pct}% · {rating}", ha="right", fontsize=9.5, color=fill_color, fontweight="bold")
+    ax.annotate(
+        f"{score}/120 ({pct}%)",
+        xy=(score, 0),
+        xytext=(0, 14),
+        textcoords="offset points",
+        ha="center",
+        va="bottom",
+        fontsize=9.5,
+        color="#142033",
+        fontweight="bold",
+    )
     for spine in ax.spines.values():
         spine.set_visible(False)
-    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    fig.subplots_adjust(left=0.1, right=0.97, bottom=0.24, top=0.62)
     fig.savefig(path, dpi=220, bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close(fig)
     return path
@@ -626,30 +642,64 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         ("First-year attrition", metrics.get("first_year_attrition"), _safe_float(benchmark_row.get("avg_attrition_pct")), "%", False),
     ]
 
-    fig, axes = plt.subplots(2, 2, figsize=(9.5, 7.0))
+    fig, axes = plt.subplots(4, 1, figsize=(9.0, 7.6))
     fig.patch.set_facecolor("#f8f3ed")
-    axes = axes.flatten()
     for ax, (label, client_value, benchmark_value, suffix, higher_is_better) in zip(axes, items):
         _apply_chart_style(fig, ax)
         client_value = client_value or 0
         benchmark_value = benchmark_value or 0
-        ceiling = max(client_value, benchmark_value, 1) * 1.25
+        lower = min(client_value, benchmark_value, 0)
+        upper = max(client_value, benchmark_value, 1)
+        spread = max(upper - lower, upper * 0.2, 1)
+        x_min = max(0, lower - spread * 0.2)
+        x_max = upper + spread * 0.2
         ahead = client_value >= benchmark_value if higher_is_better else client_value <= benchmark_value
         client_color = "#047857" if ahead else "#b91c1c"
-        ax.barh(["Client", "Benchmark"], [client_value, benchmark_value], color=[client_color, "#cbd5e1"], height=0.56)
-        ax.set_xlim(0, ceiling)
-        ax.set_title(label, fontsize=11.5, color="#142033", fontweight="bold")
-        ax.grid(axis="x", alpha=0.16, linestyle="--")
-        ax.text(min(client_value + ceiling * 0.02, ceiling * 0.96), 0, f"{client_value:.1f}{suffix}", va="center", ha="left", fontsize=9, color="#142033", fontweight="bold")
-        ax.text(min(benchmark_value + ceiling * 0.02, ceiling * 0.96), 1, f"{benchmark_value:.1f}{suffix}", va="center", ha="left", fontsize=9, color="#5d6778")
+        ax.set_xlim(x_min, x_max)
+        ax.set_ylim(-0.7, 0.7)
+        ax.hlines(0, x_min, x_max, color="#d6dde6", linewidth=2)
+        ax.scatter([benchmark_value], [0], s=85, color="#cbd5e1", edgecolors="#94a3b8", linewidths=0.8, zorder=3)
+        ax.scatter([client_value], [0], s=95, color=client_color, edgecolors="#142033", linewidths=0.8, marker="D", zorder=4)
+        ax.set_yticks([])
+        ax.xaxis.set_major_locator(MaxNLocator(4))
+        ax.tick_params(axis="x", labelsize=8.5, colors="#5d6778")
+        ax.set_title(label, fontsize=11.5, color="#142033", fontweight="bold", pad=3)
+        ax.grid(axis="x", alpha=0.12, linestyle="--")
+        client_offset = 10 if client_value >= benchmark_value else -12
+        client_va = "bottom" if client_value >= benchmark_value else "top"
+        benchmark_offset = -12 if client_value >= benchmark_value else 10
+        benchmark_va = "top" if client_value >= benchmark_value else "bottom"
+        ax.annotate(
+            f"Client {client_value:.1f}{suffix}",
+            xy=(client_value, 0),
+            xytext=(0, client_offset),
+            textcoords="offset points",
+            ha="center",
+            va=client_va,
+            fontsize=9,
+            color="#142033",
+            fontweight="bold",
+        )
+        ax.annotate(
+            f"Benchmark {benchmark_value:.1f}{suffix}",
+            xy=(benchmark_value, 0),
+            xytext=(0, benchmark_offset),
+            textcoords="offset points",
+            ha="center",
+            va=benchmark_va,
+            fontsize=8.8,
+            color="#5d6778",
+        )
+        delta = abs(client_value - benchmark_value)
         direction = "Ahead of benchmark" if ahead else "Behind benchmark"
-        ax.text(0, -0.42, direction, fontsize=9, color=client_color, fontweight="bold")
+        ax.text(0.0, 0.05, f"{direction} by {delta:.1f}{suffix}", transform=ax.transAxes, fontsize=9, color=client_color, fontweight="bold")
         for spine in ax.spines.values():
             spine.set_visible(False)
 
-    fig.suptitle(f"{company_name} benchmark comparison", fontsize=15, y=0.98, color="#142033", fontweight="bold")
+    fig.suptitle("Benchmark comparison", fontsize=15, y=0.98, color="#142033", fontweight="bold")
+    fig.text(0.125, 0.955, company_name, fontsize=10.2, color="#5d6778")
     fig.text(0.125, 0.93, "Key recruitment metrics compared against the relevant UK benchmark reference point", fontsize=9.5, color="#5d6778")
-    fig.tight_layout(rect=(0, 0, 1, 0.94))
+    fig.tight_layout(rect=(0, 0, 1, 0.94), h_pad=1.1)
     fig.savefig(path, dpi=220, bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close(fig)
     return path
@@ -823,7 +873,7 @@ def _add_executive_snapshot(document: Document, data: dict, report: dict) -> Non
     values = [
         ("Overall score", f"{data['total_score']}/120"),
         ("Rating", _rating_for_score(data["total_score"])),
-        ("Key roles", data["key_roles_hired"]),
+        ("Key roles / job titles", data["key_roles_hired"]),
     ]
     for index, (label, value) in enumerate(values):
         cell = cards.cell(0, index)

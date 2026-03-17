@@ -915,8 +915,9 @@ def form():
                         </div>
 
                         <div class="field full">
-                            <label for="key_roles_hired">Key roles hired</label>
-                            <input id="key_roles_hired" name="key_roles_hired" data-summary-target required>
+                            <label for="key_roles_hired">Key roles and job titles hired</label>
+                            <input id="key_roles_hired" name="key_roles_hired" placeholder="e.g. Sales Managers, Service Engineers, Finance Business Partners" data-summary-target required>
+                            <div class="hint">Use representative job titles, not a numeric count.</div>
                         </div>
 
                         <div class="field full">
@@ -1083,7 +1084,7 @@ def form():
                     <div class="summary-item"><div class="summary-label">Sector</div><div class="summary-value" id="summarySector">Pending</div></div>
                     <div class="summary-item"><div class="summary-label">Location</div><div class="summary-value" id="summaryLocation">Pending</div></div>
                     <div class="summary-item"><div class="summary-label">Hiring demand</div><div class="summary-value" id="summaryHiring">Pending</div></div>
-                    <div class="summary-item"><div class="summary-label">Key roles</div><div class="summary-value" id="summaryRoles">Pending</div></div>
+                    <div class="summary-item"><div class="summary-label">Key roles / job titles</div><div class="summary-value" id="summaryRoles">Pending</div></div>
                 </div>
 
                 <div class="metric-chip-row">
