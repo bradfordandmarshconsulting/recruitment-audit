@@ -8,6 +8,7 @@ from flask import Flask, request, send_file
 from openai import OpenAI
 
 from recruitment_audit import (
+    build_fallback_report,
     get_api_key,
     list_benchmark_sectors,
     load_benchmarks,
@@ -1135,7 +1136,11 @@ def form():
 @app.route("/generate", methods=["POST"])
 def generate():
     try:
-        client = OpenAI(api_key=get_api_key())
+        client = None
+        try:
+            client = OpenAI(api_key=get_api_key())
+        except ValueError:
+            pass
 
         data = {
             "company_name": request.form.get("company_name", "").strip(),
@@ -1192,7 +1197,7 @@ def generate():
         data["total_score"] = sum(section_scores)
         data["percentage_score"] = round((data["total_score"] / 120) * 100, 1)
 
-        report = generate_report_json(client, data, benchmark_summary)
+        report = generate_report_json(client, data, benchmark_summary) if client is not None else build_fallback_report(data, benchmark_summary)
 
         section_chart = create_section_score_chart(data["company_name"], data["section_scores"])
         overall_chart = create_overall_score_chart(data["company_name"], data["total_score"])

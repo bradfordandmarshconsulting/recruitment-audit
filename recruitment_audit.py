@@ -481,6 +481,32 @@ def generate_report_json(client, data: dict, benchmark_summary: dict) -> dict:
     return _clean_report(normalised, data, benchmark_summary)
 
 
+def build_fallback_report(data: dict, benchmark_summary: dict) -> dict:
+    sections = {}
+    for section_id, title, score, note in zip(SECTION_IDS, SECTION_ORDER, data["section_scores"], data["section_notes"]):
+        sections[section_id] = {
+            "score": score,
+            "current_state": [note or f"{title} needs tighter operating control."],
+            "key_risks": _fallback_key_risks(title),
+            "commercial_impact": [_fallback_commercial_impact(title)],
+            "immediate_actions": _fallback_actions_for_section(title),
+            "structural_improvements": _fallback_structural_improvements(title),
+        }
+
+    report = {
+        "executive_overview": "",
+        "overall_recruitment_score": "",
+        "final_verdict": "",
+        "top_strengths": _fallback_strengths(data),
+        "top_problems": _fallback_problems(data, benchmark_summary),
+        "day_30_plan": [],
+        "day_60_plan": [],
+        "day_90_plan": [],
+        "sections": sections,
+    }
+    return _clean_report(_normalise_report(report, data["section_scores"]), data, benchmark_summary)
+
+
 def _build_user_prompt(data: dict, benchmark_summary: dict) -> str:
     strongest = sorted(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1], reverse=True)[:3]
     weakest = sorted(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])[:3]
@@ -542,11 +568,21 @@ def create_overall_score_chart(company_name: str, total_score: int) -> Path:
     score = max(0, min(total_score, 120))
     percentage = round((score / 120) * 100)
     rating = _rating_for_score(score)
+    if score >= 90:
+        bar_colour = "#4ADE80"
+    elif score >= 70:
+        bar_colour = "#4ADE80"
+    elif score >= 50:
+        bar_colour = "#F59E0B"
+    elif score >= 30:
+        bar_colour = "#F59E0B"
+    else:
+        bar_colour = "#EF4444"
 
     fig, ax = plt.subplots(figsize=(6.4, 1.4))
     _apply_chart_style(fig, ax)
     ax.barh([0], [120], color="#E5E5E5", height=0.32)
-    ax.barh([0], [score], color="#1F1F1F", height=0.32)
+    ax.barh([0], [score], color=bar_colour, height=0.32)
     ax.set_xlim(0, 120)
     ax.set_ylim(-0.45, 0.45)
     ax.set_yticks([])
@@ -635,9 +671,9 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
 
         ax.set_xlim(x_min, x_max)
         ax.set_ylim(-0.45, 0.45)
-        ax.hlines(0, x_min, x_max, color="#BFBFBF", linewidth=1.3)
-        ax.scatter([benchmark_value], [0], s=60, color="#D9D9D9", edgecolors="black", linewidths=0.6, zorder=3)
-        ax.scatter([client_value], [0], s=64, color="#1F1F1F", edgecolors="black", linewidths=0.6, marker="D", zorder=4)
+        ax.hlines(0, x_min, x_max, color="#D0D4DB", linewidth=1.3)
+        ax.scatter([benchmark_value], [0], s=60, color="#B5935A", edgecolors="black", linewidths=0.5, zorder=3)
+        ax.scatter([client_value], [0], s=64, color="#1F2A40", edgecolors="black", linewidths=0.5, marker="D", zorder=4)
         ax.set_yticks([])
         ax.xaxis.set_major_locator(MaxNLocator(4))
         ax.tick_params(axis="x", labelsize=8, colors="black")
@@ -1514,12 +1550,12 @@ def _section_rating(score: int) -> str:
 
 def _score_hex(score: int) -> str:
     if score >= 8:
-        return "#222222"
+        return "#4ADE80"
     if score >= 6:
-        return "#555555"
+        return "#F59E0B"
     if score >= 4:
-        return "#7A7A7A"
-    return "#A0A0A0"
+        return "#EF4444"
+    return "#EF4444"
 
 
 def _fmt(value: float | None, suffix: str) -> str:
