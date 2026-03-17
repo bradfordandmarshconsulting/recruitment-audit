@@ -65,18 +65,18 @@ FALLBACK_SECTORS = [
 ]
 
 YES_NO_FIELDS = [
-    ("has_hiring_plan", "Formal recruitment or workforce plan"),
-    ("tracks_metrics", "Regular recruitment KPI tracking"),
-    ("has_employer_brand", "Defined employer brand / EVP"),
-    ("standardised_job_specs", "Standardised job adverts and job descriptions"),
-    ("multi_channel_sourcing", "Consistent use of multiple sourcing channels"),
-    ("structured_screening", "Consistent screening process"),
-    ("structured_interviews", "Structured interviews or scorecards"),
-    ("fast_offer_process", "Fast and consistent offer approval process"),
-    ("formal_onboarding", "Documented onboarding process"),
-    ("collects_candidate_feedback", "Candidate experience feedback collection"),
-    ("named_process_owner", "Clearly named recruitment process owner"),
-    ("hiring_manager_training", "Hiring manager interview / hiring training"),
+    ("has_hiring_plan", "Do you have a formal recruitment or workforce plan in place?"),
+    ("tracks_metrics", "Do you track recruitment KPIs on a regular basis?"),
+    ("has_employer_brand", "Do you have a defined employer brand or EVP?"),
+    ("standardised_job_specs", "Do you use standard job adverts and job descriptions?"),
+    ("multi_channel_sourcing", "Do you use multiple sourcing channels consistently?"),
+    ("structured_screening", "Do you follow a consistent screening process?"),
+    ("structured_interviews", "Do you use structured interviews or interview scorecards?"),
+    ("fast_offer_process", "Do you have a fast and consistent offer approval process?"),
+    ("formal_onboarding", "Do you follow a documented onboarding process?"),
+    ("collects_candidate_feedback", "Do you collect candidate experience feedback?"),
+    ("named_process_owner", "Is there a clearly named owner for the recruitment process?"),
+    ("hiring_manager_training", "Do hiring managers receive interview or hiring training?"),
 ]
 
 
@@ -225,6 +225,14 @@ def render_page(title: str, body: str) -> str:
             .section-title {{ margin: 0 0 8px; font-size: 30px; letter-spacing: -0.04em; line-height: 1.08; font-family: var(--font-display); font-weight: 700; }}
             .section-copy {{ margin: 0; max-width: 56ch; color: var(--muted); line-height: 1.6; font-size: 14px; }}
             .section-aside {{ min-width: 200px; background: rgba(15, 23, 42, 0.025); border: 1px solid rgba(15, 23, 42, 0.05); border-radius: 18px; padding: 14px 16px; color: var(--muted); line-height: 1.7; font-size: 12px; }}
+            .stage-indicators {{ display: flex; flex-wrap: wrap; gap: 10px; margin: -6px 0 26px; }}
+            .stage-indicator {{
+                display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px;
+                border-radius: 999px; background: rgba(15, 23, 42, 0.04);
+                border: 1px solid rgba(15, 23, 42, 0.07); color: var(--brand);
+                font-size: 12px; font-weight: 800; letter-spacing: 0.02em;
+            }}
+            .stage-indicator-label {{ color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; }}
 
             .grid {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 20px; }}
             .field {{ display: flex; flex-direction: column; gap: 6px; }}
@@ -448,7 +456,32 @@ def render_page(title: str, body: str) -> str:
                 function fieldsForStep(step) {{
                     return Array.from(document.querySelectorAll('.stage[data-step="' + step + '"] input, .stage[data-step="' + step + '"] select, .stage[data-step="' + step + '"] textarea'));
                 }}
+                function stageEl(step) {{
+                    return document.querySelector('.stage[data-step="' + step + '"]');
+                }}
                 function fieldFilled(field) {{ return String(field.value || "").trim() !== ""; }}
+                function groupsForStep(step) {{
+                    const stage = stageEl(step);
+                    if (!stage) return [];
+                    return Array.from(new Set(
+                        fieldsForStep(step)
+                            .map((field) => Number(field.getAttribute("data-stage-group") || 1))
+                            .filter((group) => Number.isFinite(group) && group > 0)
+                    )).sort((a, b) => a - b);
+                }}
+                function groupFields(step, group) {{
+                    return fieldsForStep(step).filter((field) => Number(field.getAttribute("data-stage-group") || 1) === group);
+                }}
+                function groupIsComplete(step, group) {{
+                    const fields = groupFields(step, group);
+                    return !!fields.length && fields.every(fieldFilled);
+                }}
+                function currentGroupForStep(step) {{
+                    const groups = groupsForStep(step);
+                    if (!groups.length) return 1;
+                    const nextOpenGroup = groups.find((group) => !groupIsComplete(step, group));
+                    return nextOpenGroup || groups[groups.length - 1];
+                }}
                 function completionForStep(step) {{
                     const fields = fieldsForStep(step);
                     if (!fields.length) return 0;
@@ -499,6 +532,18 @@ def render_page(title: str, body: str) -> str:
                     if (disciplineChip) disciplineChip.textContent = answered ? (yesCount + " / " + answered + " positive controls") : "Controls pending";
                 }}
 
+                function updateStageIndicators() {{
+                    stages.forEach((stage, index) => {{
+                        const step = index + 1;
+                        const stageIndicator = stage.querySelector("[data-stage-indicator]");
+                        const stepIndicator = stage.querySelector("[data-step-indicator]");
+                        const totalGroups = Math.max(1, groupsForStep(step).length);
+                        const currentGroup = Math.min(currentGroupForStep(step), totalGroups);
+                        if (stageIndicator) stageIndicator.textContent = "Stage " + step + " of " + stages.length;
+                        if (stepIndicator) stepIndicator.textContent = "Step " + currentGroup + " of " + totalGroups;
+                    }});
+                }}
+
                 function updateProgress() {{
                     const base = (currentStep - 1) * 33.33;
                     const fractional = completionForStep(currentStep) / 3;
@@ -514,6 +559,7 @@ def render_page(title: str, body: str) -> str:
 
                     updateCaptureRows();
                     updateSummary();
+                    updateStageIndicators();
                 }}
 
                 function showStep(step) {{
@@ -711,14 +757,14 @@ def form():
         f"""
         <div class="field yes-no-field">
             <label for="{field_name}">{label}</label>
-            <select id="{field_name}" name="{field_name}" data-summary-target required>
+            <select id="{field_name}" name="{field_name}" data-summary-target data-stage-group="{((index - 1) // 3) + 1}" required>
                 <option value="">Select…</option>
                 <option value="Yes">Yes</option>
                 <option value="No">No</option>
             </select>
         </div>
         """
-        for field_name, label in YES_NO_FIELDS
+        for index, (field_name, label) in enumerate(YES_NO_FIELDS, start=1)
     )
 
     body = f"""
@@ -793,70 +839,75 @@ def form():
                         </div>
                     </div>
 
+                    <div class="stage-indicators">
+                        <div class="stage-indicator"><span class="stage-indicator-label">Stage</span><span data-stage-indicator>Stage 1 of 3</span></div>
+                        <div class="stage-indicator"><span class="stage-indicator-label">Step</span><span data-step-indicator>Step 1 of 4</span></div>
+                    </div>
+
                     <div class="grid">
                         <div class="field">
-                            <label for="company_name">Company name</label>
-                            <input id="company_name" name="company_name" data-summary-target required>
+                            <label for="company_name">What is the name of your company?</label>
+                            <input id="company_name" name="company_name" data-summary-target data-stage-group="1" required>
                         </div>
 
                         <div class="field">
-                            <label for="contact_name">Contact name</label>
-                            <input id="contact_name" name="contact_name" autocomplete="name" data-summary-target required>
+                            <label for="contact_name">What is the name of the person completing this audit?</label>
+                            <input id="contact_name" name="contact_name" autocomplete="name" data-summary-target data-stage-group="1" required>
                         </div>
 
                         <div class="field">
-                            <label for="job_title">Job title</label>
-                            <input id="job_title" name="job_title" autocomplete="organization-title" data-summary-target required>
+                            <label for="job_title">What is their job title?</label>
+                            <input id="job_title" name="job_title" autocomplete="organization-title" data-summary-target data-stage-group="1" required>
                         </div>
 
                         <div class="field">
-                            <label for="phone_number">Phone number</label>
-                            <input id="phone_number" name="phone_number" type="tel" autocomplete="tel" inputmode="tel" pattern="[0-9+()\\-\\s]{{7,}}" title="Enter a valid phone number." data-summary-target required>
+                            <label for="phone_number">What is the best phone number to use?</label>
+                            <input id="phone_number" name="phone_number" type="tel" autocomplete="tel" inputmode="tel" pattern="[0-9+()\\-\\s]{{7,}}" title="Enter a valid phone number." data-summary-target data-stage-group="2" required>
                         </div>
 
                         <div class="field">
-                            <label for="email_address">Email address</label>
-                            <input id="email_address" name="email_address" type="email" autocomplete="email" data-summary-target required>
+                            <label for="email_address">What is the best email address to use?</label>
+                            <input id="email_address" name="email_address" type="email" autocomplete="email" data-summary-target data-stage-group="2" required>
                         </div>
 
                         <div class="field">
-                            <label for="sector">Sector</label>
-                            <select id="sector" name="sector" data-summary-target required>
+                            <label for="sector">Which sector does your business operate in?</label>
+                            <select id="sector" name="sector" data-summary-target data-stage-group="3" required>
                                 <option value="">Select…</option>
                                 {sector_options}
                             </select>
                         </div>
 
                         <div class="field">
-                            <label for="location">Location</label>
-                            <input id="location" name="location" autocomplete="address-level2" data-summary-target required>
+                            <label for="location">Where is the business based?</label>
+                            <input id="location" name="location" autocomplete="address-level2" data-summary-target data-stage-group="3" required>
                         </div>
 
                         <div class="field has-suffix">
-                            <label for="headcount">Number of employees</label>
+                            <label for="headcount">How many employees does the business have?</label>
                             <div class="input-wrap">
-                                <input id="headcount" name="headcount" inputmode="numeric" pattern="[0-9, ]+" title="Use numbers only." data-summary-target required>
+                                <input id="headcount" name="headcount" inputmode="numeric" pattern="[0-9, ]+" title="Use numbers only." data-summary-target data-stage-group="3" required>
                                 <span class="suffix">employees</span>
                             </div>
                         </div>
 
                         <div class="field has-suffix">
-                            <label for="annual_hiring_volume">Annual hiring volume</label>
+                            <label for="annual_hiring_volume">How many hires do you typically make each year?</label>
                             <div class="input-wrap">
-                                <input id="annual_hiring_volume" name="annual_hiring_volume" inputmode="numeric" pattern="[0-9, ]+" title="Use numbers only." data-summary-target required>
+                                <input id="annual_hiring_volume" name="annual_hiring_volume" inputmode="numeric" pattern="[0-9, ]+" title="Use numbers only." data-summary-target data-stage-group="3" required>
                                 <span class="suffix">hires</span>
                             </div>
                         </div>
 
                         <div class="field full">
-                            <label for="key_roles_hired">Key roles and job titles hired</label>
-                            <input id="key_roles_hired" name="key_roles_hired" placeholder="e.g. Sales Managers, Service Engineers, Finance Business Partners" data-summary-target required>
+                            <label for="key_roles_hired">Which roles or job titles do you hire for most often?</label>
+                            <input id="key_roles_hired" name="key_roles_hired" placeholder="e.g. Sales Managers, Service Engineers, Finance Business Partners" data-summary-target data-stage-group="4" required>
                             <div class="hint">Use representative job titles, not a numeric count.</div>
                         </div>
 
                         <div class="field full">
-                            <label for="office_address">Office address</label>
-                            <textarea id="office_address" name="office_address" rows="3" autocomplete="street-address" data-summary-target required></textarea>
+                            <label for="office_address">What is the office address?</label>
+                            <textarea id="office_address" name="office_address" rows="3" autocomplete="street-address" data-summary-target data-stage-group="4" required></textarea>
                         </div>
                     </div>
 
@@ -881,59 +932,64 @@ def form():
                         </div>
                     </div>
 
+                    <div class="stage-indicators">
+                        <div class="stage-indicator"><span class="stage-indicator-label">Stage</span><span data-stage-indicator>Stage 2 of 3</span></div>
+                        <div class="stage-indicator"><span class="stage-indicator-label">Step</span><span data-step-indicator>Step 1 of 4</span></div>
+                    </div>
+
                     <div class="grid">
                         <div class="field has-suffix">
-                            <label for="time_to_hire">Average time to hire</label>
+                            <label for="time_to_hire">What is your average time to hire?</label>
                             <div class="input-wrap">
-                                <input id="time_to_hire" name="time_to_hire" placeholder="e.g. 42" data-summary-target required>
+                                <input id="time_to_hire" name="time_to_hire" placeholder="e.g. 42" data-summary-target data-stage-group="1" required>
                                 <span class="suffix">days</span>
                             </div>
                         </div>
 
                         <div class="field has-suffix">
-                            <label for="applications_per_role">Applications per role</label>
+                            <label for="applications_per_role">How many applications do you receive per role on average?</label>
                             <div class="input-wrap">
-                                <input id="applications_per_role" name="applications_per_role" placeholder="e.g. 36" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." data-summary-target required>
+                                <input id="applications_per_role" name="applications_per_role" placeholder="e.g. 36" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." data-summary-target data-stage-group="1" required>
                                 <span class="suffix">applications</span>
                             </div>
                         </div>
 
                         <div class="field has-suffix">
-                            <label for="offer_acceptance">Offer acceptance rate</label>
+                            <label for="offer_acceptance">What percentage of offers are accepted?</label>
                             <div class="input-wrap">
-                                <input id="offer_acceptance" name="offer_acceptance" placeholder="e.g. 72" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." data-summary-target required>
+                                <input id="offer_acceptance" name="offer_acceptance" placeholder="e.g. 72" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." data-summary-target data-stage-group="2" required>
                                 <span class="suffix">%</span>
                             </div>
                         </div>
 
                         <div class="field has-suffix">
-                            <label for="first_year_attrition">First-year attrition</label>
+                            <label for="first_year_attrition">What percentage of hires leave within the first year?</label>
                             <div class="input-wrap">
-                                <input id="first_year_attrition" name="first_year_attrition" placeholder="e.g. 18" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." data-summary-target required>
+                                <input id="first_year_attrition" name="first_year_attrition" placeholder="e.g. 18" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." data-summary-target data-stage-group="2" required>
                                 <span class="suffix">%</span>
                             </div>
                         </div>
 
                         <div class="field has-suffix">
-                            <label for="interview_stages">Number of interview stages</label>
+                            <label for="interview_stages">How many interview stages are typically used?</label>
                             <div class="input-wrap">
-                                <input id="interview_stages" name="interview_stages" placeholder="e.g. 2" inputmode="numeric" pattern="[0-9 ]+" title="Use numbers only." data-summary-target required>
+                                <input id="interview_stages" name="interview_stages" placeholder="e.g. 2" inputmode="numeric" pattern="[0-9 ]+" title="Use numbers only." data-summary-target data-stage-group="3" required>
                                 <span class="suffix">stages</span>
                             </div>
                         </div>
 
                         <div class="field has-suffix">
-                            <label for="interview_feedback_time">Average interview feedback time</label>
+                            <label for="interview_feedback_time">How long does interview feedback usually take?</label>
                             <div class="input-wrap">
-                                <input id="interview_feedback_time" name="interview_feedback_time" placeholder="e.g. 2" data-summary-target required>
+                                <input id="interview_feedback_time" name="interview_feedback_time" placeholder="e.g. 2" data-summary-target data-stage-group="3" required>
                                 <span class="suffix">days</span>
                             </div>
                         </div>
 
                         <div class="field has-suffix">
-                            <label for="candidates_reaching_interview">Candidates reaching interview per role</label>
+                            <label for="candidates_reaching_interview">How many candidates typically reach interview for each role?</label>
                             <div class="input-wrap">
-                                <input id="candidates_reaching_interview" name="candidates_reaching_interview" placeholder="e.g. 5" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." data-summary-target required>
+                                <input id="candidates_reaching_interview" name="candidates_reaching_interview" placeholder="e.g. 5" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." data-summary-target data-stage-group="4" required>
                                 <span class="suffix">candidates</span>
                             </div>
                         </div>
@@ -958,6 +1014,11 @@ def form():
                             Ownership<br>
                             Standardisation
                         </div>
+                    </div>
+
+                    <div class="stage-indicators">
+                        <div class="stage-indicator"><span class="stage-indicator-label">Stage</span><span data-stage-indicator>Stage 3 of 3</span></div>
+                        <div class="stage-indicator"><span class="stage-indicator-label">Step</span><span data-step-indicator>Step 1 of 4</span></div>
                     </div>
 
                     <div class="grid">
