@@ -459,8 +459,12 @@ def auto_score_sections(data: dict, benchmark: pd.DataFrame) -> tuple[list[int],
         f"Screening is {'structured' if flags.get('structured_screening') else 'informal'}, which affects response speed and conversion quality.",
         f"Interview design uses {int(metrics.get('interview_stages') or 0) or 'an unknown number of'} stages and feedback turnaround of {_fmt(metrics.get('interview_feedback_time_days'), 'days')}.",
         f"Offer handling is {'faster' if flags.get('fast_offer_process') else 'more exposed to delay'}, which shapes acceptance outcomes.",
-        f"Onboarding is {'documented' if flags.get('formal_onboarding') else 'lightly controlled'}, with first-year attrition at {_fmt(metrics.get('first_year_attrition'), '%')}.",
-        f"Turnover pressure remains visible through first-year attrition of {_fmt(metrics.get('first_year_attrition'), '%')}.",
+        _attrition_note(
+            metrics.get("first_year_attrition"),
+            "onboarding",
+            "documented" if flags.get("formal_onboarding") else "lightly controlled",
+        ),
+        _attrition_note(metrics.get("first_year_attrition"), "turnover"),
         f"Candidate feedback is {'captured' if flags.get('collects_candidate_feedback') else 'not captured consistently'}, while interview feedback speed still needs attention.",
         f"Ownership is {'clear' if flags.get('named_process_owner') else 'blurred'}, and hiring manager training is {'present' if flags.get('hiring_manager_training') else 'limited'}.",
     ]
@@ -1646,6 +1650,17 @@ def _fmt(value: float | None, suffix: str) -> str:
     return "not provided" if value is None else _format_metric_value(value, suffix)
 
 
+def _attrition_note(value: float | None, context: str, onboarding_state: str | None = None) -> str:
+    display_value = _fmt(value, "%")
+    if value is not None and value >= 50:
+        if context == "onboarding":
+            return f"First-year attrition is exceptionally high at {display_value}, indicating a severe retention and onboarding issue."
+        return f"First-year attrition is exceptionally high at {display_value}, indicating a severe retention issue after hire."
+    if context == "onboarding":
+        return f"Onboarding is {onboarding_state}, with first-year attrition at {display_value}."
+    return f"Turnover pressure remains visible through first-year attrition of {display_value}."
+
+
 def _build_priority_matrix(report: dict) -> list[dict]:
     sections = report.get("sections", [])
     weakest = sorted(sections, key=lambda item: item["score"])[:4]
@@ -1658,32 +1673,52 @@ def _build_priority_matrix(report: dict) -> list[dict]:
             "action": (section.get("immediate_actions") or ["Set one named owner and correct the process discipline."])[0],
         }
 
-    return [
+    buckets = [
         {
             "eyebrow": "High impact | High urgency",
             "title": "Stabilise now",
             "background": RED_BG,
-            "items": [row(item) for item in weakest[:2]],
+            "items": weakest[:2],
         },
         {
             "eyebrow": "High impact | Lower urgency",
             "title": "Tighten next",
             "background": AMBER_BG,
-            "items": [row(item) for item in weakest[2:4]],
+            "items": weakest[2:4],
         },
         {
             "eyebrow": "Lower impact | High visibility",
             "title": "Monitor",
             "background": TABLE_SHADE,
-            "items": [row(item) for item in watch],
+            "items": watch,
         },
         {
             "eyebrow": "Lower impact | Lower urgency",
             "title": "Maintain",
             "background": GREEN_BG,
-            "items": [row(item) for item in strongest],
+            "items": strongest,
         },
     ]
+
+    assigned_titles = set()
+    quadrants = []
+    for bucket in buckets:
+        unique_items = []
+        for item in bucket["items"]:
+            title = item["title"]
+            if title in assigned_titles:
+                continue
+            assigned_titles.add(title)
+            unique_items.append(row(item))
+        quadrants.append(
+            {
+                "eyebrow": bucket["eyebrow"],
+                "title": bucket["title"],
+                "background": bucket["background"],
+                "items": unique_items,
+            }
+        )
+    return quadrants
 
 
 def _build_executive_overview(data: dict, report: dict, benchmark_summary: dict) -> str:
@@ -1887,26 +1922,38 @@ def _build_section_headline(title: str, score: int, current_state: str) -> str:
             f"{title} is operating from a stronger base than the rest of the hiring process.",
             f"{title} is one of the more controlled parts of the recruitment model.",
             f"{title} is giving the business a more dependable platform than most other areas.",
+            f"{title} is standing up better than the rest of the operating model.",
+            f"{title} is one of the few parts of hiring that looks properly settled.",
+            f"{title} is carrying stronger discipline than most of the wider process.",
         ]
     elif score >= 6:
         templates = [
             f"{title} is workable, but control and consistency still need tightening.",
             f"{title} is serviceable, though delivery discipline is not yet consistent enough.",
             f"{title} is holding together, but it is still not controlled tightly enough.",
+            f"{title} is functioning, but it is not yet being run with enough discipline.",
+            f"{title} can support hiring demand, but the operating standard is still uneven.",
+            f"{title} is moving in the right direction, but execution still drifts too often.",
         ]
     elif score >= 4:
         templates = [
             f"{title} is creating avoidable drag in the recruitment process.",
             f"{title} is starting to slow pace and weaken consistency across the wider process.",
             f"{title} is exposing the hiring model to delay and uneven execution.",
+            f"{title} is now holding the wider process back.",
+            f"{title} is putting pace and control under visible pressure.",
+            f"{title} is becoming a recurring source of hiring friction.",
         ]
     else:
         templates = [
             f"{title} is a clear operational weakness in the current hiring model.",
             f"{title} is one of the main breakdown points in the recruitment process.",
             f"{title} is materially weakening control across the hiring cycle.".replace("materially", "clearly"),
+            f"{title} is now one of the clearest points of failure in the operating model.",
+            f"{title} is causing the most serious control gap in the hiring process.",
+            f"{title} is leaving the business too exposed to delay and weak execution.",
         ]
-    index = sum(ord(char) for char in title_lower) % len(templates)
+    index = sum(ord(char) for char in f"{title_lower}|{current_state.lower()}") % len(templates)
     return templates[index]
 
 
