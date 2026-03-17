@@ -203,7 +203,7 @@ def render_page(title: str, body: str) -> str:
                 background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.08);
                 font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
             }}
-            .hero h1 {{ margin: 0 0 14px; font-size: clamp(28px, 4vw, 42px); line-height: 1.05; letter-spacing: -0.04em; max-width: 15ch; font-family: var(--font-display); font-weight: 700; }}
+            .hero h1 {{ margin: 0 0 14px; font-size: clamp(22px, 2.6vw, 30px); line-height: 1.15; letter-spacing: -0.02em; max-width: 22ch; font-family: var(--font-display); font-weight: 700; }}
             .hero p {{ margin: 0; max-width: 68ch; color: rgba(255,255,255,0.80); font-size: 15px; line-height: 1.8; }}
             .hero-metrics {{ display: grid; gap: 14px; align-content: start; }}
             .hero-card {{
@@ -377,7 +377,7 @@ def render_page(title: str, body: str) -> str:
                 .button-row {{ width: 100%; }}
                 .button {{ width: 100%; }}
                 .hero {{ padding: 26px; }}
-                .hero h1 {{ font-size: 32px; max-width: none; }}
+                .hero h1 {{ font-size: 24px; max-width: none; }}
                 .shell {{ padding-top: 20px; }}
                 .brand-lockup {{ align-items: flex-start; }}
             }}
