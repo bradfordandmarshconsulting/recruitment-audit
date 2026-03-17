@@ -56,6 +56,7 @@ BRAND_NAVY = colors.HexColor("#1F2A40")
 BRAND_GOLD = colors.HexColor("#B5935A")
 BRAND_PANEL = colors.HexColor("#F7F5F1")
 BRAND_PANEL_ALT = colors.HexColor("#FAFBFC")
+BRAND_PANEL_WARM = colors.HexColor("#FBF8F2")
 GREEN_TEXT = colors.HexColor("#166534")
 GREEN_BG = colors.HexColor("#DCFCE7")
 AMBER_TEXT = colors.HexColor("#9A6700")
@@ -579,18 +580,18 @@ def create_overall_score_chart(company_name: str, total_score: int) -> Path:
     else:
         bar_colour = "#EF4444"
 
-    fig, ax = plt.subplots(figsize=(6.4, 1.4))
+    fig, ax = plt.subplots(figsize=(6.4, 1.55))
     _apply_chart_style(fig, ax)
-    ax.barh([0], [120], color="#E5E5E5", height=0.32)
-    ax.barh([0], [score], color=bar_colour, height=0.32)
+    ax.barh([0], [120], color="#E9EDF2", height=0.36)
+    ax.barh([0], [score], color=bar_colour, height=0.36)
     ax.set_xlim(0, 120)
     ax.set_ylim(-0.45, 0.45)
     ax.set_yticks([])
     ax.set_xticks(range(0, 121, 20))
-    ax.grid(axis="x", alpha=0.12, linestyle="--")
-    fig.text(0.08, 0.92, company_name, fontsize=9, color="black")
-    fig.text(0.08, 0.80, "Overall score", fontsize=12, color="black", fontweight="bold")
-    fig.text(0.92, 0.82, f"{score}/120 | {percentage}% | {rating}", fontsize=9.2, color="black", fontweight="bold", ha="right")
+    ax.grid(axis="x", alpha=0.10, linestyle="--", color="#D7DCE4")
+    fig.text(0.08, 0.92, company_name, fontsize=8.8, color="#5F6876")
+    fig.text(0.08, 0.80, "Overall score", fontsize=12, color="#1F2A40", fontweight="bold")
+    fig.text(0.92, 0.82, f"{score}/120 | {percentage}% | {rating}", fontsize=9.1, color="#1F2A40", fontweight="bold", ha="right")
     ax.annotate(
         f"{score}/120 ({percentage}%)",
         xy=(score, 0),
@@ -598,8 +599,8 @@ def create_overall_score_chart(company_name: str, total_score: int) -> Path:
         textcoords="offset points",
         ha="center",
         va="bottom",
-        fontsize=8.4,
-        color="black",
+        fontsize=8.3,
+        color="#1F2A40",
         fontweight="bold",
     )
     for spine in ax.spines.values():
@@ -616,20 +617,20 @@ def create_section_score_chart(company_name: str, section_scores: list[int]) -> 
     positions = list(range(len(labels)))
     colours = [_score_hex(score) for score in section_scores]
 
-    fig, ax = plt.subplots(figsize=(6.5, 4.8))
+    fig, ax = plt.subplots(figsize=(6.5, 5.0))
     _apply_chart_style(fig, ax)
-    ax.barh(positions, section_scores, color=colours, edgecolor="black", linewidth=0.5, height=0.56)
+    ax.barh(positions, section_scores, color=colours, edgecolor="none", height=0.52)
     ax.set_xlim(0, 10)
     ax.set_xticks(range(0, 11, 2))
     ax.set_yticks(positions, labels)
     ax.invert_yaxis()
-    ax.grid(axis="x", alpha=0.12, linestyle="--")
-    ax.set_xlabel("Score out of 10", color="black")
-    ax.set_title("Section scores", fontsize=12, fontweight="bold", color="black", pad=10)
+    ax.grid(axis="x", alpha=0.10, linestyle="--", color="#D7DCE4")
+    ax.set_xlabel("Score out of 10", color="#1F2A40", fontsize=8.8, labelpad=6)
+    ax.set_title("Section scores", fontsize=12, fontweight="bold", color="#1F2A40", pad=10)
     for pos, score in enumerate(section_scores):
-        ax.text(min(score + 0.15, 9.75), pos, f"{score}/10", va="center", fontsize=8.2, color="black", fontweight="bold")
-    fig.text(0.11, 0.95, company_name, fontsize=9, color="black")
-    fig.tight_layout(rect=(0, 0, 1, 0.93))
+        ax.text(min(score + 0.14, 9.72), pos, f"{score}/10", va="center", fontsize=8.1, color="#1F2A40", fontweight="bold")
+    fig.text(0.11, 0.95, company_name, fontsize=8.8, color="#5F6876")
+    fig.tight_layout(rect=(0, 0.01, 1, 0.93))
     fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     return path
@@ -656,7 +657,7 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         plt.close(fig)
         return path
 
-    fig, axes = plt.subplots(len(items), 1, figsize=(6.5, 1.1 + len(items) * 0.95))
+    fig, axes = plt.subplots(len(items), 1, figsize=(6.5, 1.3 + len(items) * 1.02))
     if len(items) == 1:
         axes = [axes]
 
@@ -670,15 +671,15 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         ahead = client_value >= benchmark_value if higher_is_better else client_value <= benchmark_value
 
         ax.set_xlim(x_min, x_max)
-        ax.set_ylim(-0.45, 0.45)
-        ax.hlines(0, x_min, x_max, color="#D0D4DB", linewidth=1.3)
-        ax.scatter([benchmark_value], [0], s=60, color="#B5935A", edgecolors="black", linewidths=0.5, zorder=3)
-        ax.scatter([client_value], [0], s=64, color="#1F2A40", edgecolors="black", linewidths=0.5, marker="D", zorder=4)
+        ax.set_ylim(-0.55, 0.55)
+        ax.hlines(0, x_min, x_max, color="#D7DCE4", linewidth=1.2)
+        ax.scatter([benchmark_value], [0], s=58, color="#B5935A", edgecolors="white", linewidths=0.7, zorder=3)
+        ax.scatter([client_value], [0], s=68, color="#1F2A40", edgecolors="white", linewidths=0.7, marker="D", zorder=4)
         ax.set_yticks([])
         ax.xaxis.set_major_locator(MaxNLocator(4))
-        ax.tick_params(axis="x", labelsize=8, colors="black")
-        ax.grid(axis="x", alpha=0.10, linestyle="--")
-        ax.set_title(label, fontsize=10.2, fontweight="bold", color="black", pad=2)
+        ax.tick_params(axis="x", labelsize=7.8, colors="#5F6876")
+        ax.grid(axis="x", alpha=0.08, linestyle="--", color="#D7DCE4")
+        ax.set_title(label, fontsize=10.1, fontweight="bold", color="#1F2A40", pad=4)
 
         client_offset = 9 if client_value >= benchmark_value else -11
         client_va = "bottom" if client_value >= benchmark_value else "top"
@@ -692,8 +693,8 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
             textcoords="offset points",
             ha="center",
             va=client_va,
-            fontsize=8,
-            color="black",
+            fontsize=7.8,
+            color="#1F2A40",
             fontweight="bold",
         )
         ax.annotate(
@@ -703,8 +704,8 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
             textcoords="offset points",
             ha="center",
             va=benchmark_va,
-            fontsize=7.9,
-            color="black",
+            fontsize=7.7,
+            color="#6B7280",
         )
         delta = abs(client_value - benchmark_value)
         direction = "Ahead of benchmark" if ahead else "Behind benchmark"
@@ -713,16 +714,16 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
             0.03,
             f"{direction} by {_format_metric_value(delta, suffix)}",
             transform=ax.transAxes,
-            fontsize=8,
-            color="black",
+            fontsize=7.8,
+            color="#1F2A40",
             fontweight="bold",
         )
         for spine in ax.spines.values():
             spine.set_visible(False)
 
-    fig.suptitle("Benchmark comparison", fontsize=12, fontweight="bold", color="black", y=0.99)
-    fig.text(0.10, 0.95, company_name, fontsize=9, color="black")
-    fig.tight_layout(rect=(0, 0, 1, 0.93), h_pad=0.65)
+    fig.suptitle("Benchmark comparison", fontsize=12, fontweight="bold", color="#1F2A40", y=0.985)
+    fig.text(0.10, 0.948, company_name, fontsize=8.8, color="#5F6876")
+    fig.tight_layout(rect=(0, 0, 1, 0.93), h_pad=0.9)
     fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     return path
@@ -910,6 +911,28 @@ def _build_pdf_styles() -> StyleSheet1:
     )
     styles.add(
         ParagraphStyle(
+            name="CoverMetaLabel",
+            fontName=PDF_FONT_BOLD,
+            fontSize=8.8,
+            leading=10,
+            alignment=TA_LEFT,
+            textColor=SUBTLE_TEXT,
+            spaceAfter=1,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
+            name="CoverMetaValue",
+            fontName=PDF_FONT,
+            fontSize=10.2,
+            leading=12,
+            alignment=TA_LEFT,
+            textColor=TEXT_COLOR,
+            spaceAfter=1,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
             name="Heading1",
             fontName=PDF_FONT_BOLD,
             fontSize=15,
@@ -1060,43 +1083,41 @@ def _section_card_table(title: str, body: list, background: colors.Color = color
 
 
 def _add_cover_page(story: list, styles: StyleSheet1, data: dict) -> None:
-    story.append(Spacer(1, 42 * mm))
+    story.append(Spacer(1, 50 * mm))
     logo = _logo_image(90)
     if logo:
         logo.hAlign = "CENTER"
         story.append(logo)
-        story.append(Spacer(1, 8 * mm))
+        story.append(Spacer(1, 10 * mm))
     else:
         story.append(Paragraph(BRAND_NAME, styles["CoverBrand"]))
     story.append(Paragraph(REPORT_TITLE, styles["CoverTitle"]))
+    story.append(Spacer(1, 2 * mm))
     story.append(Paragraph(_clean_text(data["company_name"]), styles["CoverMeta"]))
-    story.append(Spacer(1, 10 * mm))
+    story.append(Spacer(1, 16 * mm))
     meta_rows = [
-        ["Sector", _clean_text(data["sector"])],
-        ["Location", _clean_text(data["location"])],
-        ["Date", datetime.now().strftime("%d %B %Y")],
-        ["Classification", CONFIDENTIAL_LABEL],
+        [Paragraph("Sector", styles["CoverMetaLabel"]), Paragraph(_clean_text(data["sector"]), styles["CoverMetaValue"])],
+        [Paragraph("Location", styles["CoverMetaLabel"]), Paragraph(_clean_text(data["location"]), styles["CoverMetaValue"])],
+        [Paragraph("Date", styles["CoverMetaLabel"]), Paragraph(datetime.now().strftime("%d %B %Y"), styles["CoverMetaValue"])],
+        [Paragraph("Confidentiality", styles["CoverMetaLabel"]), Paragraph(CONFIDENTIAL_LABEL, styles["CoverMetaValue"])],
     ]
-    meta_table = Table(meta_rows, colWidths=[44 * mm, 80 * mm], hAlign="CENTER")
+    meta_table = Table(meta_rows, colWidths=[42 * mm, 84 * mm], hAlign="CENTER")
     meta_table.setStyle(
         TableStyle(
             [
-                ("FONTNAME", (0, 0), (-1, -1), PDF_FONT),
-                ("FONTSIZE", (0, 0), (-1, -1), 10),
-                ("TEXTCOLOR", (0, 0), (-1, -1), TEXT_COLOR),
-                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                ("BACKGROUND", (0, 0), (0, -1), TABLE_SHADE),
-                ("LINEBELOW", (0, 0), (-1, -1), 0.35, RULE_COLOR),
-                ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                ("TOPPADDING", (0, 0), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("BACKGROUND", (0, 0), (-1, -1), BRAND_PANEL_WARM),
+                ("BOX", (0, 0), (-1, -1), 0.45, RULE_COLOR),
+                ("LINEBELOW", (0, 0), (-1, -2), 0.35, RULE_COLOR),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ]
         )
     )
     story.append(meta_table)
-    story.append(Spacer(1, 90 * mm))
-    story.append(Paragraph(CONFIDENTIAL_LABEL, styles["CoverMeta"]))
+    story.append(Spacer(1, 92 * mm))
     story.append(PageBreak())
 
 
@@ -1129,7 +1150,20 @@ def _add_md_letter(story: list, styles: StyleSheet1, data: dict) -> None:
 
 def _add_executive_overview(story: list, styles: StyleSheet1, data: dict, report: dict, benchmark_summary: dict) -> None:
     story.append(Paragraph("Executive overview", styles["Heading1"]))
-    story.append(Paragraph(report["executive_overview"], styles["Body"]))
+    overview_card = Table([[Paragraph(report["executive_overview"], styles["Body"])]], colWidths=[170 * mm], hAlign="LEFT")
+    overview_card.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), BRAND_PANEL_WARM),
+                ("BOX", (0, 0), (-1, -1), 0.5, RULE_COLOR),
+                ("LEFTPADDING", (0, 0), (-1, -1), 12),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+                ("TOPPADDING", (0, 0), (-1, -1), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+            ]
+        )
+    )
+    story.append(overview_card)
 
 
 def _add_overall_score(story: list, styles: StyleSheet1, data: dict, report: dict, overall_chart: Path) -> None:
@@ -1142,19 +1176,21 @@ def _add_overall_score(story: list, styles: StyleSheet1, data: dict, report: dic
         ["Percentage", f"{percentage}%"],
         ["Rating band", rating],
     ]
-    table = Table(rows, colWidths=[44 * mm, 110 * mm], hAlign="LEFT")
+    table = Table(rows, colWidths=[46 * mm, 108 * mm], hAlign="LEFT")
     table.setStyle(
         TableStyle(
             [
                 ("FONTNAME", (0, 0), (-1, -1), PDF_FONT),
                 ("FONTSIZE", (0, 0), (-1, -1), 10),
                 ("TEXTCOLOR", (0, 0), (-1, -1), TEXT_COLOR),
-                ("GRID", (0, 0), (-1, -1), 0.35, RULE_COLOR),
+                ("BACKGROUND", (0, 0), (-1, -1), BRAND_PANEL_WARM),
                 ("BACKGROUND", (0, 0), (0, -1), TABLE_SHADE),
-                ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                ("TOPPADDING", (0, 0), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("BOX", (0, 0), (-1, -1), 0.45, RULE_COLOR),
+                ("LINEBELOW", (0, 0), (-1, -2), 0.35, RULE_COLOR),
+                ("LEFTPADDING", (0, 0), (-1, -1), 7),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+                ("TOPPADDING", (0, 0), (-1, -1), 7),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
             ]
         )
     )
@@ -1176,11 +1212,13 @@ def _add_key_insights(story: list, styles: StyleSheet1, data: dict, report: dict
                 ("FONTNAME", (0, 0), (-1, -1), PDF_FONT),
                 ("FONTSIZE", (0, 0), (-1, -1), 10),
                 ("TEXTCOLOR", (0, 0), (-1, -1), TEXT_COLOR),
-                ("GRID", (0, 0), (-1, -1), 0.35, RULE_COLOR),
-                ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                ("TOPPADDING", (0, 0), (-1, -1), 5),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("BACKGROUND", (0, 0), (-1, -1), BRAND_PANEL_WARM),
+                ("BOX", (0, 0), (-1, -1), 0.45, RULE_COLOR),
+                ("LINEBELOW", (0, 0), (-1, -2), 0.35, RULE_COLOR),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 7),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
             ]
         )
     )
@@ -1215,6 +1253,7 @@ def _add_benchmark_snapshot(story: list, styles: StyleSheet1, benchmark_summary:
     table = Table(rows, colWidths=[50 * mm, 28 * mm, 30 * mm, 62 * mm], repeatRows=1, hAlign="LEFT")
     table.setStyle(_table_style())
     story.append(table)
+    story.append(Spacer(1, 1.5 * mm))
 
 
 def _add_priority_matrix(story: list, styles: StyleSheet1, report: dict) -> None:
@@ -1614,10 +1653,10 @@ def _build_executive_overview(data: dict, report: dict, benchmark_summary: dict)
 
     sentences = [
         f"The recruitment process is {_rating_for_score(data['total_score']).lower()} at {data['total_score']}/120.",
-        f"The strongest area is {strongest[0].lower()} at {strongest[1]}/10, while the weakest area is {weakest[0].lower()} at {weakest[1]}/10.",
-        f"The main commercial issue is that weaker process control is likely increasing hiring delay and reducing decision quality.",
+        f"{strongest[0]} is holding up best at {strongest[1]}/10, while {weakest[0].lower()} is the clearest operational weakness at {weakest[1]}/10.",
+        "The main commercial drag is uneven process control, which is likely slowing decisions and weakening hiring consistency.",
         benchmark_line,
-        f"The first action should be to {next_step.rstrip('.').lower()}.",
+        f"The immediate priority is to {next_step.rstrip('.').lower()}.",
     ]
     text = " ".join(sentence for sentence in sentences if sentence)
     return _clean_text(text, max_sentences=5, max_words=145)
@@ -1765,13 +1804,33 @@ def _compose_paragraph(value, fallback: str | None, max_sentences: int, max_word
 
 
 def _build_section_headline(title: str, score: int, current_state: str) -> str:
+    title_lower = title.lower()
     if score >= 8:
-        return f"{title} is operating from a stronger base than the rest of the hiring process."
-    if score >= 6:
-        return f"{title} is workable, but control and consistency still need tightening."
-    if score >= 4:
-        return f"{title} is creating avoidable drag in the recruitment process."
-    return f"{title} is a clear operational weakness in the current hiring model."
+        templates = [
+            f"{title} is operating from a stronger base than the rest of the hiring process.",
+            f"{title} is one of the more controlled parts of the recruitment model.",
+            f"{title} is giving the business a more dependable platform than most other areas.",
+        ]
+    elif score >= 6:
+        templates = [
+            f"{title} is workable, but control and consistency still need tightening.",
+            f"{title} is serviceable, though delivery discipline is not yet consistent enough.",
+            f"{title} is holding together, but it is still not controlled tightly enough.",
+        ]
+    elif score >= 4:
+        templates = [
+            f"{title} is creating avoidable drag in the recruitment process.",
+            f"{title} is starting to slow pace and weaken consistency across the wider process.",
+            f"{title} is exposing the hiring model to delay and uneven execution.",
+        ]
+    else:
+        templates = [
+            f"{title} is a clear operational weakness in the current hiring model.",
+            f"{title} is one of the main breakdown points in the recruitment process.",
+            f"{title} is materially weakening control across the hiring cycle.".replace("materially", "clearly"),
+        ]
+    index = sum(ord(char) for char in title_lower) % len(templates)
+    return templates[index]
 
 
 def _fallback_key_risks(title: str) -> list[str]:
