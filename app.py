@@ -282,6 +282,7 @@ def render_page(title: str, body: str) -> str:
             .suffix {{ position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; pointer-events: none; }}
 
             .note {{ margin-top: 20px; padding: 16px 18px; border-radius: 18px; background: rgba(15, 23, 42, 0.04); border: 1px solid rgba(15, 23, 42, 0.06); color: var(--muted); line-height: 1.75; font-size: 13px; }}
+            .note strong {{ color: var(--brand); }}
 
             .footer-bar {{ display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 22px 34px 30px; border-top: 1px solid rgba(148, 163, 184, 0.16); background: linear-gradient(180deg, rgba(248, 250, 252, 0.3), rgba(248,250,252,0.76)); }}
             .footer-copy {{ max-width: 60ch; color: var(--muted); line-height: 1.7; font-size: 13px; }}
@@ -335,6 +336,27 @@ def render_page(title: str, body: str) -> str:
             .trust-grid {{ display: grid; gap: 10px; margin-top: 14px; }}
             .trust-row {{ display: flex; align-items: flex-start; gap: 10px; color: var(--muted); font-size: 13px; line-height: 1.65; }}
             .trust-mark {{ width: 20px; height: 20px; border-radius: 999px; background: rgba(15, 23, 42, 0.06); color: var(--brand); display: grid; place-items: center; font-size: 12px; font-weight: 900; flex: 0 0 auto; margin-top: 1px; }}
+            .preview-list {{ display: grid; gap: 10px; margin-top: 16px; }}
+            .preview-row {{
+                display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 16px;
+                background: rgba(248, 250, 252, 0.9); border: 1px solid rgba(148, 163, 184, 0.12);
+            }}
+            .preview-index {{
+                width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center;
+                background: rgba(20, 32, 51, 0.08); color: var(--brand); font-size: 12px; font-weight: 800; flex: 0 0 auto;
+            }}
+            .preview-copy strong {{ display: block; color: var(--brand); font-size: 13px; margin-bottom: 4px; }}
+            .preview-copy span {{ color: var(--muted); font-size: 13px; line-height: 1.55; }}
+            .source-note {{
+                margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(148, 163, 184, 0.16);
+                color: var(--muted); font-size: 12px; line-height: 1.7;
+            }}
+            .cred-row {{
+                display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+            }}
+            .cred-row:last-child {{ border-bottom: none; }}
+            .cred-label {{ color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }}
+            .cred-value {{ color: var(--brand); font-size: 13px; font-weight: 800; text-align: right; }}
 
             .status {{ border-radius: 26px; padding: 30px; border: 1px solid var(--line); background: rgba(255,255,255,0.94); box-shadow: var(--shadow-lg); }}
             .status.success {{ background: rgba(236, 253, 245, 0.96); border-color: rgba(167, 243, 208, 0.92); }}
@@ -363,6 +385,11 @@ def render_page(title: str, body: str) -> str:
             .loading-list {{ display: grid; gap: 9px; margin-top: 14px; }}
             .loading-list-item {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 16px; background: rgba(248, 250, 252, 0.9); border: 1px solid rgba(148, 163, 184, 0.12); color: var(--muted); font-size: 13px; }}
             .loading-list-item.is-active {{ border-color: rgba(15, 23, 42, 0.10); background: rgba(15, 23, 42, 0.04); color: var(--brand); }}
+            .completion-state {{ display: none; }}
+            .completion-kicker {{ color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }}
+            .completion-list {{ display: grid; gap: 10px; margin: 18px 0; }}
+            .completion-item {{ padding: 12px 14px; border-radius: 16px; background: rgba(4, 120, 87, 0.06); border: 1px solid rgba(4, 120, 87, 0.14); color: var(--brand); font-size: 13px; line-height: 1.6; }}
+            .completion-actions {{ display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }}
             @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
 
             @media (max-width: 1120px) {{
@@ -390,30 +417,46 @@ def render_page(title: str, body: str) -> str:
 
         <div class="loading-overlay" id="loadingOverlay">
             <div class="loading-card">
-                <div class="loading-head">
-                    <div class="loading-pill"><span class="spinner"></span> Generating report</div>
-                    <div id="loadingPercent">0%</div>
-                </div>
-                <div class="brand-overline" style="margin-bottom: 8px;">Bradford &amp; Marsh Consulting</div>
-                <h3>Building the recruitment audit report</h3>
-                <p>
-                    Reviewing your inputs, comparing benchmark position, and assembling the final recruitment audit report.
-                </p>
+                <div id="loadingState">
+                    <div class="loading-head">
+                        <div class="loading-pill"><span class="spinner"></span> Generating report</div>
+                        <div id="loadingPercent">0%</div>
+                    </div>
+                    <div class="brand-overline" style="margin-bottom: 8px;">Bradford &amp; Marsh Consulting</div>
+                    <h3>Building the recruitment audit report</h3>
+                    <p>
+                        Reviewing your inputs, comparing benchmark position, and assembling the final recruitment audit report.
+                    </p>
 
-                <div class="loading-track">
-                    <div class="loading-fill" id="loadingFill"></div>
+                    <div class="loading-track">
+                        <div class="loading-fill" id="loadingFill"></div>
+                    </div>
+
+                    <div class="loading-meta">
+                        <div id="loadingStatus">Preparing submission</div>
+                        <div>Preparing download</div>
+                    </div>
+
+                    <div class="loading-list">
+                        <div class="loading-list-item is-active"><span>Reviewing company information</span><span>01</span></div>
+                        <div class="loading-list-item"><span>Scoring recruitment process maturity</span><span>02</span></div>
+                        <div class="loading-list-item"><span>Building charts and benchmark comparison</span><span>03</span></div>
+                        <div class="loading-list-item"><span>Preparing final report</span><span>04</span></div>
+                    </div>
                 </div>
 
-                <div class="loading-meta">
-                    <div id="loadingStatus">Preparing submission</div>
-                    <div>Preparing download</div>
-                </div>
-
-                <div class="loading-list">
-                    <div class="loading-list-item is-active"><span>Reviewing company information</span><span>01</span></div>
-                    <div class="loading-list-item"><span>Scoring recruitment process maturity</span><span>02</span></div>
-                    <div class="loading-list-item"><span>Building charts and benchmark comparison</span><span>03</span></div>
-                    <div class="loading-list-item"><span>Preparing final report</span><span>04</span></div>
+                <div class="completion-state" id="completionState">
+                    <div class="completion-kicker">Report ready</div>
+                    <h3>Your recruitment audit has been prepared</h3>
+                    <p>The Word report has been downloaded and is ready for leadership review.</p>
+                    <div class="completion-list">
+                        <div class="completion-item">Includes an executive overview, section-by-section scorecard and benchmark comparison.</div>
+                        <div class="completion-item">Highlights the most material gaps, operating risks and the actions that should be prioritised first.</div>
+                        <div class="completion-item" id="completionFilename">File prepared</div>
+                    </div>
+                    <div class="completion-actions">
+                        <button class="button button-secondary" type="button" id="closeCompletion">Close</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -436,6 +479,7 @@ def render_page(title: str, body: str) -> str:
                 const summaryHiring = document.getElementById("summaryHiring");
                 const summaryRoles = document.getElementById("summaryRoles");
                 const summaryContact = document.getElementById("summaryContact");
+                const closeCompletion = document.getElementById("closeCompletion");
                 const yesNoFields = Array.from(document.querySelectorAll(".yes-no-field select"));
                 let isSubmitting = false;
                 let currentStep = 1;
@@ -558,6 +602,26 @@ def render_page(title: str, body: str) -> str:
                     loadingItems.forEach((item, itemIndex) => item.classList.toggle("is-active", itemIndex === activeIndex));
                 }}
 
+                function showCompletionState(filename) {{
+                    const overlay = document.getElementById("loadingOverlay");
+                    const loadingState = document.getElementById("loadingState");
+                    const completionState = document.getElementById("completionState");
+                    const completionFilename = document.getElementById("completionFilename");
+                    if (overlay) overlay.style.display = "flex";
+                    if (loadingState) loadingState.style.display = "none";
+                    if (completionState) completionState.style.display = "block";
+                    if (completionFilename) completionFilename.textContent = "Downloaded file: " + filename;
+                }}
+
+                function resetOverlayState() {{
+                    const overlay = document.getElementById("loadingOverlay");
+                    const loadingState = document.getElementById("loadingState");
+                    const completionState = document.getElementById("completionState");
+                    if (overlay) overlay.style.display = "none";
+                    if (loadingState) loadingState.style.display = "block";
+                    if (completionState) completionState.style.display = "none";
+                }}
+
                 async function downloadReport(event) {{
                     if (isSubmitting) {{
                         event.preventDefault();
@@ -622,14 +686,12 @@ def render_page(title: str, body: str) -> str:
                         link.remove();
                         window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
                         window.setTimeout(() => {{
-                            const overlay = document.getElementById("loadingOverlay");
-                            if (overlay) overlay.style.display = "none";
+                            showCompletionState(filename);
                             isSubmitting = false;
                             submitButtons.forEach((button) => button.disabled = false);
-                        }}, 900);
+                        }}, 500);
                     }} catch (error) {{
-                        const overlay = document.getElementById("loadingOverlay");
-                        if (overlay) overlay.style.display = "none";
+                        resetOverlayState();
                         isSubmitting = false;
                         submitButtons.forEach((button) => button.disabled = false);
                         window.alert("The report could not be generated. Please try again.");
@@ -647,6 +709,9 @@ def render_page(title: str, body: str) -> str:
                         event.preventDefault();
                         downloadReport(event);
                     }});
+                }}
+                if (closeCompletion) {{
+                    closeCompletion.addEventListener("click", resetOverlayState);
                 }}
                 showStep(1);
             }})();
@@ -781,16 +846,16 @@ def form():
                     <div class="section-head">
                         <div>
                             <div class="section-kicker">Stage 1 · Organisation context</div>
-                            <h2 class="section-title">Define the business context the audit will use as its operating baseline.</h2>
+                            <h2 class="section-title">Set the business context and stakeholder details the audit will use as its operating baseline.</h2>
                             <p class="section-copy">
-                                This stage establishes the operating environment behind recruitment performance, including company profile, hiring demand, role mix and market context. That baseline shapes how the final report interprets delivery risk and process capability.
+                                This stage captures the commercial context behind hiring performance, including who owns the review, where the business is hiring, what demand looks like and which roles matter most. That baseline shapes how the report interprets process quality, delivery risk and recruitment pressure.
                             </p>
                         </div>
                         <div class="section-aside">
-                            Business context<br>
-                            Hiring profile<br>
-                            Role demand<br>
-                            Market backdrop
+                            Client contact<br>
+                            Company profile<br>
+                            Hiring demand<br>
+                            Role focus
                         </div>
                     </div>
 
@@ -802,22 +867,22 @@ def form():
 
                         <div class="field">
                             <label for="contact_name">Contact name</label>
-                            <input id="contact_name" name="contact_name" data-summary-target required>
+                            <input id="contact_name" name="contact_name" autocomplete="name" data-summary-target required>
                         </div>
 
                         <div class="field">
                             <label for="job_title">Job title</label>
-                            <input id="job_title" name="job_title" data-summary-target required>
+                            <input id="job_title" name="job_title" autocomplete="organization-title" data-summary-target required>
                         </div>
 
                         <div class="field">
                             <label for="phone_number">Phone number</label>
-                            <input id="phone_number" name="phone_number" type="tel" data-summary-target required>
+                            <input id="phone_number" name="phone_number" type="tel" autocomplete="tel" inputmode="tel" pattern="[0-9+()\\-\\s]{{7,}}" title="Enter a valid phone number." data-summary-target required>
                         </div>
 
                         <div class="field">
                             <label for="email_address">Email address</label>
-                            <input id="email_address" name="email_address" type="email" data-summary-target required>
+                            <input id="email_address" name="email_address" type="email" autocomplete="email" data-summary-target required>
                         </div>
 
                         <div class="field">
@@ -830,13 +895,13 @@ def form():
 
                         <div class="field">
                             <label for="location">Location</label>
-                            <input id="location" name="location" data-summary-target required>
+                            <input id="location" name="location" autocomplete="address-level2" data-summary-target required>
                         </div>
 
                         <div class="field has-suffix">
                             <label for="headcount">Number of employees</label>
                             <div class="input-wrap">
-                                <input id="headcount" name="headcount" data-summary-target required>
+                                <input id="headcount" name="headcount" inputmode="numeric" pattern="[0-9, ]+" title="Use numbers only." data-summary-target required>
                                 <span class="suffix">employees</span>
                             </div>
                         </div>
@@ -844,7 +909,7 @@ def form():
                         <div class="field has-suffix">
                             <label for="annual_hiring_volume">Annual hiring volume</label>
                             <div class="input-wrap">
-                                <input id="annual_hiring_volume" name="annual_hiring_volume" data-summary-target required>
+                                <input id="annual_hiring_volume" name="annual_hiring_volume" inputmode="numeric" pattern="[0-9, ]+" title="Use numbers only." data-summary-target required>
                                 <span class="suffix">hires</span>
                             </div>
                         </div>
@@ -856,12 +921,12 @@ def form():
 
                         <div class="field full">
                             <label for="office_address">Office address</label>
-                            <textarea id="office_address" name="office_address" rows="3" data-summary-target required></textarea>
+                            <textarea id="office_address" name="office_address" rows="3" autocomplete="street-address" data-summary-target required></textarea>
                         </div>
                     </div>
 
                     <div class="note">
-                        Use current-state information rather than target-state plans. The more accurately this reflects live operating conditions, the more credible the final audit will be.
+                        <strong>Use current-state information.</strong> The report is designed for leadership review, so the closer this is to live operating conditions, the stronger the conclusions and recommendations will be.
                     </div>
                 </section>
 
@@ -869,9 +934,9 @@ def form():
                     <div class="section-head">
                         <div>
                             <div class="section-kicker">Stage 2 · Recruitment performance</div>
-                            <h2 class="section-title">Capture the performance metrics that reveal delay, conversion loss and hiring risk.</h2>
+                            <h2 class="section-title">Capture the performance data that shows where recruitment is slowing, leaking quality or creating avoidable cost.</h2>
                             <p class="section-copy">
-                                These inputs are used to assess recruitment throughput, funnel quality, offer conversion, interview friction and early-tenure stability. They form the quantitative layer of the audit and anchor the benchmark comparison.
+                                These figures show how the hiring function is performing in practice. They are used to assess throughput, conversion, interview efficiency, offer outcomes and early attrition, then compared against UK benchmark data where relevant.
                             </p>
                         </div>
                         <div class="section-aside">
@@ -895,7 +960,7 @@ def form():
                         <div class="field has-suffix">
                             <label for="applications_per_role">Applications per role</label>
                             <div class="input-wrap">
-                                <input id="applications_per_role" name="applications_per_role" placeholder="e.g. 36" data-summary-target required>
+                                <input id="applications_per_role" name="applications_per_role" placeholder="e.g. 36" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." data-summary-target required>
                                 <span class="suffix">applications</span>
                             </div>
                         </div>
@@ -903,7 +968,7 @@ def form():
                         <div class="field has-suffix">
                             <label for="offer_acceptance">Offer acceptance rate</label>
                             <div class="input-wrap">
-                                <input id="offer_acceptance" name="offer_acceptance" placeholder="e.g. 72" data-summary-target required>
+                                <input id="offer_acceptance" name="offer_acceptance" placeholder="e.g. 72" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." data-summary-target required>
                                 <span class="suffix">%</span>
                             </div>
                         </div>
@@ -911,7 +976,7 @@ def form():
                         <div class="field has-suffix">
                             <label for="first_year_attrition">First-year attrition</label>
                             <div class="input-wrap">
-                                <input id="first_year_attrition" name="first_year_attrition" placeholder="e.g. 18" data-summary-target required>
+                                <input id="first_year_attrition" name="first_year_attrition" placeholder="e.g. 18" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." data-summary-target required>
                                 <span class="suffix">%</span>
                             </div>
                         </div>
@@ -919,7 +984,7 @@ def form():
                         <div class="field has-suffix">
                             <label for="interview_stages">Number of interview stages</label>
                             <div class="input-wrap">
-                                <input id="interview_stages" name="interview_stages" placeholder="e.g. 2" data-summary-target required>
+                                <input id="interview_stages" name="interview_stages" placeholder="e.g. 2" inputmode="numeric" pattern="[0-9 ]+" title="Use numbers only." data-summary-target required>
                                 <span class="suffix">stages</span>
                             </div>
                         </div>
@@ -935,14 +1000,14 @@ def form():
                         <div class="field has-suffix">
                             <label for="candidates_reaching_interview">Candidates reaching interview per role</label>
                             <div class="input-wrap">
-                                <input id="candidates_reaching_interview" name="candidates_reaching_interview" placeholder="e.g. 5" data-summary-target required>
+                                <input id="candidates_reaching_interview" name="candidates_reaching_interview" placeholder="e.g. 5" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." data-summary-target required>
                                 <span class="suffix">candidates</span>
                             </div>
                         </div>
                     </div>
 
                     <div class="note">
-                        These metrics are used to identify bottlenecks, conversion inefficiency, process drag and repeat-hiring pressure created by attrition or delayed decision making.
+                        These figures are used to identify bottlenecks, conversion loss, delayed decision-making and repeat-hiring pressure created by attrition.
                     </div>
                 </section>
 
@@ -950,9 +1015,9 @@ def form():
                     <div class="section-head">
                         <div>
                             <div class="section-kicker">Stage 3 · Operating discipline</div>
-                            <h2 class="section-title">Assess the level of control, standardisation and accountability in the hiring process.</h2>
+                            <h2 class="section-title">Assess how consistently the hiring process is controlled, managed and owned.</h2>
                             <p class="section-copy">
-                                These control questions test whether the recruitment model is governed consistently in practice. They indicate how far hiring activity depends on repeatable process design rather than individual manager behaviour.
+                                These control questions test whether recruitment is being run through a defined operating model or left to individual manager preference. They show where consistency is strong, where governance is weak and where quality depends too heavily on workarounds.
                             </p>
                         </div>
                         <div class="section-aside">
@@ -968,13 +1033,13 @@ def form():
                     </div>
 
                     <div class="note">
-                        Answer according to what is consistently used in day-to-day operation, not what exists only in policy documents or informal discussion.
+                        Answer based on what is used consistently in day-to-day hiring, not what exists only in policy documents or informal discussion.
                     </div>
                 </section>
 
                 <div class="footer-bar">
                     <div class="footer-copy">
-                        Each stage contributes directly to the scoring model, benchmark comparison and final recommendations in the completed audit report.
+                        Each stage feeds directly into the scorecard, benchmark comparison and the recommendations set out in the final report.
                     </div>
                     <div class="button-row">
                         <button class="button button-ghost" type="button" data-prev-step>Back</button>
@@ -998,6 +1063,16 @@ def form():
             </div>
 
             <div class="sidebar-card">
+                <div class="sidebar-kicker">Report preview</div>
+                <h3 class="sidebar-title">What leadership will receive</h3>
+                <div class="preview-list">
+                    <div class="preview-row"><div class="preview-index">01</div><div class="preview-copy"><strong>Executive overview</strong><span>A concise written summary of overall recruitment performance, pressure points and leadership implications.</span></div></div>
+                    <div class="preview-row"><div class="preview-index">02</div><div class="preview-copy"><strong>Scorecard and charts</strong><span>Twelve scored areas, overall rating, benchmark visuals and section-by-section performance profile.</span></div></div>
+                    <div class="preview-row"><div class="preview-index">03</div><div class="preview-copy"><strong>Priority actions</strong><span>Commercially relevant recommendations showing what should be fixed first and why.</span></div></div>
+                </div>
+            </div>
+
+            <div class="sidebar-card">
                 <div class="sidebar-kicker">Assessment summary</div>
                 <h3 class="sidebar-title">Current operating profile</h3>
                 <p id="stageReadiness">Organisation profile: 0% complete</p>
@@ -1016,6 +1091,10 @@ def form():
                     <div class="chip"><span class="chip-dot"></span> Benchmark comparison</div>
                     <div class="chip" id="disciplineChip"><span class="chip-dot"></span> Controls pending</div>
                 </div>
+
+                <div class="source-note">
+                    Benchmark comparisons are drawn from UK recruitment benchmark data and applied where the selected sector and submitted metrics provide a relevant basis for comparison.
+                </div>
             </div>
 
             <div class="sidebar-card">
@@ -1029,12 +1108,20 @@ def form():
             </div>
 
             <div class="sidebar-card">
+                <div class="sidebar-kicker">Benchmark basis</div>
+                <h3 class="sidebar-title">How the comparison is used</h3>
+                <div class="cred-row"><div class="cred-label">Coverage</div><div class="cred-value">Sector-led UK reference points</div></div>
+                <div class="cred-row"><div class="cred-label">Used for</div><div class="cred-value">Time to hire, applications, offer acceptance and attrition</div></div>
+                <div class="cred-row"><div class="cred-label">Purpose</div><div class="cred-value">Show where performance is aligned, behind or ahead</div></div>
+            </div>
+
+            <div class="sidebar-card">
                 <div class="sidebar-kicker">What the audit delivers</div>
                 <h3 class="sidebar-title">Included in the final report</h3>
                 <div class="trust-grid">
-                    <div class="trust-row"><div class="trust-mark">✓</div><div>Section-by-section scoring across strategy, operational performance and process governance.</div></div>
-                    <div class="trust-row"><div class="trust-mark">✓</div><div>Benchmark comparison, chart output and interpretation of the submitted performance data.</div></div>
-                    <div class="trust-row"><div class="trust-mark">✓</div><div>Priority actions aimed at improving hiring speed, decision quality, process consistency and retention outcomes.</div></div>
+                    <div class="trust-row"><div class="trust-mark">✓</div><div>Section-by-section scoring across strategy, delivery performance and process control.</div></div>
+                    <div class="trust-row"><div class="trust-mark">✓</div><div>Benchmark comparison, chart output and written interpretation of submitted performance data.</div></div>
+                    <div class="trust-row"><div class="trust-mark">✓</div><div>Priority actions designed to improve hiring speed, decision quality, process consistency and retention outcomes.</div></div>
                 </div>
             </div>
         </aside>

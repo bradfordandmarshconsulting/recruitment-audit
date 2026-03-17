@@ -562,23 +562,25 @@ def create_section_score_chart(company_name: str, section_scores: list[int]) -> 
     labels = [_short_label(title) for title in SECTION_ORDER]
     positions = list(range(len(labels)))
 
-    plt.figure(figsize=(9.2, 6.8))
+    fig, ax = plt.subplots(figsize=(9.5, 7.1))
+    _apply_chart_style(fig, ax)
     for start, end, color in RAG_BANDS:
-        plt.axvspan(start, end, color=color, alpha=0.08)
+        ax.axvspan(start, end, color=color, alpha=0.06)
     bar_colors = [_score_hex(score) for score in section_scores]
-    plt.barh(positions, section_scores, color=bar_colors, edgecolor="#0f172a", linewidth=0.4)
-    plt.xlim(0, 10)
-    plt.xticks(range(0, 11, 2))
-    plt.yticks(positions, labels)
-    plt.gca().invert_yaxis()
-    plt.grid(axis="x", alpha=0.2, linestyle="--")
-    plt.title(f"{company_name} section scores", fontsize=14, pad=14)
-    plt.xlabel("Score out of 10")
+    ax.barh(positions, section_scores, color=bar_colors, edgecolor="#142033", linewidth=0.6, height=0.62)
+    ax.set_xlim(0, 10)
+    ax.set_xticks(range(0, 11, 2))
+    ax.set_yticks(positions, labels)
+    ax.invert_yaxis()
+    ax.grid(axis="x", alpha=0.16, linestyle="--")
+    ax.set_title(f"{company_name} section score profile", fontsize=15, pad=14, color="#142033", fontweight="bold")
+    ax.set_xlabel("Score out of 10", color="#5d6778")
     for pos, score in enumerate(section_scores):
-        plt.text(min(score + 0.15, 9.7), pos, f"{score}/10", va="center", fontsize=9, color="#0f172a")
-    plt.tight_layout()
-    plt.savefig(path, dpi=220, bbox_inches="tight")
-    plt.close()
+        ax.text(min(score + 0.18, 9.7), pos, f"{score}/10", va="center", fontsize=9, color="#142033", fontweight="bold")
+    fig.text(0.125, 0.93, "Twelve operating areas scored against the audit framework", fontsize=9.5, color="#5d6778")
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    fig.savefig(path, dpi=220, bbox_inches="tight", facecolor=fig.get_facecolor())
+    plt.close(fig)
     return path
 
 
@@ -592,22 +594,23 @@ def create_overall_score_chart(company_name: str, total_score: int) -> Path:
     rating = _rating_for_score(score)
     fill_color = _score_hex(round((score / max_score) * 10))
 
-    plt.figure(figsize=(8.8, 2.8))
-    ax = plt.gca()
-    ax.barh([0], [max_score], color="#e2e8f0", height=0.5)
-    ax.barh([0], [score], color=fill_color, height=0.5)
+    fig, ax = plt.subplots(figsize=(9.2, 3.3))
+    _apply_chart_style(fig, ax)
+    ax.barh([0], [max_score], color="#e5e7eb", height=0.48)
+    ax.barh([0], [score], color=fill_color, height=0.48)
     ax.set_xlim(0, max_score)
     ax.set_yticks([])
     ax.set_xticks(range(0, max_score + 1, 20))
     ax.grid(axis="x", alpha=0.18, linestyle="--")
-    ax.set_title(f"{company_name} overall recruitment score", fontsize=14, pad=12)
-    ax.text(score, 0, f"  {score}/120 ({pct}%)", va="center", ha="left", fontsize=10, color="#0f172a")
-    ax.text(0, -0.48, f"Rating: {rating}", fontsize=10, color=fill_color)
+    ax.set_title(f"{company_name} overall recruitment score", fontsize=15, pad=14, color="#142033", fontweight="bold")
+    ax.text(min(score + 2, max_score - 2), 0, f"{score}/120 ({pct}%)", va="center", ha="left", fontsize=10, color="#142033", fontweight="bold")
+    ax.text(0, -0.50, f"Rating: {rating}", fontsize=10, color=fill_color, fontweight="bold")
+    fig.text(0.125, 0.90, "Overall score against the full 120-point framework", fontsize=9.5, color="#5d6778")
     for spine in ax.spines.values():
         spine.set_visible(False)
-    plt.tight_layout()
-    plt.savefig(path, dpi=220, bbox_inches="tight")
-    plt.close()
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    fig.savefig(path, dpi=220, bbox_inches="tight", facecolor=fig.get_facecolor())
+    plt.close(fig)
     return path
 
 
@@ -623,29 +626,32 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         ("First-year attrition", metrics.get("first_year_attrition"), _safe_float(benchmark_row.get("avg_attrition_pct")), "%", False),
     ]
 
-    fig, axes = plt.subplots(2, 2, figsize=(9.2, 6.6))
+    fig, axes = plt.subplots(2, 2, figsize=(9.5, 7.0))
+    fig.patch.set_facecolor("#f8f3ed")
     axes = axes.flatten()
     for ax, (label, client_value, benchmark_value, suffix, higher_is_better) in zip(axes, items):
+        _apply_chart_style(fig, ax)
         client_value = client_value or 0
         benchmark_value = benchmark_value or 0
         ceiling = max(client_value, benchmark_value, 1) * 1.25
         ahead = client_value >= benchmark_value if higher_is_better else client_value <= benchmark_value
-        client_color = "#16a34a" if ahead else "#dc2626"
-        ax.barh(["Client", "Benchmark"], [client_value, benchmark_value], color=[client_color, "#cbd5e1"])
+        client_color = "#047857" if ahead else "#b91c1c"
+        ax.barh(["Client", "Benchmark"], [client_value, benchmark_value], color=[client_color, "#cbd5e1"], height=0.56)
         ax.set_xlim(0, ceiling)
-        ax.set_title(label, fontsize=11)
+        ax.set_title(label, fontsize=11.5, color="#142033", fontweight="bold")
         ax.grid(axis="x", alpha=0.16, linestyle="--")
-        ax.text(client_value, 0, f"  {client_value:.1f}{suffix}", va="center", ha="left", fontsize=9)
-        ax.text(benchmark_value, 1, f"  {benchmark_value:.1f}{suffix}", va="center", ha="left", fontsize=9)
+        ax.text(min(client_value + ceiling * 0.02, ceiling * 0.96), 0, f"{client_value:.1f}{suffix}", va="center", ha="left", fontsize=9, color="#142033", fontweight="bold")
+        ax.text(min(benchmark_value + ceiling * 0.02, ceiling * 0.96), 1, f"{benchmark_value:.1f}{suffix}", va="center", ha="left", fontsize=9, color="#5d6778")
         direction = "Ahead of benchmark" if ahead else "Behind benchmark"
-        ax.text(0, -0.42, direction, fontsize=9, color=client_color)
+        ax.text(0, -0.42, direction, fontsize=9, color=client_color, fontweight="bold")
         for spine in ax.spines.values():
             spine.set_visible(False)
 
-    fig.suptitle(f"{company_name} benchmark comparison", fontsize=14, y=0.98)
-    plt.tight_layout()
-    plt.savefig(path, dpi=220, bbox_inches="tight")
-    plt.close()
+    fig.suptitle(f"{company_name} benchmark comparison", fontsize=15, y=0.98, color="#142033", fontweight="bold")
+    fig.text(0.125, 0.93, "Key recruitment metrics compared against the relevant UK benchmark reference point", fontsize=9.5, color="#5d6778")
+    fig.tight_layout(rect=(0, 0, 1, 0.94))
+    fig.savefig(path, dpi=220, bbox_inches="tight", facecolor=fig.get_facecolor())
+    plt.close(fig)
     return path
 
 
@@ -878,6 +884,15 @@ def _add_scoring_methodology(document: Document, data: dict, benchmark_summary: 
         ),
         after=4,
     )
+    benchmark_row = benchmark_summary.get("benchmark_row", {}) or {}
+    source_basis = str(benchmark_row.get("source_basis", "")).strip()
+    data_quality_note = str(benchmark_row.get("data_quality_note", "")).strip()
+    if source_basis or data_quality_note:
+        _add_supporting_note(
+            document,
+            "Benchmark basis: "
+            + " ".join(part for part in [source_basis, data_quality_note] if part),
+        )
 
     table = document.add_table(rows=1, cols=3)
     table.autofit = True
@@ -960,6 +975,11 @@ def _add_priority_matrix(document: Document, data: dict, report: dict) -> None:
 
 def _add_chart_section(document: Document, chart_paths: list[Path]) -> None:
     _add_section_banner(document, "Charts and visual analysis")
+    _add_paragraph(
+        document,
+        "The charts below are intended for leadership review and should be read alongside the detailed findings and priority actions in the report.",
+        after=6,
+    )
     captions = [
         "Overall score against the full 120-point framework.",
         "Section-by-section scoring profile.",
@@ -976,6 +996,7 @@ def _add_chart_section(document: Document, chart_paths: list[Path]) -> None:
             run.font.name = "Aptos"
             run.font.size = Pt(9.2)
             run.font.color.rgb = MUTED
+            document.add_paragraph("")
 
 
 def _add_detailed_findings(document: Document, data: dict, report: dict) -> None:
@@ -1110,6 +1131,15 @@ def _set_cell(
     run.font.size = Pt(size)
     run.font.color.rgb = color
     cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+
+
+def _apply_chart_style(fig, ax) -> None:
+    fig.patch.set_facecolor("#f8f3ed")
+    ax.set_facecolor("#f8f3ed")
+    ax.tick_params(axis="x", colors="#5d6778", labelsize=9)
+    ax.tick_params(axis="y", colors="#142033", labelsize=9)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
 
 
 def _apply_brand_headers_and_footers(document: Document, data: dict) -> None:
