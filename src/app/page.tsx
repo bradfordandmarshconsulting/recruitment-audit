@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 const valueAreas = [
@@ -21,7 +22,7 @@ export default function HomePage() {
       <div className="mx-auto max-w-7xl px-6 py-8 sm:px-8 lg:px-10">
         <header className="flex flex-col gap-6 border-b border-[#d9d4cb] pb-8 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.28em] text-[#b5935a]">Bradford & Marsh Consulting</div>
+            <Image src="/brand/bradford-marsh-logo.png" alt="Bradford & Marsh Consulting" width={278} height={56} priority />
             <div className="mt-3 text-sm text-slate-500">Recruitment operating model assessment and consulting-grade report output.</div>
           </div>
           <Link

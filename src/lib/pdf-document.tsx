@@ -1,11 +1,11 @@
+import path from "path";
 import React from "react";
-import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
 import type {
   AuditReport,
   BenchmarkRow,
   MethodologyRow,
-  PriorityMatrixEntry,
   ScoreStatus,
   SectionReport,
 } from "@/lib/scoring";
@@ -16,6 +16,7 @@ const BRAND_CHARCOAL = "#1c2430";
 const BRAND_GREY = "#6b7280";
 const BRAND_LINE = "#d8dce3";
 const BRAND_PANEL = "#f7f5f1";
+const LOGO_SRC = path.join(process.cwd(), "public/brand/bradford-marsh-logo.png");
 
 const styles = StyleSheet.create({
   coverPage: {
@@ -46,17 +47,24 @@ const styles = StyleSheet.create({
     borderBottomColor: BRAND_LINE,
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
   },
-  headerBrand: {
-    fontSize: 9,
-    fontFamily: "Helvetica-Bold",
-    color: BRAND_NAVY,
-    textTransform: "uppercase",
-    letterSpacing: 1.2,
+  headerBrandWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  headerLogo: {
+    width: 126,
+    height: 26,
   },
   headerMeta: {
     fontSize: 8.5,
     color: BRAND_GREY,
+    textAlign: "right",
+  },
+  headerMetaStrong: {
+    fontFamily: "Helvetica-Bold",
+    color: BRAND_NAVY,
   },
   footer: {
     position: "absolute",
@@ -71,32 +79,16 @@ const styles = StyleSheet.create({
     fontSize: 8.5,
     color: BRAND_GREY,
   },
-  coverBrand: {
-    fontSize: 13,
-    fontFamily: "Helvetica-Bold",
-    color: BRAND_NAVY,
-    textTransform: "uppercase",
-    letterSpacing: 1.4,
-    marginBottom: 16,
+  coverLogo: {
+    width: 300,
+    height: 61,
+    marginBottom: 24,
   },
   coverRule: {
     width: 120,
     height: 2,
     backgroundColor: BRAND_GOLD,
-    marginBottom: 30,
-  },
-  coverMonogram: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    borderWidth: 1,
-    borderColor: BRAND_GOLD,
-    color: BRAND_NAVY,
-    textAlign: "center",
-    fontFamily: "Helvetica-Bold",
-    fontSize: 20,
-    lineHeight: 2.55,
-    marginBottom: 24,
+    marginBottom: 26,
   },
   coverTitle: {
     fontSize: 27,
@@ -149,6 +141,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     fontSize: 8.5,
     color: BRAND_GREY,
+  },
+  letterLogo: {
+    width: 220,
+    height: 45,
+    marginBottom: 10,
   },
   letterBlock: {
     marginTop: 18,
@@ -313,6 +310,60 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 10,
   },
+  matrixGrid: {
+    marginTop: 10,
+  },
+  matrixRow: {
+    flexDirection: "row",
+    marginBottom: 10,
+  },
+  matrixCell: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: BRAND_LINE,
+    borderRadius: 14,
+    backgroundColor: "#ffffff",
+    padding: 12,
+    minHeight: 154,
+  },
+  matrixCellGap: {
+    marginRight: 10,
+  },
+  matrixEyebrow: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    textTransform: "uppercase",
+    color: BRAND_GREY,
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
+  matrixTitle: {
+    fontSize: 12,
+    fontFamily: "Helvetica-Bold",
+    color: BRAND_NAVY,
+    marginBottom: 8,
+  },
+  matrixItem: {
+    borderRadius: 10,
+    padding: 8,
+    marginBottom: 7,
+  },
+  matrixItemTitle: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
+    color: BRAND_CHARCOAL,
+    marginBottom: 3,
+  },
+  matrixItemNote: {
+    fontSize: 8.5,
+    lineHeight: 1.45,
+    color: BRAND_CHARCOAL,
+  },
+  matrixAxisNote: {
+    fontSize: 8.2,
+    color: BRAND_GREY,
+    marginTop: 4,
+  },
   chartPanel: {
     borderWidth: 1,
     borderColor: BRAND_LINE,
@@ -458,12 +509,75 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+type MatrixQuadrant = {
+  eyebrow: string;
+  title: string;
+  status: ScoreStatus;
+  items: { title: string; note: string }[];
+};
+
+function priorityQuadrants(report: AuditReport): MatrixQuadrant[] {
+  const watchSections = report.sections
+    .filter(
+      (section) =>
+        section.score >= 71 &&
+        section.score < 85 &&
+        !report.priorityMatrix.some((row) => row.priorityArea === section.title) &&
+        !report.strongestAreas.slice(0, 2).some((area) => area.title === section.title),
+    )
+    .slice(0, 2);
+
+  return [
+    {
+      eyebrow: "High impact | High urgency",
+      title: "Stabilise now",
+      status: "red",
+      items: report.priorityMatrix.slice(0, 2).map((row) => ({
+        title: row.priorityArea,
+        note: row.firstMove,
+      })),
+    },
+    {
+      eyebrow: "High impact | Lower urgency",
+      title: "Tighten next",
+      status: "amber",
+      items: report.priorityMatrix.slice(2, 4).map((row) => ({
+        title: row.priorityArea,
+        note: row.firstMove,
+      })),
+    },
+    {
+      eyebrow: "Lower impact | High visibility",
+      title: "Monitor",
+      status: "amber",
+      items: watchSections.map((section) => ({
+        title: section.title,
+        note: section.headlineDiagnosis,
+      })),
+    },
+    {
+      eyebrow: "Lower impact | Lower urgency",
+      title: "Maintain",
+      status: "green",
+      items: report.strongestAreas.slice(0, 2).map((section) => ({
+        title: section.title,
+        note: section.headlineDiagnosis,
+      })),
+    },
+  ];
+}
+
 function PageChrome() {
   return (
     <>
       <View fixed style={styles.header}>
-        <Text style={styles.headerBrand}>Bradford & Marsh Consulting</Text>
-        <Text style={styles.headerMeta}>Recruitment Operating Model Audit</Text>
+        <View style={styles.headerBrandWrap}>
+          <Image src={LOGO_SRC} style={styles.headerLogo} alt="" />
+        </View>
+        <View>
+          <Text style={[styles.headerMeta, styles.headerMetaStrong]}>Recruitment Operating Model Audit</Text>
+          <Text style={styles.headerMeta}>Confidential client report</Text>
+        </View>
       </View>
       <View fixed style={styles.footer}>
         <Text>Confidential client report</Text>
@@ -547,22 +661,35 @@ function BenchmarkTable({ rows }: { rows: BenchmarkRow[] }) {
   );
 }
 
-function PriorityMatrix({ rows }: { rows: PriorityMatrixEntry[] }) {
+function PriorityMatrix({ report }: { report: AuditReport }) {
+  const quadrants = priorityQuadrants(report);
+
   return (
-    <View>
-      {rows.map((row) => {
-        const colours = statusColours(row.status);
-        return (
-          <View key={row.priorityArea} style={[styles.matrixCard, { backgroundColor: colours.background }]}>
-            <Text style={[styles.h3, { marginBottom: 4 }]}>{row.priorityArea}</Text>
-            <Text style={[styles.body, { marginBottom: 6 }]}>
-              {row.urgency} priority. {row.impact} impact.
-            </Text>
-            <Text style={[styles.body, { marginBottom: 6 }]}>{row.whyItMatters}</Text>
-            <Text style={[styles.body, styles.muted]}>First move: {row.firstMove}</Text>
-          </View>
-        );
-      })}
+    <View style={styles.matrixGrid}>
+      {[quadrants.slice(0, 2), quadrants.slice(2, 4)].map((row, rowIndex) => (
+        <View key={`matrix-row-${rowIndex}`} style={styles.matrixRow}>
+          {row.map((quadrant, quadrantIndex) => {
+            const colours = statusColours(quadrant.status);
+            return (
+              <View key={quadrant.title} style={[styles.matrixCell, quadrantIndex === 0 ? styles.matrixCellGap : {}]}>
+                <Text style={styles.matrixEyebrow}>{quadrant.eyebrow}</Text>
+                <Text style={styles.matrixTitle}>{quadrant.title}</Text>
+                {quadrant.items.length ? (
+                  quadrant.items.map((item) => (
+                    <View key={item.title} style={[styles.matrixItem, { backgroundColor: colours.background }]}>
+                      <Text style={styles.matrixItemTitle}>{item.title}</Text>
+                      <Text style={styles.matrixItemNote}>{item.note}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.matrixAxisNote}>No additional areas currently sit in this quadrant.</Text>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      ))}
+      <Text style={styles.matrixAxisNote}>Quadrants reflect the likely business impact of each gap and how quickly leadership should act.</Text>
     </View>
   );
 }
@@ -693,9 +820,8 @@ export function AuditPdfDocument({ report }: { report: AuditReport }) {
   return (
     <Document title={`${report.profile.companyName} Recruitment Audit`}>
       <Page size="A4" style={styles.coverPage}>
-        <Text style={styles.coverBrand}>Bradford & Marsh Consulting</Text>
+        <Image src={LOGO_SRC} style={styles.coverLogo} alt="" />
         <View style={styles.coverRule} />
-        <Text style={styles.coverMonogram}>B&amp;M</Text>
         <Text style={styles.coverTitle}>Recruitment Operating Model Audit</Text>
         <Text style={styles.coverSubTitle}>
           A structured review of how the recruitment process is operating today, where delivery is drifting, and what leadership should correct first.
@@ -737,11 +863,7 @@ export function AuditPdfDocument({ report }: { report: AuditReport }) {
       <Page size="A4" style={styles.page}>
         <PageChrome />
         <Text style={styles.h1}>Introductory letter</Text>
-        <View style={styles.letterBlock}>
-          <Text style={styles.body}>Michael Marsh</Text>
-          <Text style={[styles.body, styles.muted]}>Managing Director</Text>
-          <Text style={[styles.body, styles.muted]}>Bradford &amp; Marsh Consulting</Text>
-        </View>
+        <Image src={LOGO_SRC} style={styles.letterLogo} alt="" />
         <View style={styles.letterBlock}>
           <Text style={styles.body}>{report.letter.salutation}</Text>
           {report.letter.paragraphs.map((paragraph) => (
@@ -830,7 +952,7 @@ export function AuditPdfDocument({ report }: { report: AuditReport }) {
         <Text style={styles.body}>
           The areas below are the most commercially important improvement points based on the lowest scores and the likely effect on hiring pace, decision quality and candidate conversion.
         </Text>
-        <PriorityMatrix rows={report.priorityMatrix} />
+        <PriorityMatrix report={report} />
 
         <Text style={styles.h2}>Charts and visual analysis</Text>
         <SectionScoreChart sections={report.sections} />

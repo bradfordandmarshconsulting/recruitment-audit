@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useTransition } from "react";
 
 import {
@@ -21,7 +22,6 @@ type AuditApiResponse = {
 };
 
 const BRAND_NAVY = "#1f2a40";
-const BRAND_GOLD = "#b5935a";
 
 const initialProfile: AuditProfile = {
   contactName: "",
@@ -192,35 +192,101 @@ function ScorePill({ score, status, large = false }: { score: number; status: Sc
 }
 
 function MatrixCard({
+  eyebrow,
   title,
   items,
   tone,
 }: {
+  eyebrow: string;
   title: string;
-  items: string[];
-  tone: "red" | "amber" | "green" | "slate";
+  items: { title: string; note: string }[];
+  tone: "red" | "amber" | "green";
 }) {
   const toneClasses =
     tone === "red"
-      ? "bg-red-50 text-red-800"
+      ? "border-red-200 bg-red-50 text-red-800"
       : tone === "amber"
-        ? "bg-amber-50 text-amber-800"
-        : tone === "green"
-          ? "bg-green-50 text-green-800"
-          : "bg-slate-50 text-slate-700";
+        ? "border-amber-200 bg-amber-50 text-amber-800"
+        : "border-green-200 bg-green-50 text-green-800";
 
   return (
-    <div className={`rounded-[1.25rem] p-4 ${toneClasses}`}>
-      <div className="text-xs font-semibold uppercase tracking-[0.18em]">{title}</div>
+    <div className={`rounded-[1.5rem] border p-4 ${toneClasses}`}>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-75">{eyebrow}</div>
+      <div className="mt-2 text-sm font-semibold uppercase tracking-[0.16em]">{title}</div>
       <div className="mt-3 space-y-2">
-        {items.map((item) => (
-          <div key={item} className="rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-800">
-            {item}
+        {items.length ? (
+          items.map((item) => (
+            <div key={item.title} className="rounded-2xl bg-white px-4 py-3">
+              <div className="text-sm font-semibold text-slate-900">{item.title}</div>
+              <div className="mt-1 text-sm leading-6 text-slate-600">{item.note}</div>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-2xl bg-white px-4 py-3 text-sm leading-6 text-slate-600">
+            No additional areas currently sit in this quadrant.
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
+}
+
+type MatrixQuadrant = {
+  eyebrow: string;
+  title: string;
+  tone: "red" | "amber" | "green";
+  items: { title: string; note: string }[];
+};
+
+function priorityQuadrants(report: AuditReport): MatrixQuadrant[] {
+  const watchSections = report.sections
+    .filter(
+      (section) =>
+        section.score >= 71 &&
+        section.score < 85 &&
+        !report.priorityMatrix.some((row) => row.priorityArea === section.title) &&
+        !report.strongestAreas.slice(0, 2).some((area) => area.title === section.title),
+    )
+    .slice(0, 2);
+
+  return [
+    {
+      eyebrow: "High impact | High urgency",
+      title: "Stabilise now",
+      tone: "red",
+      items: report.priorityMatrix.slice(0, 2).map((row) => ({
+        title: row.priorityArea,
+        note: row.firstMove,
+      })),
+    },
+    {
+      eyebrow: "High impact | Lower urgency",
+      title: "Tighten next",
+      tone: "amber",
+      items: report.priorityMatrix.slice(2, 4).map((row) => ({
+        title: row.priorityArea,
+        note: row.firstMove,
+      })),
+    },
+    {
+      eyebrow: "Lower impact | High visibility",
+      title: "Monitor",
+      tone: "amber",
+      items: watchSections.map((section) => ({
+        title: section.title,
+        note: section.headlineDiagnosis,
+      })),
+    },
+    {
+      eyebrow: "Lower impact | Lower urgency",
+      title: "Maintain",
+      tone: "green",
+      items: report.strongestAreas.slice(0, 2).map((section) => ({
+        title: section.title,
+        note: section.headlineDiagnosis,
+      })),
+    },
+  ];
 }
 
 function ScoreSummaryTable({ rows }: { rows: AuditReport["scoreSummary"] }) {
@@ -455,14 +521,14 @@ function ResultsView({
   downloading: boolean;
 }) {
   const overallColours = sectionColours(report.overallStatus);
-  const watchAreas = report.sections.filter((section) => section.score > 70 && section.score < 85).slice(0, 2).map((section) => section.title);
+  const matrixQuadrants = priorityQuadrants(report);
 
   return (
     <div className="space-y-8">
       <section className="overflow-hidden rounded-[2.25rem] border border-[#d9d4cb] bg-white shadow-[0_32px_90px_rgba(15,23,42,0.08)]">
         <div className="border-b border-[#d9d4cb] bg-[linear-gradient(135deg,#1f2a40_0%,#26344d_100%)] px-8 py-8 text-white md:px-10">
-          <div className="inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-200">
-            Bradford &amp; Marsh Consulting
+          <div className="inline-flex rounded-[1.25rem] border border-white/10 bg-white px-5 py-3 shadow-[0_18px_40px_rgba(15,23,42,0.14)]">
+            <Image src="/brand/bradford-marsh-logo.png" alt="Bradford & Marsh Consulting" width={228} height={46} priority />
           </div>
           <div className="mt-6 grid gap-8 xl:grid-cols-[1.15fr_0.85fr] xl:items-end">
             <div>
@@ -512,7 +578,10 @@ function ResultsView({
       </section>
 
       <section className="rounded-[1.75rem] border border-slate-200 bg-white p-8 shadow-[0_18px_50px_rgba(15,23,42,0.05)]">
-        <div className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Introductory letter</div>
+        <div className="flex items-center justify-between gap-6 border-b border-slate-200 pb-5">
+          <div className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Introductory letter</div>
+          <Image src="/brand/bradford-marsh-logo.png" alt="Bradford & Marsh Consulting" width={206} height={42} />
+        </div>
         <div className="mt-5 max-w-4xl space-y-4 text-sm leading-7 text-slate-700">
           <p>{report.letter.salutation}</p>
           {report.letter.paragraphs.map((paragraph) => (
@@ -584,11 +653,19 @@ function ResultsView({
             These are the areas most likely to affect hiring pace, candidate quality and commercial control if left unchanged.
           </p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <MatrixCard title="Immediate attention" tone="red" items={report.priorityMatrix.slice(0, 2).map((row) => row.priorityArea)} />
-            <MatrixCard title="Tighten next" tone="amber" items={report.priorityMatrix.slice(2, 4).map((row) => row.priorityArea)} />
-            <MatrixCard title="Watch closely" tone="slate" items={watchAreas.length ? watchAreas : ["No additional watch items"]} />
-            <MatrixCard title="Maintain" tone="green" items={report.strongestAreas.slice(0, 2).map((area) => area.title)} />
+            {matrixQuadrants.map((quadrant) => (
+              <MatrixCard
+                key={quadrant.title}
+                eyebrow={quadrant.eyebrow}
+                title={quadrant.title}
+                tone={quadrant.tone}
+                items={quadrant.items}
+              />
+            ))}
           </div>
+          <p className="mt-4 text-sm leading-7 text-slate-500">
+            Quadrants reflect the likely business impact of each gap and how quickly leadership should act.
+          </p>
         </article>
 
         <article className="rounded-[1.75rem] border border-slate-200 bg-white p-7 shadow-[0_18px_50px_rgba(15,23,42,0.05)]">
@@ -808,9 +885,7 @@ export function AuditExperience() {
                 Step {completionLabel(step)}
               </div>
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.28em]" style={{ color: BRAND_GOLD }}>
-                  Bradford &amp; Marsh Consulting
-                </div>
+                <Image src="/brand/bradford-marsh-logo.png" alt="Bradford & Marsh Consulting" width={238} height={48} priority />
                 <h2 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-5xl">
                   {step === 0 ? "Company profile" : currentSection?.title}
                 </h2>
