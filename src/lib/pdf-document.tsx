@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/alt-text */
 import path from "path";
 import React from "react";
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
@@ -572,7 +573,7 @@ function PageChrome() {
     <>
       <View fixed style={styles.header}>
         <View style={styles.headerBrandWrap}>
-          <Image src={LOGO_SRC} style={styles.headerLogo} alt="" />
+          <Image src={LOGO_SRC} style={styles.headerLogo} />
         </View>
         <View>
           <Text style={[styles.headerMeta, styles.headerMetaStrong]}>Recruitment Operating Model Audit</Text>
@@ -820,7 +821,7 @@ export function AuditPdfDocument({ report }: { report: AuditReport }) {
   return (
     <Document title={`${report.profile.companyName} Recruitment Audit`}>
       <Page size="A4" style={styles.coverPage}>
-        <Image src={LOGO_SRC} style={styles.coverLogo} alt="" />
+        <Image src={LOGO_SRC} style={styles.coverLogo} />
         <View style={styles.coverRule} />
         <Text style={styles.coverTitle}>Recruitment Operating Model Audit</Text>
         <Text style={styles.coverSubTitle}>
@@ -863,7 +864,7 @@ export function AuditPdfDocument({ report }: { report: AuditReport }) {
       <Page size="A4" style={styles.page}>
         <PageChrome />
         <Text style={styles.h1}>Introductory letter</Text>
-        <Image src={LOGO_SRC} style={styles.letterLogo} alt="" />
+        <Image src={LOGO_SRC} style={styles.letterLogo} />
         <View style={styles.letterBlock}>
           <Text style={styles.body}>{report.letter.salutation}</Text>
           {report.letter.paragraphs.map((paragraph) => (

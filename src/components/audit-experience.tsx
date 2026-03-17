@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import {
   auditSections,
@@ -10,9 +10,7 @@ import {
   type AuditAnswers,
   type AuditProfile,
   type AuditSection,
-  type NumberQuestion,
   type Question,
-  type SelectQuestion,
 } from "@/lib/audit-config";
 import type { AuditReport, ScoreStatus, SectionReport } from "@/lib/scoring";
 
@@ -40,6 +38,41 @@ const initialAnswers: AuditAnswers = auditSections.reduce<AuditAnswers>((accumul
   return accumulator;
 }, {});
 
+const totalQuestionCount = auditSections.reduce((count, section) => count + section.questions.length, 0);
+
+const profileFieldGuidance: Record<keyof AuditProfile, { title: string; description: string }> = {
+  contactName: {
+    title: "Who is completing this audit?",
+    description: "This name is used in the report letter and client-facing cover details.",
+  },
+  contactRole: {
+    title: "What is their job title?",
+    description: "This helps position the report correctly for leadership review.",
+  },
+  companyName: {
+    title: "Which organisation is being assessed?",
+    description: "Use the client company name exactly as it should appear on the report.",
+  },
+  sector: {
+    title: "Which sector does the business operate in?",
+    description: "Sector context is used across the audit summary and benchmark commentary.",
+  },
+  location: {
+    title: "Where is the business based?",
+    description: "Use the main office location or the operating base the audit relates to.",
+  },
+  companySize: {
+    title: "What is the approximate size of the business?",
+    description: "This provides context for scale, process complexity and hiring cadence.",
+  },
+  annualHiringVolume: {
+    title: "How many hires are typically made in a year?",
+    description: "A realistic estimate is enough. This supports the operating context in the report.",
+  },
+};
+
+type ExperiencePhase = "profile" | "section-intro" | "question" | "section-complete";
+
 function statusCopy(status: ScoreStatus) {
   if (status === "green") {
     return "Strong";
@@ -60,120 +93,265 @@ function sectionColours(status: ScoreStatus) {
   return scorePalette.red;
 }
 
-function questionValue(question: Question, answers: AuditAnswers) {
-  return answers[question.id] ?? "";
+function validateProfileField(fieldId: keyof AuditProfile, profile: AuditProfile) {
+  return profile[fieldId].trim() ? "" : `Enter ${profileFields.find((field) => field.id === fieldId)?.label.toLowerCase()}.`;
 }
 
-function completionLabel(step: number) {
-  return `${step + 1} of ${auditSections.length + 1}`;
+function validateQuestion(question: Question, answers: AuditAnswers) {
+  return answers[question.id] ? "" : `Complete ${question.label.toLowerCase()}.`;
 }
 
-function validateProfile(profile: AuditProfile) {
-  const missing = profileFields.find((field) => !profile[field.id as keyof AuditProfile].trim());
-  return missing ? `Enter ${missing.label.toLowerCase()}.` : "";
-}
-
-function validateSection(section: AuditSection, answers: AuditAnswers) {
-  const missing = section.questions.find((question) => !answers[question.id]);
-  return missing ? `Complete ${missing.label.toLowerCase()}.` : "";
-}
-
-function SelectField({
-  question,
-  value,
-  onChange,
+function QuestionProgress({
+  sectionIndex,
+  questionIndex,
+  sectionQuestionCount,
+  overallProgress,
+  sectionProgress,
 }: {
-  question: SelectQuestion;
-  value: string;
-  onChange: (questionId: string, nextValue: string) => void;
+  sectionIndex: number;
+  questionIndex: number;
+  sectionQuestionCount: number;
+  overallProgress: number;
+  sectionProgress: number;
 }) {
   return (
-    <div className="space-y-3">
-      <div className="space-y-1">
-        <label className="text-sm font-semibold text-slate-900">{question.label}</label>
-        <p className="text-sm leading-6 text-slate-500">{question.description}</p>
+    <div className="space-y-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Section progress</div>
+          <div className="mt-2 text-sm text-slate-600">
+            Section {sectionIndex + 1} of {auditSections.length}
+            <span className="mx-2 text-slate-300">/</span>
+            Question {questionIndex + 1} of {sectionQuestionCount}
+          </div>
+        </div>
+        <div className="min-w-[180px] text-left sm:text-right">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Overall progress</div>
+          <div className="mt-2 text-sm text-slate-600">{overallProgress}% complete</div>
+        </div>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {question.options.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => onChange(question.id, option.value)}
-            className={`rounded-3xl border px-4 py-4 text-left transition ${
-              value === option.value
-                ? "border-slate-900 bg-slate-950 text-white shadow-[0_20px_45px_rgba(15,23,42,0.16)]"
-                : "border-slate-200 bg-white text-slate-900 hover:border-slate-300 hover:shadow-[0_16px_30px_rgba(15,23,42,0.06)]"
-            }`}
-          >
-            <div className="mb-1 text-sm font-semibold">{option.label}</div>
-            <div className={`text-sm leading-6 ${value === option.value ? "text-slate-200" : "text-slate-500"}`}>
-              {option.description}
-            </div>
-          </button>
-        ))}
+      <div className="space-y-3">
+        <div>
+          <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.18em] text-slate-400">
+            <span>Section</span>
+            <span>{sectionProgress}%</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-full rounded-full transition-all duration-300" style={{ width: `${sectionProgress}%`, backgroundColor: BRAND_NAVY }} />
+          </div>
+        </div>
+        <div>
+          <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.18em] text-slate-400">
+            <span>Overall</span>
+            <span>{overallProgress}%</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-full rounded-full transition-all duration-300" style={{ width: `${overallProgress}%`, backgroundColor: "#b5935a" }} />
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-function NumberField({
-  question,
+function ProfileFieldScreen({
+  fieldId,
   value,
   onChange,
+  index,
 }: {
-  question: NumberQuestion;
+  fieldId: keyof AuditProfile;
   value: string;
-  onChange: (questionId: string, nextValue: string) => void;
+  onChange: (value: string) => void;
+  index: number;
 }) {
+  const field = profileFields.find((item) => item.id === fieldId)!;
+  const guidance = profileFieldGuidance[fieldId];
+
   return (
-    <div className="space-y-3">
-      <div className="space-y-1">
-        <label htmlFor={question.id} className="text-sm font-semibold text-slate-900">
-          {question.label}
+    <div className="space-y-10" style={{ animation: "diagnosticFade 280ms ease-out" }}>
+      <div className="space-y-5">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+          Report setup
+          <span className="mx-2 text-slate-300">/</span>
+          Field {index + 1} of {profileFields.length}
+        </div>
+        <div className="space-y-4">
+          <h2 className="max-w-3xl text-4xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-5xl">{guidance.title}</h2>
+          <p className="max-w-2xl text-lg leading-8 text-slate-600">{guidance.description}</p>
+        </div>
+      </div>
+
+      <div className="max-w-2xl space-y-4">
+        <label htmlFor={field.id} className="block text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">
+          {field.label}
         </label>
-        <p className="text-sm leading-6 text-slate-500">{question.description}</p>
-      </div>
-      <div className="relative">
         <input
-          id={question.id}
-          type="number"
-          inputMode="decimal"
-          min={question.min}
-          max={question.max}
-          step={question.step}
+          id={field.id}
+          type={field.type ?? "text"}
           value={value}
-          onChange={(event) => onChange(question.id, event.target.value)}
-          placeholder={question.placeholder}
-          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-900"
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={field.placeholder}
+          className="w-full rounded-[1.75rem] border border-slate-200 bg-white px-6 py-5 text-2xl text-slate-950 outline-none transition placeholder:text-slate-300 focus:border-slate-400"
         />
-        {question.unit ? (
-          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400">
-            {question.unit}
-          </span>
-        ) : null}
       </div>
     </div>
   );
 }
 
-function SectionQuestions({
+function SectionIntroScreen({
   section,
-  answers,
-  onChange,
+  sectionIndex,
 }: {
   section: AuditSection;
-  answers: AuditAnswers;
-  onChange: (questionId: string, nextValue: string) => void;
+  sectionIndex: number;
 }) {
   return (
-    <div className="space-y-8">
-      {section.questions.map((question) =>
-        question.type === "select" ? (
-          <SelectField key={question.id} question={question} value={questionValue(question, answers)} onChange={onChange} />
-        ) : (
-          <NumberField key={question.id} question={question} value={questionValue(question, answers)} onChange={onChange} />
-        ),
+    <div className="space-y-10" style={{ animation: "diagnosticFade 280ms ease-out" }}>
+      <div className="space-y-5">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+          Section {sectionIndex + 1} of {auditSections.length}
+        </div>
+        <div className="space-y-4">
+          <h2 className="max-w-3xl text-4xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-5xl">{section.title}</h2>
+          <p className="max-w-2xl text-xl leading-8 text-slate-600">{section.strapline}</p>
+        </div>
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <div className="rounded-[1.75rem] bg-[#f7f5f1] p-7">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">What is being assessed</div>
+          <p className="mt-4 text-base leading-8 text-slate-700">This section assesses {section.strapline.charAt(0).toLowerCase() + section.strapline.slice(1)}.</p>
+        </div>
+        <div className="rounded-[1.75rem] bg-slate-950 p-7 text-white">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">Why it matters commercially</div>
+          <p className="mt-4 text-base leading-8 text-slate-200">{section.summary}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuestionScreen({
+  section,
+  question,
+  value,
+  onSelect,
+  onNumberChange,
+  sectionIndex,
+  questionIndex,
+  overallProgress,
+}: {
+  section: AuditSection;
+  question: Question;
+  value: string;
+  onSelect: (nextValue: string) => void;
+  onNumberChange: (nextValue: string) => void;
+  sectionIndex: number;
+  questionIndex: number;
+  overallProgress: number;
+}) {
+  const sectionProgress = Math.round((questionIndex / section.questions.length) * 100);
+
+  return (
+    <div className="space-y-10" style={{ animation: "diagnosticFade 280ms ease-out" }}>
+      <QuestionProgress
+        sectionIndex={sectionIndex}
+        questionIndex={questionIndex}
+        sectionQuestionCount={section.questions.length}
+        overallProgress={overallProgress}
+        sectionProgress={sectionProgress}
+      />
+
+      <div className="space-y-5">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">{section.title}</div>
+        <div className="space-y-4">
+          <h2 className="max-w-3xl text-4xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-5xl">{question.label}</h2>
+          <p className="max-w-2xl text-lg leading-8 text-slate-600">{question.description}</p>
+        </div>
+      </div>
+
+      {question.type === "select" ? (
+        <div className="max-w-3xl space-y-4">
+          {question.options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onSelect(option.value)}
+              className={`w-full rounded-[1.75rem] px-6 py-6 text-left transition ${
+                value === option.value
+                  ? "bg-slate-950 text-white shadow-[0_24px_60px_rgba(15,23,42,0.18)]"
+                  : "bg-[#f8f6f2] text-slate-950 hover:bg-white hover:shadow-[0_18px_45px_rgba(15,23,42,0.08)]"
+              }`}
+            >
+              <div className="text-lg font-semibold">{option.label}</div>
+              <div className={`mt-2 max-w-2xl text-base leading-7 ${value === option.value ? "text-slate-200" : "text-slate-600"}`}>
+                {option.description}
+              </div>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="max-w-2xl space-y-4">
+          <label htmlFor={question.id} className="block text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">
+            Response
+          </label>
+          <div className="relative">
+            <input
+              id={question.id}
+              type="number"
+              inputMode="decimal"
+              min={question.min}
+              max={question.max}
+              step={question.step}
+              value={value}
+              onChange={(event) => onNumberChange(event.target.value)}
+              placeholder={question.placeholder}
+              className="w-full rounded-[1.75rem] border border-slate-200 bg-white px-6 py-5 pr-20 text-3xl text-slate-950 outline-none transition placeholder:text-slate-300 focus:border-slate-400"
+            />
+            {question.unit ? (
+              <span className="pointer-events-none absolute right-6 top-1/2 -translate-y-1/2 text-lg font-medium text-slate-400">{question.unit}</span>
+            ) : null}
+          </div>
+        </div>
       )}
+    </div>
+  );
+}
+
+function SectionCompleteScreen({
+  section,
+  sectionIndex,
+  overallProgress,
+}: {
+  section: AuditSection;
+  sectionIndex: number;
+  overallProgress: number;
+}) {
+  return (
+    <div className="space-y-10" style={{ animation: "diagnosticFade 280ms ease-out" }}>
+      <QuestionProgress
+        sectionIndex={sectionIndex}
+        questionIndex={section.questions.length - 1}
+        sectionQuestionCount={section.questions.length}
+        overallProgress={overallProgress}
+        sectionProgress={100}
+      />
+
+      <div className="space-y-5">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Section complete</div>
+        <div className="space-y-4">
+          <h2 className="max-w-3xl text-4xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-5xl">{section.title} complete</h2>
+          <p className="max-w-2xl text-lg leading-8 text-slate-600">
+            This part of the diagnostic is complete. The next section will assess the next pressure point in the recruitment process.
+          </p>
+        </div>
+      </div>
+
+      <div className="max-w-2xl rounded-[1.75rem] bg-[#f7f5f1] p-7">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Why this matters</div>
+        <p className="mt-4 text-base leading-8 text-slate-700">{section.summary}</p>
+      </div>
     </div>
   );
 }
@@ -780,15 +958,24 @@ function ResultsView({
 export function AuditExperience() {
   const [profile, setProfile] = useState<AuditProfile>(initialProfile);
   const [answers, setAnswers] = useState<AuditAnswers>(initialAnswers);
-  const [step, setStep] = useState(0);
+  const [phase, setPhase] = useState<ExperiencePhase>("profile");
+  const [profileIndex, setProfileIndex] = useState(0);
+  const [sectionIndex, setSectionIndex] = useState(0);
+  const [questionIndex, setQuestionIndex] = useState(0);
   const [error, setError] = useState("");
   const [report, setReport] = useState<AuditReport | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isDownloading, setIsDownloading] = useState(false);
+  const autoAdvanceRef = useRef<number | null>(null);
 
-  const totalSteps = auditSections.length + 1;
-  const currentSection = step === 0 ? null : auditSections[step - 1];
-  const progress = Math.round(((step + 1) / totalSteps) * 100);
+  const currentProfileField = profileFields[profileIndex];
+  const currentSection = auditSections[sectionIndex];
+  const currentQuestion = phase === "question" ? currentSection.questions[questionIndex] : null;
+  const answeredQuestionCount = auditSections.reduce(
+    (count, section) => count + section.questions.filter((question) => answers[question.id]).length,
+    0,
+  );
+  const overallProgress = Math.round((answeredQuestionCount / totalQuestionCount) * 100);
 
   const updateProfile = (fieldId: keyof AuditProfile, value: string) => {
     setProfile((current) => ({ ...current, [fieldId]: value }));
@@ -798,28 +985,67 @@ export function AuditExperience() {
     setAnswers((current) => ({ ...current, [questionId]: value }));
   };
 
-  const nextStep = () => {
-    const validationMessage = step === 0 ? validateProfile(profile) : validateSection(currentSection!, answers);
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceRef.current) {
+        window.clearTimeout(autoAdvanceRef.current);
+      }
+    };
+  }, []);
+
+  const clearAutoAdvance = () => {
+    if (autoAdvanceRef.current) {
+      window.clearTimeout(autoAdvanceRef.current);
+      autoAdvanceRef.current = null;
+    }
+  };
+
+  const moveToNextQuestion = () => {
+    setError("");
+    if (questionIndex < currentSection.questions.length - 1) {
+      setQuestionIndex((current) => current + 1);
+      return;
+    }
+    setPhase("section-complete");
+  };
+
+  const advanceProfile = () => {
+    const validationMessage = validateProfileField(currentProfileField.id as keyof AuditProfile, profile);
     if (validationMessage) {
       setError(validationMessage);
       return;
     }
+
     setError("");
-    setStep((current) => Math.min(current + 1, totalSteps - 1));
+
+    if (profileIndex < profileFields.length - 1) {
+      setProfileIndex((current) => current + 1);
+      return;
+    }
+
+    setProfileIndex(0);
+    setSectionIndex(0);
+    setQuestionIndex(0);
+    setPhase("section-intro");
   };
 
-  const previousStep = () => {
+  const continueQuestion = () => {
+    if (!currentQuestion) {
+      return;
+    }
+
+    const validationMessage = validateQuestion(currentQuestion, answers);
+    if (validationMessage) {
+      setError(validationMessage);
+      return;
+    }
+
     setError("");
-    setStep((current) => Math.max(current - 1, 0));
+    moveToNextQuestion();
   };
 
   const generateReport = () => {
-    const validationMessage = validateSection(currentSection!, answers);
-    if (validationMessage) {
-      setError(validationMessage);
-      return;
-    }
-
+    clearAutoAdvance();
     setError("");
     startTransition(async () => {
       const response = await fetch("/api/audit", {
@@ -837,6 +1063,84 @@ export function AuditExperience() {
 
       setReport(payload.report);
     });
+  };
+
+  const nextStep = () => {
+    clearAutoAdvance();
+
+    if (phase === "profile") {
+      advanceProfile();
+      return;
+    }
+
+    if (phase === "section-intro") {
+      setError("");
+      setQuestionIndex(0);
+      setPhase("question");
+      return;
+    }
+
+    if (phase === "question") {
+      continueQuestion();
+      return;
+    }
+
+    if (sectionIndex < auditSections.length - 1) {
+      setError("");
+      setSectionIndex((current) => current + 1);
+      setQuestionIndex(0);
+      setPhase("section-intro");
+      return;
+    }
+
+    generateReport();
+  };
+
+  const previousStep = () => {
+    clearAutoAdvance();
+    setError("");
+
+    if (phase === "profile") {
+      setProfileIndex((current) => Math.max(current - 1, 0));
+      return;
+    }
+
+    if (phase === "section-intro") {
+      if (sectionIndex === 0) {
+        setPhase("profile");
+        setProfileIndex(profileFields.length - 1);
+        return;
+      }
+
+      const previousSectionIndex = sectionIndex - 1;
+      setSectionIndex(previousSectionIndex);
+      setQuestionIndex(auditSections[previousSectionIndex].questions.length - 1);
+      setPhase("question");
+      return;
+    }
+
+    if (phase === "question") {
+      if (questionIndex > 0) {
+        setQuestionIndex((current) => current - 1);
+        return;
+      }
+
+      setPhase("section-intro");
+      return;
+    }
+
+    setPhase("question");
+    setQuestionIndex(currentSection.questions.length - 1);
+  };
+
+  const handleSelectAnswer = (questionId: string, value: string) => {
+    updateAnswer(questionId, value);
+    setError("");
+    clearAutoAdvance();
+    autoAdvanceRef.current = window.setTimeout(() => {
+      moveToNextQuestion();
+      autoAdvanceRef.current = null;
+    }, 220);
   };
 
   const downloadReport = async () => {
@@ -876,113 +1180,95 @@ export function AuditExperience() {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <section className="rounded-[2.25rem] border border-[#d9d4cb] bg-white p-8 shadow-[0_32px_90px_rgba(15,23,42,0.08)] md:p-10">
-        <div className="mb-8 border-b border-[#d9d4cb] pb-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="space-y-3">
-              <div className="inline-flex rounded-full border border-slate-200 bg-[#f7f5f1] px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                Step {completionLabel(step)}
-              </div>
-              <div>
-                <Image src="/brand/bradford-marsh-logo.png" alt="Bradford & Marsh Consulting" width={238} height={48} priority />
-                <h2 className="mt-3 text-4xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-5xl">
-                  {step === 0 ? "Company profile" : currentSection?.title}
-                </h2>
-                <p className="mt-4 max-w-3xl text-lg leading-8 text-slate-600">
-                  {step === 0
-                    ? "Set the report context first. This information is used throughout the final Bradford & Marsh audit and PDF output."
-                    : currentSection?.summary}
+    <div className="mx-auto max-w-5xl">
+      <section className="rounded-[2.5rem] border border-[#d9d4cb] bg-white px-8 py-8 shadow-[0_32px_90px_rgba(15,23,42,0.08)] md:px-12 md:py-10">
+        <div className="border-b border-[#ece7de] pb-8">
+          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+            <div className="space-y-5">
+              <Image src="/brand/bradford-marsh-logo.png" alt="Bradford & Marsh Consulting" width={238} height={48} priority />
+              <div className="space-y-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#b5935a]">Recruitment Operating Model Audit</div>
+                <p className="max-w-2xl text-base leading-7 text-slate-600">
+                  A structured diagnostic of how recruitment is operating today, one decision point at a time.
                 </p>
               </div>
             </div>
-            <div className="min-w-[180px] rounded-[1.5rem] border border-slate-200 bg-[#f7f5f1] px-5 py-4">
-              <div className="mb-2 flex items-center justify-between text-sm text-slate-500">
-                <span>Progress</span>
-                <span>{progress}%</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-white">
-                <div className="h-full rounded-full transition-all" style={{ width: `${progress}%`, backgroundColor: BRAND_NAVY }} />
-              </div>
+            <div className="rounded-[1.5rem] bg-[#f7f5f1] px-5 py-4 text-sm leading-6 text-slate-600">
+              {phase === "profile"
+                ? `Report setup ${profileIndex + 1} of ${profileFields.length}`
+                : `Section ${sectionIndex + 1} of ${auditSections.length}`}
             </div>
           </div>
         </div>
 
-        {step === 0 ? (
-          <div className="grid gap-5 sm:grid-cols-2">
-            {profileFields.map((field) => (
-              <div key={field.id} className={field.id === "companyName" ? "sm:col-span-2" : ""}>
-                <label htmlFor={field.id} className="mb-2 block text-sm font-semibold text-slate-900">
-                  {field.label}
-                </label>
-                <input
-                  id={field.id}
-                  type={field.type ?? "text"}
-                  value={profile[field.id as keyof AuditProfile]}
-                  onChange={(event) => updateProfile(field.id as keyof AuditProfile, event.target.value)}
-                  placeholder={field.placeholder}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-900"
-                />
-              </div>
-            ))}
+        <div className="mx-auto max-w-3xl py-12">
+          {phase === "profile" ? (
+            <ProfileFieldScreen
+              fieldId={currentProfileField.id as keyof AuditProfile}
+              value={profile[currentProfileField.id as keyof AuditProfile]}
+              onChange={(value) => updateProfile(currentProfileField.id as keyof AuditProfile, value)}
+              index={profileIndex}
+            />
+          ) : phase === "section-intro" ? (
+            <SectionIntroScreen section={currentSection} sectionIndex={sectionIndex} />
+          ) : phase === "section-complete" ? (
+            <SectionCompleteScreen section={currentSection} sectionIndex={sectionIndex} overallProgress={overallProgress} />
+          ) : (
+            <QuestionScreen
+              section={currentSection}
+              question={currentQuestion!}
+              value={answers[currentQuestion!.id] ?? ""}
+              onSelect={(value) => handleSelectAnswer(currentQuestion!.id, value)}
+              onNumberChange={(value) => updateAnswer(currentQuestion!.id, value)}
+              sectionIndex={sectionIndex}
+              questionIndex={questionIndex}
+              overallProgress={overallProgress}
+            />
+          )}
+
+          {error ? (
+            <div className="mt-8 rounded-[1.5rem] border border-red-200 bg-red-50 px-5 py-4 text-sm font-medium text-red-700">{error}</div>
+          ) : null}
+        </div>
+
+        <div className="border-t border-[#ece7de] pt-6">
+          <div className="mx-auto flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={previousStep}
+              disabled={(phase === "profile" && profileIndex === 0) || isPending}
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={nextStep}
+              disabled={isPending || (phase === "question" && currentQuestion?.type === "select")}
+              className="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
+              style={{ backgroundColor: BRAND_NAVY }}
+            >
+              {isPending
+                ? "Generating report..."
+                : phase === "section-intro"
+                  ? "Begin section"
+                  : phase === "section-complete"
+                    ? sectionIndex === auditSections.length - 1
+                      ? "Generate report"
+                      : "Continue"
+                    : phase === "profile"
+                      ? profileIndex === profileFields.length - 1
+                        ? "Begin assessment"
+                        : "Continue"
+                      : currentQuestion?.type === "number"
+                        ? questionIndex === currentSection.questions.length - 1
+                          ? "Complete section"
+                          : "Continue"
+                        : "Continue"}
+            </button>
           </div>
-        ) : (
-          <SectionQuestions section={currentSection!} answers={answers} onChange={updateAnswer} />
-        )}
-
-        {error ? (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>
-        ) : null}
-
-        <div className="mt-8 flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <button
-            type="button"
-            onClick={previousStep}
-            disabled={step === 0 || isPending}
-            className="inline-flex items-center justify-center rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Back
-          </button>
-          <button
-            type="button"
-            onClick={step === totalSteps - 1 ? generateReport : nextStep}
-            disabled={isPending}
-            className="inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
-            style={{ backgroundColor: BRAND_NAVY }}
-          >
-            {isPending ? "Generating report..." : step === totalSteps - 1 ? "Generate report" : "Continue"}
-          </button>
         </div>
       </section>
-
-      <aside className="space-y-6 xl:sticky xl:top-8 xl:self-start">
-        <section className="rounded-[2rem] border border-[#d9d4cb] bg-[linear-gradient(180deg,#1f2a40_0%,#26344d_100%)] p-6 text-white shadow-[0_28px_80px_rgba(15,23,42,0.18)]">
-          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#d8c29b]">What you receive</div>
-          <h3 className="mt-4 text-2xl font-semibold tracking-tight">A Bradford &amp; Marsh client report</h3>
-          <div className="mt-6 space-y-4 text-sm leading-6 text-slate-200">
-            <p>The report follows the Bradford &amp; Marsh consulting structure from executive overview through to roadmap and final verdict.</p>
-            <p>Each of the {auditSections.length} sections is scored out of 100 using the existing recruitment audit model.</p>
-            <p>The final PDF is formatted as a branded leadership document rather than a raw export.</p>
-          </div>
-        </section>
-
-        <section className="rounded-[2rem] border border-[#d9d4cb] bg-white p-6 shadow-[0_16px_44px_rgba(15,23,42,0.06)]">
-          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Audit scope</div>
-          <div className="mt-4 space-y-3">
-            {auditSections.map((section, index) => (
-              <div key={section.id} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-[#f7f5f1] px-4 py-3">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold text-slate-500">
-                  {index + 1}
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-slate-900">{section.title}</div>
-                  <div className="mt-1 text-sm leading-6 text-slate-500">{section.strapline}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      </aside>
     </div>
   );
 }
