@@ -863,20 +863,11 @@ def _clean_report(report: dict, data: dict, benchmark_summary: dict) -> dict:
             }
         )
 
-    if not cleaned["top_strengths"]:
-        cleaned["top_strengths"] = _fallback_strengths(data)
-    if not cleaned["top_problems"]:
-        cleaned["top_problems"] = _fallback_problems(data, benchmark_summary)
-    if not cleaned["day_30_plan"]:
-        cleaned["day_30_plan"] = _fallback_actions(cleaned["sections"], "immediate_actions")
-    if not cleaned["day_60_plan"]:
-        cleaned["day_60_plan"] = _fallback_actions(cleaned["sections"], "structural_improvements")
-    if not cleaned["day_90_plan"]:
-        cleaned["day_90_plan"] = [
-            "Reset score ownership across the full recruitment process.",
-            "Track the agreed KPIs in a monthly leadership review.",
-            "Re-run the audit after process changes are in place.",
-        ]
+    cleaned["top_strengths"] = _build_top_strengths(cleaned["sections"])
+    cleaned["top_problems"] = _build_top_problems(cleaned["sections"], benchmark_summary)
+    cleaned["day_30_plan"] = _build_day_plan(cleaned["sections"], 30)
+    cleaned["day_60_plan"] = _build_day_plan(cleaned["sections"], 60)
+    cleaned["day_90_plan"] = _build_day_plan(cleaned["sections"], 90)
     if not cleaned["overall_recruitment_score"]:
         cleaned["overall_recruitment_score"] = "The overall score points to a recruitment function that is workable, but not yet consistent enough in the areas that matter most."
     if not cleaned["final_verdict"]:
@@ -1164,13 +1155,10 @@ def _add_md_letter(story: list, styles: StyleSheet1, data: dict) -> None:
     story.append(Paragraph(f"Dear {_clean_text(data['contact_name'])},", styles["Body"]))
 
     paragraphs = [
-        "Thank you for taking the time to complete this recruitment audit assessment.",
-        "This report sets out a clear view of how your recruitment process is currently operating, based on the information provided and our assessment of your hiring activity.",
-        "It highlights where your process is working, where it is slowing down, and where inconsistency is likely affecting hiring outcomes. The aim is to give you a straightforward, evidence-based view of what needs attention and where improvements will have the most impact.",
-        "You should be able to use this report to guide internal discussion, challenge current ways of working, and prioritise changes that will improve both hiring speed and quality.",
-        "If you decide to act on the findings, we can support at different levels depending on what you need.",
-        "We can manage job advertising and pass through all applicants, support with advertising and screening to provide a qualified shortlist, or take full ownership of the recruitment process from end to end. This includes advertising, screening, coordinating with hiring managers, managing interviews, collecting feedback, and handling offers.",
-        "We can also design structured interview processes for specific roles, including tailored questions and scoring frameworks, to improve consistency and decision-making.",
+        "This report gives you a clear view of how the recruitment operating model is performing across planning, process control, delivery pace and decision quality. It reflects the information provided and tests how the current hiring process is working in practice rather than how it is intended to work on paper.",
+        "The findings are designed to show where hiring performance is being protected, where it is drifting, and where weak control is likely increasing delay, process waste or avoidable hiring risk. That matters because small failures in recruitment execution quickly become a commercial problem when they affect speed, quality and management time.",
+        "Used properly, this report should help you challenge current assumptions, focus discussion on the parts of the process that need intervention first, and decide where tighter ownership or better operating discipline is required. It is intended to support leadership judgement, not sit as a passive summary.",
+        "If you decide to act on the findings, Bradford & Marsh can support at the level that suits the business. That may mean improving advertising and screening, taking ownership of end-to-end delivery, or designing a more structured interview and decision process so hiring becomes faster, clearer and more consistent.",
         "If it would be useful to talk through the report or the next steps, I would be happy to do that with you directly.",
     ]
     for paragraph in paragraphs:
@@ -1864,7 +1852,13 @@ def _clean_text(value, max_sentences: int | None = None, max_words: int | None =
             text = re.sub(rf"\b{re.escape(source)}\b", target, text, flags=re.IGNORECASE)
     text = re.sub(r"\s+([,.;:])", r"\1", text)
     text = re.sub(r"([.?!]){2,}", r"\1", text)
-    text = re.sub(r"\b(top_problems|day_30_plan|day_60_plan|day_90_plan|sections)\b", "", text, flags=re.IGNORECASE)
+    text = re.sub(
+        r"\b(recruitment_strategy_and_workforce_planning|performance_metrics_and_funnel_conversion|employer_brand_and_market_perception|job_adverts_and_job_specifications|sourcing_and_advertising_process|application_handling_and_screening|interview_process_quality|decision_making_and_offer_process|onboarding_and_early_retention|staff_turnover_risks|candidate_experience|process_ownership_and_accountability|top_strengths|top_problems|day_30_plan|day_60_plan|day_90_plan|sections)\b",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(r"\{[^{}]+\}", "", text)
     text = re.sub(r"\s{2,}", " ", text).strip()
     if max_sentences is not None:
         text = " ".join(_split_sentences(text)[:max_sentences])
@@ -1925,6 +1919,9 @@ def _build_section_headline(title: str, score: int, current_state: str) -> str:
             f"{title} is standing up better than the rest of the operating model.",
             f"{title} is one of the few parts of hiring that looks properly settled.",
             f"{title} is carrying stronger discipline than most of the wider process.",
+            f"In {title.lower()}, the business is seeing better control than in most other parts of hiring.",
+            f"{title} is currently giving leadership one of the more reliable parts of the operating model.",
+            f"Compared with the rest of the process, {title.lower()} is in better shape.",
         ]
     elif score >= 6:
         templates = [
@@ -1934,6 +1931,9 @@ def _build_section_headline(title: str, score: int, current_state: str) -> str:
             f"{title} is functioning, but it is not yet being run with enough discipline.",
             f"{title} can support hiring demand, but the operating standard is still uneven.",
             f"{title} is moving in the right direction, but execution still drifts too often.",
+            f"In {title.lower()}, the process is serviceable but still too uneven for leadership confidence.",
+            f"{title} is not failing, but it is still short of the control standard the business needs.",
+            f"The current position in {title.lower()} is acceptable, though not yet dependable.",
         ]
     elif score >= 4:
         templates = [
@@ -1943,6 +1943,9 @@ def _build_section_headline(title: str, score: int, current_state: str) -> str:
             f"{title} is now holding the wider process back.",
             f"{title} is putting pace and control under visible pressure.",
             f"{title} is becoming a recurring source of hiring friction.",
+            f"The current position in {title.lower()} is now starting to undermine wider recruitment delivery.",
+            f"{title} is adding unnecessary friction at a point where the process needs tighter control.",
+            f"In practical terms, {title.lower()} is beginning to work against the rest of the hiring model.",
         ]
     else:
         templates = [
@@ -1952,6 +1955,9 @@ def _build_section_headline(title: str, score: int, current_state: str) -> str:
             f"{title} is now one of the clearest points of failure in the operating model.",
             f"{title} is causing the most serious control gap in the hiring process.",
             f"{title} is leaving the business too exposed to delay and weak execution.",
+            f"In its current state, {title.lower()} is a serious weakness in the recruitment model.",
+            f"{title} is where the process is currently breaking down most clearly.",
+            f"Of all the sections reviewed, {title.lower()} is creating the sharpest operational risk.",
         ]
     index = sum(ord(char) for char in f"{title_lower}|{current_state.lower()}") % len(templates)
     return templates[index]
@@ -2010,6 +2016,83 @@ def _fallback_actions(sections: list[dict], key: str) -> list[str]:
     for section in sorted(sections, key=lambda item: item["score"])[:3]:
         actions.extend(section[key][:1])
     return actions[:3]
+
+
+def _build_top_strengths(sections: list[dict]) -> list[str]:
+    strengths = []
+    for section in sorted(sections, key=lambda item: item["score"], reverse=True):
+        if section["score"] < 7:
+            continue
+        strengths.append(
+            _clean_text(
+                f"{section['title']} is a clear strength at {section['score']}/10.",
+                max_sentences=1,
+                max_words=16,
+            )
+        )
+        if len(strengths) >= 5:
+            break
+    return strengths or [
+        _clean_text(
+            f"{section['title']} is stronger than most other areas at {section['score']}/10.",
+            max_sentences=1,
+            max_words=16,
+        )
+        for section in sorted(sections, key=lambda item: item["score"], reverse=True)[:3]
+    ]
+
+
+def _build_top_problems(sections: list[dict], benchmark_summary: dict) -> list[str]:
+    problems = []
+    for section in sorted(sections, key=lambda item: item["score"]):
+        if section["score"] > 6 and len(problems) >= 3:
+            continue
+        problems.append(
+            _clean_text(
+                f"{section['title']} is a current weakness at {section['score']}/10.",
+                max_sentences=1,
+                max_words=16,
+            )
+        )
+        if len(problems) >= 4:
+            break
+    for item in benchmark_summary.get("comparisons", []):
+        if item["status"] == "In line":
+            continue
+        problems.append(_clean_text(f"{item['label']} is {item['comment'].lower()}.", max_sentences=1, max_words=16))
+        break
+    unique = []
+    seen = set()
+    for item in problems:
+        key = item.lower()
+        if item and key not in seen:
+            unique.append(item)
+            seen.add(key)
+    return unique[:5]
+
+
+def _build_day_plan(sections: list[dict], day: int) -> list[str]:
+    weakest = sorted(sections, key=lambda item: item["score"])[:3]
+    focus_titles = [section["title"].lower() for section in weakest]
+    if day == 30:
+        actions = [
+            f"Assign one accountable owner to {focus_titles[0]}.",
+            f"Set weekly operating reviews across {focus_titles[1]} and {focus_titles[2]}.",
+            "Confirm the core hiring KPIs and start tracking them in one place.",
+        ]
+    elif day == 60:
+        actions = [
+            f"Standardise how {focus_titles[0]} is run across active hiring.",
+            f"Tighten handoffs and response standards in {focus_titles[1]}.",
+            f"Brief hiring managers on the required process discipline for {focus_titles[2]}.",
+        ]
+    else:
+        actions = [
+            "Review the impact of the operating changes against the agreed KPIs.",
+            "Close any remaining control gaps in the weakest parts of the process.",
+            "Reset leadership ownership for the next audit cycle.",
+        ]
+    return [_clean_text(action, max_sentences=1, max_words=16) for action in actions]
 
 
 def _apply_chart_style(fig, ax) -> None:
