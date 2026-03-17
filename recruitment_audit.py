@@ -13,6 +13,8 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from PIL import Image as PILImage
+from PIL import ImageChops
 from matplotlib.ticker import MaxNLocator
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
@@ -39,6 +41,10 @@ BENCHMARK_CSV_FILE = BASE_DIR / "uk_recruitment_benchmarks.csv"
 OUTPUT_DIR = Path(os.environ.get("AUDIT_OUTPUT_DIR", "/tmp/BradfordMarshAI"))
 BENCHMARK_ENV_VAR = "RECRUITMENT_BENCHMARK_FILE"
 BRAND_LOGO = BASE_DIR / "public" / "brand" / "bradford-marsh-logo.png"
+SIGNATURE_CANDIDATES = [
+    Path("/mnt/data/a_digital_image_features_a_stylized_signature_of_t.png"),
+    Path("/Users/michaelmarsh/Desktop/a_digital_image_features_a_stylized_signature_of_t.png"),
+]
 
 PAGE_WIDTH, PAGE_HEIGHT = A4
 PAGE_MARGIN_X = 18 * mm
@@ -66,7 +72,7 @@ RED_BG = colors.HexColor("#FEE2E2")
 
 BRAND_NAME = "Bradford & Marsh Consulting"
 REPORT_TITLE = "Recruitment Operating Model Audit"
-CONFIDENTIAL_LABEL = "Confidential"
+CONFIDENTIAL_LABEL = "Private & Confidential"
 MANAGING_DIRECTOR_NAME = "Michael Marsh"
 MANAGING_DIRECTOR_TITLE = "Managing Director"
 
@@ -1048,6 +1054,28 @@ def _logo_image(width_mm: float) -> Image | None:
     return Image(str(BRAND_LOGO), width=width, height=height)
 
 
+def _signature_image(width_mm: float) -> Image | None:
+    source = next((path for path in SIGNATURE_CANDIDATES if path.exists()), None)
+    if not source:
+        return None
+
+    cropped_path = _output_dir() / f"{source.stem}_cropped.png"
+    try:
+        with PILImage.open(source).convert("RGBA") as image:
+            background = PILImage.new("RGBA", image.size, (255, 255, 255, 255))
+            diff = ImageChops.difference(image, background).convert("L")
+            bbox = diff.point(lambda value: 255 if value > 8 else 0).getbbox()
+            if bbox:
+                image = image.crop(bbox)
+            image.save(cropped_path)
+            width = width_mm * mm
+            height = width * (image.height / image.width)
+    except Exception:
+        return None
+
+    return Image(str(cropped_path), width=width, height=height)
+
+
 def _score_colours(score: int) -> tuple[colors.Color, colors.Color]:
     if score >= 8:
         return GREEN_BG, GREEN_TEXT
@@ -1099,7 +1127,6 @@ def _add_cover_page(story: list, styles: StyleSheet1, data: dict) -> None:
         [Paragraph("Sector", styles["CoverMetaLabel"]), Paragraph(_clean_text(data["sector"]), styles["CoverMetaValue"])],
         [Paragraph("Location", styles["CoverMetaLabel"]), Paragraph(_clean_text(data["location"]), styles["CoverMetaValue"])],
         [Paragraph("Date", styles["CoverMetaLabel"]), Paragraph(datetime.now().strftime("%d %B %Y"), styles["CoverMetaValue"])],
-        [Paragraph("Confidentiality", styles["CoverMetaLabel"]), Paragraph(CONFIDENTIAL_LABEL, styles["CoverMetaValue"])],
     ]
     meta_table = Table(meta_rows, colWidths=[42 * mm, 84 * mm], hAlign="CENTER")
     meta_table.setStyle(
@@ -1117,6 +1144,8 @@ def _add_cover_page(story: list, styles: StyleSheet1, data: dict) -> None:
         )
     )
     story.append(meta_table)
+    story.append(Spacer(1, 5 * mm))
+    story.append(Paragraph(CONFIDENTIAL_LABEL, styles["CoverMeta"]))
     story.append(Spacer(1, 92 * mm))
     story.append(PageBreak())
 
@@ -1141,7 +1170,14 @@ def _add_md_letter(story: list, styles: StyleSheet1, data: dict) -> None:
     for paragraph in paragraphs:
         story.append(Paragraph(paragraph, styles["Body"]))
 
-    story.append(Spacer(1, 5 * mm))
+    signature = _signature_image(44)
+    if signature:
+        signature.hAlign = "LEFT"
+        story.append(Spacer(1, 4 * mm))
+        story.append(signature)
+        story.append(Spacer(1, 4 * mm))
+    else:
+        story.append(Spacer(1, 5 * mm))
     story.append(Paragraph(MANAGING_DIRECTOR_NAME, styles["BodyTight"]))
     story.append(Paragraph(MANAGING_DIRECTOR_TITLE, styles["BodyTight"]))
     story.append(Paragraph(BRAND_NAME, styles["Body"]))
@@ -1296,12 +1332,14 @@ def _add_priority_matrix(story: list, styles: StyleSheet1, report: dict) -> None
 
 
 def _add_charts_section(story: list, styles: StyleSheet1, section_chart: Path, benchmark_chart: Path) -> None:
+    story.append(PageBreak())
+    story.append(Spacer(1, -5 * mm))
     story.append(Paragraph("Charts and visual analysis", styles["Heading1"]))
     if section_chart.exists():
         story.append(Image(str(section_chart), width=CHART_WIDTH, height=CHART_WIDTH * 0.72))
         story.append(Paragraph("Section score profile across all twelve audit areas.", styles["Small"]))
     if benchmark_chart.exists():
-        story.append(Spacer(1, 3 * mm))
+        story.append(Spacer(1, 1 * mm))
         story.append(Image(str(benchmark_chart), width=CHART_WIDTH, height=CHART_WIDTH * 0.55))
         story.append(Paragraph("Benchmark comparison for the most useful submitted metrics.", styles["Small"]))
 
