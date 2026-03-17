@@ -406,15 +406,14 @@ def render_page(title: str, body: str) -> str:
 
                 <div class="completion-state" id="completionState">
                     <div class="completion-kicker">Report ready</div>
-                    <h3>Your recruitment audit has been prepared</h3>
-                    <p>The PDF report has been downloaded and is ready for leadership review.</p>
+                    <h3>Your Recruitment Audit is Ready</h3>
+                    <p>Your report has been generated and is ready to download</p>
                     <div class="completion-list">
-                        <div class="completion-item">Includes an executive overview, section-by-section scorecard and benchmark comparison.</div>
-                        <div class="completion-item">Highlights the clearest gaps, operating risks and the actions that should be prioritised first.</div>
                         <div class="completion-item" id="completionFilename">File prepared</div>
                     </div>
                     <div class="completion-actions">
-                        <button class="button button-secondary" type="button" id="closeCompletion">Close</button>
+                        <button class="button button-primary" type="button" id="downloadComplete">Download Report</button>
+                        <button class="button button-secondary" type="button" id="startNewAudit">Start New Audit</button>
                     </div>
                 </div>
             </div>
@@ -438,10 +437,13 @@ def render_page(title: str, body: str) -> str:
                 const summaryHiring = document.getElementById("summaryHiring");
                 const summaryRoles = document.getElementById("summaryRoles");
                 const summaryContact = document.getElementById("summaryContact");
-                const closeCompletion = document.getElementById("closeCompletion");
+                const downloadComplete = document.getElementById("downloadComplete");
+                const startNewAudit = document.getElementById("startNewAudit");
                 const yesNoFields = Array.from(document.querySelectorAll(".yes-no-field select"));
                 let isSubmitting = false;
                 let currentStep = 1;
+                let latestDownloadUrl = "";
+                let latestFilename = "recruitment_audit.pdf";
 
                 function fieldsForStep(step) {{
                     return Array.from(document.querySelectorAll('.stage[data-step="' + step + '"] input, .stage[data-step="' + step + '"] select, .stage[data-step="' + step + '"] textarea'));
@@ -569,7 +571,7 @@ def render_page(title: str, body: str) -> str:
                     if (overlay) overlay.style.display = "flex";
                     if (loadingState) loadingState.style.display = "none";
                     if (completionState) completionState.style.display = "block";
-                    if (completionFilename) completionFilename.textContent = "Downloaded file: " + filename;
+                    if (completionFilename) completionFilename.textContent = "Prepared file: " + filename;
                 }}
 
                 function resetOverlayState() {{
@@ -579,6 +581,16 @@ def render_page(title: str, body: str) -> str:
                     if (overlay) overlay.style.display = "none";
                     if (loadingState) loadingState.style.display = "block";
                     if (completionState) completionState.style.display = "none";
+                }}
+
+                function triggerReportDownload() {{
+                    if (!latestDownloadUrl) return;
+                    const link = document.createElement("a");
+                    link.href = latestDownloadUrl;
+                    link.download = latestFilename;
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
                 }}
 
                 async function downloadReport(event) {{
@@ -632,18 +644,16 @@ def render_page(title: str, body: str) -> str:
                         const disposition = response.headers.get("Content-Disposition") || "";
                         const match = disposition.match(/filename=([^;]+)/i);
                         const filename = match ? match[1].trim().replace(/^\"|\"$/g, "") : "recruitment_audit.pdf";
+                        latestFilename = filename;
 
                         visualProgress = 100;
                         setLoadingState(100, "Report ready. Starting download", 3);
 
-                        const url = window.URL.createObjectURL(blob);
-                        const link = document.createElement("a");
-                        link.href = url;
-                        link.download = filename;
-                        document.body.appendChild(link);
-                        link.click();
-                        link.remove();
-                        window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+                        if (latestDownloadUrl) {{
+                            window.URL.revokeObjectURL(latestDownloadUrl);
+                        }}
+                        latestDownloadUrl = window.URL.createObjectURL(blob);
+                        triggerReportDownload();
                         window.setTimeout(() => {{
                             showCompletionState(filename);
                             isSubmitting = false;
@@ -669,8 +679,17 @@ def render_page(title: str, body: str) -> str:
                         downloadReport(event);
                     }});
                 }}
-                if (closeCompletion) {{
-                    closeCompletion.addEventListener("click", resetOverlayState);
+                if (downloadComplete) {{
+                    downloadComplete.addEventListener("click", triggerReportDownload);
+                }}
+                if (startNewAudit) {{
+                    startNewAudit.addEventListener("click", () => {{
+                        if (latestDownloadUrl) {{
+                            window.URL.revokeObjectURL(latestDownloadUrl);
+                            latestDownloadUrl = "";
+                        }}
+                        window.location.href = window.location.pathname;
+                    }});
                 }}
                 showStep(1);
             }})();
