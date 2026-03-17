@@ -1188,8 +1188,8 @@ def generate():
             },
         }
 
-        benchmark = load_benchmarks(data["sector"])
-        benchmark_summary = build_benchmark_summary(data["metrics"], benchmark)
+        benchmark = load_benchmarks()
+        benchmark_summary = build_benchmark_summary(data["metrics"], benchmark, data["sector"], data["key_roles_hired"])
 
         section_scores, section_notes = auto_score_sections(data, benchmark)
         data["section_scores"] = section_scores
@@ -1201,7 +1201,7 @@ def generate():
 
         section_chart = create_section_score_chart(data["company_name"], data["section_scores"])
         overall_chart = create_overall_score_chart(data["company_name"], data["total_score"])
-        benchmark_chart = create_benchmark_chart(data["company_name"], data["metrics"], benchmark)
+        benchmark_chart = create_benchmark_chart(data["company_name"], data["metrics"], benchmark, data["sector"], data["key_roles_hired"])
 
         pdf_path = save_pdf_report(
             data=data,

@@ -5,6 +5,7 @@ import os
 import re
 import textwrap
 from datetime import datetime
+from difflib import get_close_matches
 from pathlib import Path
 
 import matplotlib
@@ -36,10 +37,8 @@ from reportlab.platypus import (
 
 
 BASE_DIR = Path(__file__).resolve().parent
-BENCHMARK_FILE = BASE_DIR / "uk_recruitment_benchmark_framework.xlsx"
-BENCHMARK_CSV_FILE = BASE_DIR / "uk_recruitment_benchmarks.csv"
+BENCHMARK_CSV_FILE = BASE_DIR / "data" / "uk_recruitment_benchmarks.csv"
 OUTPUT_DIR = Path(os.environ.get("AUDIT_OUTPUT_DIR", "/tmp/BradfordMarshAI"))
-BENCHMARK_ENV_VAR = "RECRUITMENT_BENCHMARK_FILE"
 BRAND_LOGO = BASE_DIR / "public" / "brand" / "bradford-marsh-logo.png"
 SIGNATURE_IMAGE = BASE_DIR / "public" / "brand" / "michael-marsh-signature.png"
 SIGNATURE_CANDIDATES = [
@@ -77,6 +76,29 @@ REPORT_TITLE = "Recruitment Operating Model Audit"
 CONFIDENTIAL_LABEL = "Private & Confidential"
 MANAGING_DIRECTOR_NAME = "Michael Marsh"
 MANAGING_DIRECTOR_TITLE = "Managing Director"
+
+BENCHMARK_REQUIRED_COLUMNS = [
+    "benchmark_type",
+    "category",
+    "time_to_hire_days",
+    "applications_per_role",
+    "offer_acceptance_rate",
+    "first_year_attrition_rate",
+    "application_to_interview_rate",
+    "interview_to_offer_rate",
+    "source",
+    "year",
+    "notes",
+]
+
+BENCHMARK_NUMERIC_COLUMNS = [
+    "time_to_hire_days",
+    "applications_per_role",
+    "offer_acceptance_rate",
+    "first_year_attrition_rate",
+    "application_to_interview_rate",
+    "interview_to_offer_rate",
+]
 
 SECTION_ORDER = [
     "Recruitment strategy and workforce planning",
@@ -252,107 +274,81 @@ def parse_time_to_hire_days(value: str | None) -> float | None:
 
 
 def list_benchmark_sectors() -> list[str]:
-    df = _load_benchmark_table()
+    df = load_benchmarks()
     return (
-        df["sector"]
+        df.loc[df["benchmark_type"] == "industry", "category"]
         .dropna()
         .astype(str)
         .str.strip()
         .replace("", pd.NA)
         .dropna()
         .drop_duplicates()
-        .sort_values()
+        .sort_values(key=lambda col: col.str.lower())
         .tolist()
     )
 
 
-def load_benchmarks(sector: str) -> pd.DataFrame:
-    df = _load_benchmark_table()
-    if sector.strip():
-        matches = df[df["sector"].str.contains(sector.strip(), case=False, na=False)]
-        if not matches.empty:
-            return matches.reset_index(drop=True)
-    national = df[df["region"].astype(str).str.contains("UK National", case=False, na=False)]
-    return national.reset_index(drop=True) if not national.empty else df.reset_index(drop=True)
-
-
-def _load_benchmark_table() -> pd.DataFrame:
-    benchmark_path = _resolve_benchmark_file()
-    if benchmark_path.suffix.lower() == ".csv":
+def load_benchmarks(sector: str | None = None) -> pd.DataFrame:
+    benchmark_path = BENCHMARK_CSV_FILE
+    if not benchmark_path.exists():
+        raise FileNotFoundError(f"Benchmark dataset not found at {benchmark_path}")
+    try:
         df = pd.read_csv(benchmark_path)
-    else:
-        df = pd.read_excel(benchmark_path, sheet_name="Benchmarks")
-    return _normalise_benchmark_columns(df)
+    except Exception as exc:
+        raise ValueError(f"Unable to read benchmark dataset at {benchmark_path}: {exc}") from exc
+    return _normalise_benchmark_columns(df, benchmark_path)
 
 
-def _resolve_benchmark_file() -> Path:
-    candidates = []
-    configured = os.environ.get(BENCHMARK_ENV_VAR, "").strip()
-    if configured:
-        candidates.append(Path(configured).expanduser())
-    candidates.extend(
-        [
-            BENCHMARK_FILE,
-            BENCHMARK_CSV_FILE,
-            Path.cwd() / "uk_recruitment_benchmark_framework.xlsx",
-            Path.cwd() / "uk_recruitment_benchmarks.csv",
-            Path.home() / "Desktop" / "uk_recruitment_benchmarks.csv",
-        ]
-    )
-    for path in candidates:
-        if path.exists():
-            return path
-    searched = ", ".join(str(path) for path in candidates)
-    raise FileNotFoundError(f"Benchmark dataset not found. Checked: {searched}")
+def get_benchmark(sector: str, role: str, benchmarks: pd.DataFrame | None = None) -> pd.Series:
+    df = load_benchmarks() if benchmarks is None else benchmarks.copy()
+    if df.empty:
+        raise ValueError("Benchmark dataset is empty.")
+
+    industry_row = _select_benchmark_by_type(df, "industry", sector)
+    function_row = _select_function_benchmark(df, role)
+
+    if not industry_row.empty and not function_row.empty:
+        return _blend_benchmarks(industry_row, function_row)
+    if not industry_row.empty:
+        return industry_row
+    if not function_row.empty:
+        return function_row
+    return _average_benchmark(df, "all")
 
 
-def _normalise_benchmark_columns(df: pd.DataFrame) -> pd.DataFrame:
+def _normalise_benchmark_columns(df: pd.DataFrame, benchmark_path: Path) -> pd.DataFrame:
     renamed = df.copy()
     renamed.columns = [str(col).strip() for col in renamed.columns]
-    renamed = renamed.rename(
-        columns={
-            "avg_time_to_hire": "avg_time_to_hire_days",
-            "avg_applications": "avg_applications_per_role",
-            "avg_offer_acceptance": "avg_offer_acceptance_pct",
-            "avg_attrition": "avg_attrition_pct",
-            "avg_application_to_interview": "avg_application_to_interview_pct",
-            "avg_interview_to_offer": "avg_interview_to_offer_pct",
-        }
-    )
+    missing = [column for column in BENCHMARK_REQUIRED_COLUMNS if column not in renamed.columns]
+    if missing:
+        raise ValueError(f"Benchmark dataset at {benchmark_path} is missing required columns: {', '.join(missing)}")
 
-    if "sector" not in renamed.columns:
-        raise ValueError("Benchmark data must include a 'sector' column.")
-
-    defaults = {
-        "company_size_band": "All sizes",
-        "region": "UK National",
-        "avg_time_to_hire_days": pd.NA,
-        "avg_applications_per_role": pd.NA,
-        "avg_offer_acceptance_pct": pd.NA,
-        "avg_attrition_pct": pd.NA,
-        "source_basis": "UK benchmark dataset",
-        "data_quality_note": "",
-    }
-    for column, default in defaults.items():
-        if column not in renamed.columns:
-            renamed[column] = default
-
-    renamed["sector"] = renamed["sector"].astype(str).str.strip()
-    renamed["company_size_band"] = renamed["company_size_band"].fillna("All sizes").astype(str).str.strip()
-    renamed["region"] = renamed["region"].fillna("UK National").astype(str).str.strip()
-    return renamed
+    renamed = renamed[BENCHMARK_REQUIRED_COLUMNS].copy()
+    renamed["benchmark_type"] = renamed["benchmark_type"].astype(str).str.strip().str.lower()
+    renamed["category"] = renamed["category"].astype(str).str.strip()
+    invalid_types = sorted(set(renamed["benchmark_type"]) - {"industry", "function"})
+    if invalid_types:
+        raise ValueError(f"Benchmark dataset at {benchmark_path} contains invalid benchmark_type values: {', '.join(invalid_types)}")
+    for column in BENCHMARK_NUMERIC_COLUMNS:
+        renamed[column] = pd.to_numeric(renamed[column], errors="coerce")
+    if renamed["category"].replace("", pd.NA).isna().any():
+        raise ValueError(f"Benchmark dataset at {benchmark_path} contains blank category values.")
+    renamed["source"] = renamed["source"].fillna("").astype(str).str.strip()
+    renamed["year"] = renamed["year"].where(pd.notna(renamed["year"]), pd.NA)
+    renamed["notes"] = renamed["notes"].fillna("").astype(str).str.strip()
+    return renamed.reset_index(drop=True)
 
 
-def build_benchmark_summary(metrics: dict, benchmark: pd.DataFrame) -> dict:
-    benchmark_row = _pick_benchmark_row(benchmark, {})
+def build_benchmark_summary(metrics: dict, benchmark: pd.DataFrame, sector: str, role: str) -> dict:
+    benchmark_row = get_benchmark(sector, role, benchmark)
     if benchmark_row.empty:
         return {"benchmark_row": {}, "comparisons": [], "summary_text": "No benchmark data available."}
 
     mapping = [
-        ("time_to_hire_days", "avg_time_to_hire_days", "Time to hire", "days", False),
-        ("applications_per_role", "avg_applications_per_role", "Applications per role", "", True),
-        ("offer_acceptance", "avg_offer_acceptance_pct", "Offer acceptance", "%", True),
-        ("first_year_attrition", "avg_attrition_pct", "First-year attrition", "%", False),
+        ("time_to_hire_days", "time_to_hire_days", "Time to hire", "days", False),
+        ("applications_per_role", "applications_per_role", "Applications per role", "", True),
+        ("offer_acceptance", "offer_acceptance_rate", "Offer acceptance", "%", True),
+        ("first_year_attrition", "first_year_attrition_rate", "First-year attrition", "%", False),
     ]
 
     comparisons = []
@@ -403,22 +399,22 @@ def auto_score_sections(data: dict, benchmark: pd.DataFrame) -> tuple[list[int],
     metric_scores = {
         "time_to_hire": _metric_score(
             metrics.get("time_to_hire_days"),
-            _safe_float(benchmark_row.get("avg_time_to_hire_days")),
+            _safe_float(benchmark_row.get("time_to_hire_days")),
             higher_is_better=False,
         ),
         "applications": _metric_score(
             metrics.get("applications_per_role"),
-            _safe_float(benchmark_row.get("avg_applications_per_role")),
+            _safe_float(benchmark_row.get("applications_per_role")),
             higher_is_better=True,
         ),
         "offer_acceptance": _metric_score(
             metrics.get("offer_acceptance"),
-            _safe_float(benchmark_row.get("avg_offer_acceptance_pct")),
+            _safe_float(benchmark_row.get("offer_acceptance_rate")),
             higher_is_better=True,
         ),
         "attrition": _metric_score(
             metrics.get("first_year_attrition"),
-            _safe_float(benchmark_row.get("avg_attrition_pct")),
+            _safe_float(benchmark_row.get("first_year_attrition_rate")),
             higher_is_better=False,
         ),
         "feedback_speed": _feedback_score(metrics.get("interview_feedback_time_days")),
@@ -648,14 +644,14 @@ def create_section_score_chart(company_name: str, section_scores: list[int]) -> 
     return path
 
 
-def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataFrame) -> Path:
+def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataFrame, sector: str, role: str) -> Path:
     path = _output_dir() / f"{_slug(company_name)}_benchmark_compare.png"
-    benchmark_row = _pick_benchmark_row(benchmark, {})
+    benchmark_row = get_benchmark(sector, role, benchmark)
     items = [
-        ("Time to hire", metrics.get("time_to_hire_days"), _safe_float(benchmark_row.get("avg_time_to_hire_days")), "days", False),
-        ("Applications per role", metrics.get("applications_per_role"), _safe_float(benchmark_row.get("avg_applications_per_role")), "", True),
-        ("Offer acceptance", metrics.get("offer_acceptance"), _safe_float(benchmark_row.get("avg_offer_acceptance_pct")), "%", True),
-        ("First-year attrition", metrics.get("first_year_attrition"), _safe_float(benchmark_row.get("avg_attrition_pct")), "%", False),
+        ("Time to hire", metrics.get("time_to_hire_days"), _safe_float(benchmark_row.get("time_to_hire_days")), "days", False),
+        ("Applications per role", metrics.get("applications_per_role"), _safe_float(benchmark_row.get("applications_per_role")), "", True),
+        ("Offer acceptance", metrics.get("offer_acceptance"), _safe_float(benchmark_row.get("offer_acceptance_rate")), "%", True),
+        ("First-year attrition", metrics.get("first_year_attrition"), _safe_float(benchmark_row.get("first_year_attrition_rate")), "%", False),
     ]
     items = [item for item in items if item[1] is not None and item[2] is not None]
     items = _select_benchmark_chart_items(items)
@@ -1465,56 +1461,126 @@ def _slug(value: str) -> str:
     cleaned = re.sub(r"_+", "_", cleaned).strip("._")
     return cleaned or "recruitment_audit"
 
-
-def _size_band(headcount_value: str) -> str:
-    headcount = parse_numeric_value(headcount_value)
-    if headcount is None:
-        return "SME"
-    if headcount >= 1000:
-        return "Enterprise"
-    if headcount >= 250:
-        return "Mid-Market"
-    return "SME"
-
-
-def _region_hint(location: str) -> str:
-    text = location.lower()
-    mapping = {
-        "london": "London",
-        "midlands": "Midlands",
-        "manchester": "North West",
-        "liverpool": "North West",
-        "north west": "North West",
-        "scotland": "Scotland",
-        "glasgow": "Scotland",
-        "edinburgh": "Scotland",
-        "surrey": "South East",
-        "kent": "South East",
-        "south east": "South East",
-    }
-    for needle, region in mapping.items():
-        if needle in text:
-            return region
-    return "UK National"
-
-
 def _pick_benchmark_row(benchmark: pd.DataFrame, data: dict) -> pd.Series:
-    if benchmark.empty:
+    return get_benchmark(str(data.get("sector", "")), str(data.get("key_roles_hired", "")), benchmark)
+
+
+def _normalise_category(value: str | None) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").strip().lower()).strip()
+
+
+def _extract_role_candidates(role: str) -> list[str]:
+    text = str(role or "").strip()
+    if not text:
+        return []
+    parts = re.split(r",|/|;|\band\b|\n", text, flags=re.IGNORECASE)
+    cleaned = []
+    for part in parts:
+        value = _normalise_category(part)
+        if value and value not in cleaned:
+            cleaned.append(value)
+    return cleaned
+
+
+def _closest_benchmark_match(frame: pd.DataFrame, target: str) -> pd.Series:
+    if frame.empty:
         return pd.Series(dtype=object)
-    working = benchmark.copy()
-    size_band = _size_band(str(data.get("headcount", "")))
-    region = _region_hint(str(data.get("location", "")))
+    normalised_target = _normalise_category(target)
+    if not normalised_target:
+        return pd.Series(dtype=object)
 
-    sized = working[working["company_size_band"].astype(str) == size_band]
-    if not sized.empty:
-        working = sized
+    working = frame.copy()
+    working["_match_key"] = working["category"].map(_normalise_category)
+    exact = working[working["_match_key"] == normalised_target]
+    if not exact.empty:
+        return exact.iloc[0].drop(labels="_match_key")
 
-    regional = working[working["region"].astype(str) == region]
-    if regional.empty:
-        regional = working[working["region"].astype(str) == "UK National"]
-    if not regional.empty:
-        working = regional
-    return working.iloc[0]
+    contains = working[
+        working["_match_key"].str.contains(re.escape(normalised_target), na=False)
+        | working["_match_key"].map(lambda value: normalised_target in value if value else False)
+    ]
+    if not contains.empty:
+        return contains.iloc[0].drop(labels="_match_key")
+
+    match_keys = working["_match_key"].dropna().tolist()
+    closest = get_close_matches(normalised_target, match_keys, n=1, cutoff=0.55)
+    if closest:
+        return working[working["_match_key"] == closest[0]].iloc[0].drop(labels="_match_key")
+    return pd.Series(dtype=object)
+
+
+def _average_benchmark(frame: pd.DataFrame, benchmark_type: str) -> pd.Series:
+    working = frame.copy()
+    if benchmark_type in {"industry", "function"}:
+        typed = working[working["benchmark_type"] == benchmark_type]
+        if not typed.empty:
+            working = typed
+    if working.empty:
+        return pd.Series(dtype=object)
+
+    averaged = {column: working[column].mean(skipna=True) for column in BENCHMARK_NUMERIC_COLUMNS}
+    averaged.update(
+        {
+            "benchmark_type": benchmark_type,
+            "category": "Average benchmark",
+            "source": "Weighted dataset average",
+            "year": pd.NA,
+            "notes": f"Average benchmark fallback for {benchmark_type}.",
+        }
+    )
+    return pd.Series(averaged)
+
+
+def _select_benchmark_by_type(df: pd.DataFrame, benchmark_type: str, target: str) -> pd.Series:
+    if not _normalise_category(target):
+        return pd.Series(dtype=object)
+    typed = df[df["benchmark_type"] == benchmark_type].reset_index(drop=True)
+    if typed.empty:
+        return pd.Series(dtype=object)
+
+    matched = _closest_benchmark_match(typed, target)
+    if not matched.empty:
+        return matched
+    return _average_benchmark(typed, benchmark_type)
+
+
+def _select_function_benchmark(df: pd.DataFrame, role: str) -> pd.Series:
+    if not _extract_role_candidates(role):
+        return pd.Series(dtype=object)
+    typed = df[df["benchmark_type"] == "function"].reset_index(drop=True)
+    if typed.empty:
+        return pd.Series(dtype=object)
+
+    for candidate in _extract_role_candidates(role):
+        matched = _closest_benchmark_match(typed, candidate)
+        if not matched.empty:
+            return matched
+    return _average_benchmark(typed, "function")
+
+
+def _blend_benchmarks(industry_row: pd.Series, function_row: pd.Series) -> pd.Series:
+    blended = {}
+    for column in BENCHMARK_NUMERIC_COLUMNS:
+        industry_value = _safe_float(industry_row.get(column))
+        function_value = _safe_float(function_row.get(column))
+        if industry_value is None and function_value is None:
+            blended[column] = pd.NA
+        elif industry_value is None:
+            blended[column] = function_value
+        elif function_value is None:
+            blended[column] = industry_value
+        else:
+            blended[column] = round((industry_value * 0.6) + (function_value * 0.4), 2)
+    blended.update(
+        {
+            "benchmark_type": "blended",
+            "category": f"{industry_row.get('category', 'Industry')} + {function_row.get('category', 'Function')}",
+            "source": f"60% industry ({industry_row.get('category', '')}) / 40% function ({function_row.get('category', '')})",
+            "year": industry_row.get("year") if pd.notna(industry_row.get("year")) else function_row.get("year"),
+            "notes": "Blended benchmark using 60% industry and 40% function weighting.",
+        }
+    )
+    return pd.Series(blended)
 
 
 def _metric_score(value: float | None, benchmark_value: float | None, higher_is_better: bool) -> float:

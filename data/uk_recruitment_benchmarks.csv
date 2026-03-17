@@ -1,0 +1,51 @@
+benchmark_type,category,time_to_hire_days,applications_per_role,offer_acceptance_rate,first_year_attrition_rate,application_to_interview_rate,interview_to_offer_rate,source,year,notes
+industry,Recruitment,25,35,72,30,12,40,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Financial Services,45,40,78,18,11,42,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Banking,47,42,80,17,10,45,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Insurance,44,38,79,19,11,44,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,FinTech,38,45,76,20,12,38,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Technology,35,50,75,16,13,35,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,SaaS,32,55,74,18,14,34,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Cyber Security,42,38,82,14,10,48,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Engineering,41,35,84,15,11,46,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Manufacturing,34,28,81,16,10,47,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Automotive,33,30,80,18,10,45,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Construction,36,25,83,21,9,48,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Property,37,32,77,22,11,40,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Retail,30,60,70,38,8,35,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Ecommerce,32,55,72,32,9,36,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Hospitality,28,40,68,45,7,33,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Logistics,31,35,75,29,9,37,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Transport,33,34,76,27,9,38,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Healthcare,50,30,74,24,10,42,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Pharmaceutical,48,36,80,17,11,45,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Life Sciences,46,35,82,16,11,46,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Legal,42,45,79,18,12,43,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Accounting,39,40,81,16,11,44,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Consulting,38,50,77,21,12,40,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Marketing,36,55,74,25,13,36,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Advertising,34,60,70,29,14,34,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Media,37,58,72,31,13,35,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Education,40,32,76,20,10,42,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Charity,41,45,73,28,11,39,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Energy,44,30,82,17,10,46,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Utilities,43,28,83,16,10,47,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Telecommunications,39,42,78,22,11,41,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Public Sector,55,28,85,12,9,48,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Civil Engineering,45,26,83,17,9,47,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Architecture,40,30,79,19,10,43,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Sales,27,45,68,34,10,32,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Business Development,29,42,70,33,10,33,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Customer Service,24,50,75,36,9,38,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Administration,22,60,78,30,8,42,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,HR,34,40,82,18,11,45,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Procurement,36,32,81,17,10,46,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Supply Chain,35,33,80,19,10,45,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Food & Beverage,31,45,74,35,9,38,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Agriculture,34,28,79,24,10,42,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Travel & Tourism,33,38,71,40,8,36,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Facilities Management,29,35,76,28,9,39,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Security Services,28,30,75,32,9,38,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Cleaning Services,26,35,72,41,8,36,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Sports & Leisure,30,42,73,38,9,37,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
+industry,Gaming & Entertainment,37,48,72,29,11,36,Imported UK recruitment benchmark dataset,,Normalised from legacy sector benchmark file
