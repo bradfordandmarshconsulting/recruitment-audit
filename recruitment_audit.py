@@ -96,7 +96,7 @@ LETTERHEAD_WEBSITE = "www.bradfordandmarsh.co.uk"
 PRIMARY_HEX = "182647"
 SECONDARY_HEX = "4F627A"
 ACCENT_HEX = "C19A6B"
-TEXT_HEX = "242424"
+TEXT_HEX = "000000"
 MUTED_HEX = "66707A"
 WHITE_HEX = "FFFFFF"
 LIGHT_BG = "F6F8FB"
@@ -108,7 +108,7 @@ RED_FILL = "FEE2E2"
 PRIMARY = RGBColor(24, 38, 71)
 SECONDARY = RGBColor(79, 98, 122)
 ACCENT = RGBColor(193, 154, 107)
-TEXT = RGBColor(36, 36, 36)
+TEXT = RGBColor(0, 0, 0)
 MUTED = RGBColor(102, 112, 122)
 WHITE = RGBColor(255, 255, 255)
 GREEN = RGBColor(22, 101, 52)
@@ -121,20 +121,20 @@ RAG_BANDS = [
 ]
 
 SYSTEM_PROMPT = """
-You are a senior recruitment advisor writing for Bradford & Marsh Consulting.
+You are writing a final client report for a Recruitment Operating Model Audit.
 
-Write in polished British English. Be direct, commercially credible and practical. Avoid AI filler, generic management jargon and repeated phrasing.
+Write in British English. Use short sentences. Be direct, commercial and precise.
 
-The report must feel coherent from start to finish:
-- make the executive overview read like a synthesis, not a list
-- ensure each detailed section builds logically from the business context, metrics and process controls supplied
-- recommendations should be specific enough to act on next week
-- acknowledge strengths without overpraising them
-- where data is weak or missing, say so plainly
-- vary sentence openings and sentence length so the writing does not sound templated
-- explain what the operating data implies, not just what the numbers are
-- use a senior advisory tone suitable for leadership review, with clear commercial implications
-- make the strengths and weaknesses feel specific to the company profile supplied
+Rules:
+- No markdown.
+- No headings inside body text.
+- No asterisks, hashes or raw bullet symbols.
+- No filler or generic corporate language.
+- Do not use these words or phrases: robust, hampered, material, leverage, seamless, best-in-class, best in class.
+- Avoid repeating the company name unless needed.
+- Keep the tone credible and board-ready.
+- Keep the executive overview under 150 words.
+- For each detailed section, keep current state to 3 sentences, key risks to 2 points, commercial impact to 2 sentences, immediate actions to 2 points, and next phase actions to 2 points.
 """.strip()
 
 REPORT_SCHEMA = {
@@ -382,17 +382,20 @@ def build_benchmark_summary(metrics: dict, benchmark: pd.DataFrame) -> dict:
     for client_key, benchmark_key, label, suffix, higher_is_better in mapping:
         client_value = metrics.get(client_key)
         benchmark_value = _safe_float(benchmark_row.get(benchmark_key))
-        status = "No client figure supplied"
-        if client_value is not None and benchmark_value is not None:
-            delta = round(client_value - benchmark_value, 1)
-            if abs(delta) <= max(1.0, benchmark_value * 0.03):
-                status = "Broadly in line with benchmark"
-            else:
-                better = delta > 0 if higher_is_better else delta < 0
-                if better:
-                    status = f"{abs(delta):.1f}{suffix} better than benchmark"
-                else:
-                    status = f"{abs(delta):.1f}{suffix} behind benchmark"
+        if client_value is None or benchmark_value is None:
+            continue
+
+        delta = client_value - benchmark_value
+        tolerance = max(1.0, abs(benchmark_value) * 0.03)
+        if abs(delta) <= tolerance:
+            status = "In line"
+            comment = "In line with benchmark"
+        else:
+            ahead = delta > 0 if higher_is_better else delta < 0
+            status = "Ahead" if ahead else "Behind"
+            direction = "ahead of" if ahead else "behind"
+            comment = f"{_format_metric_value(abs(delta), suffix)} {direction} benchmark"
+
         comparisons.append(
             {
                 "label": label,
@@ -400,16 +403,17 @@ def build_benchmark_summary(metrics: dict, benchmark: pd.DataFrame) -> dict:
                 "benchmark_value": benchmark_value,
                 "suffix": suffix,
                 "status": status,
+                "comment": comment,
             }
         )
-        client_display = "n/a" if client_value is None else f"{client_value:.1f}{suffix}"
-        benchmark_display = "n/a" if benchmark_value is None else f"{benchmark_value:.1f}{suffix}"
-        summary_lines.append(f"- {label}: client {client_display}, benchmark {benchmark_display}. {status}.")
+        summary_lines.append(
+            f"{label}: {_format_metric_value(client_value, suffix)} versus {_format_metric_value(benchmark_value, suffix)}. {comment}."
+        )
 
     return {
         "benchmark_row": benchmark_row.to_dict(),
         "comparisons": comparisons,
-        "summary_text": "\n".join(summary_lines),
+        "summary_text": " ".join(summary_lines) if summary_lines else "No useful benchmark comparisons were available.",
     }
 
 
@@ -463,7 +467,7 @@ def auto_score_sections(data: dict, benchmark: pd.DataFrame) -> tuple[list[int],
         f"Offer process is {'faster' if flags.get('fast_offer_process') else 'more exposed to delay'}, which shapes acceptance performance.",
         f"Onboarding is {'documented' if flags.get('formal_onboarding') else 'lightly controlled'}, with first-year attrition at {_fmt(metrics.get('first_year_attrition'), '%')}.",
         f"Retention pressure remains visible through first-year attrition of {_fmt(metrics.get('first_year_attrition'), '%')}.",
-        f"Candidate feedback is {'captured' if flags.get('collects_candidate_feedback') else 'not systematically captured'}, while interview feedback speed remains material.",
+        f"Candidate feedback is {'captured' if flags.get('collects_candidate_feedback') else 'not systematically captured'}, while interview feedback speed still needs attention.",
         f"Ownership is {'clear' if flags.get('named_process_owner') else 'blurred'}, and manager training is {'present' if flags.get('hiring_manager_training') else 'limited'}.",
     ]
 
@@ -552,7 +556,7 @@ Output requirements
 - Keep strengths, problems and plans crisp and commercially grounded.
 - Do not invent client facts that are not implied by the supplied data.
 - Make the detailed sections feel connected rather than written in isolation.
-- Where a benchmark gap is material, say what it means operationally.
+- Where a benchmark gap is clear, say what it means operationally.
 """.strip()
 
 
@@ -563,24 +567,21 @@ def create_section_score_chart(company_name: str, section_scores: list[int]) -> 
     labels = [_short_label(title) for title in SECTION_ORDER]
     positions = list(range(len(labels)))
 
-    fig, ax = plt.subplots(figsize=(9.5, 7.1))
+    fig, ax = plt.subplots(figsize=(7.1, 4.8))
     _apply_chart_style(fig, ax)
-    for start, end, color in RAG_BANDS:
-        ax.axvspan(start, end, color=color, alpha=0.06)
     bar_colors = [_score_hex(score) for score in section_scores]
-    ax.barh(positions, section_scores, color=bar_colors, edgecolor="#142033", linewidth=0.6, height=0.62)
+    ax.barh(positions, section_scores, color=bar_colors, edgecolor="black", linewidth=0.5, height=0.56)
     ax.set_xlim(0, 10)
     ax.set_xticks(range(0, 11, 2))
     ax.set_yticks(positions, labels)
     ax.invert_yaxis()
-    ax.grid(axis="x", alpha=0.16, linestyle="--")
-    ax.set_title("Section score profile", fontsize=15, pad=14, color="#142033", fontweight="bold")
-    ax.set_xlabel("Score out of 10", color="#5d6778")
+    ax.grid(axis="x", alpha=0.12, linestyle="--")
+    ax.set_title("Section scores", fontsize=12.5, pad=10, color="black", fontweight="bold")
+    ax.set_xlabel("Score out of 10", color="black")
     for pos, score in enumerate(section_scores):
-        ax.text(min(score + 0.18, 9.7), pos, f"{score}/10", va="center", fontsize=9, color="#142033", fontweight="bold")
-    fig.text(0.125, 0.955, company_name, fontsize=10.2, color="#5d6778")
-    fig.text(0.125, 0.93, "Twelve operating areas scored against the audit framework", fontsize=9.5, color="#5d6778")
-    fig.tight_layout(rect=(0, 0, 1, 0.95))
+        ax.text(min(score + 0.15, 9.7), pos, f"{score}/10", va="center", fontsize=8.4, color="black", fontweight="bold")
+    fig.text(0.11, 0.95, company_name, fontsize=9, color="black")
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
     fig.savefig(path, dpi=220, bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close(fig)
     return path
@@ -594,37 +595,35 @@ def create_overall_score_chart(company_name: str, total_score: int) -> Path:
     score = min(total_score, max_score)
     pct = round((score / max_score) * 100)
     rating = _rating_for_score(score)
-    fill_color = _score_hex(round((score / max_score) * 10))
+    fill_color = "#333333"
 
-    fig, ax = plt.subplots(figsize=(9.0, 1.95))
+    fig, ax = plt.subplots(figsize=(7.0, 1.55))
     _apply_chart_style(fig, ax)
-    ax.barh([0], [max_score], color="#e5e7eb", height=0.34)
+    ax.barh([0], [max_score], color="#E5E5E5", height=0.28)
     ax.barh([0], [score], color=fill_color, height=0.34)
     ax.set_xlim(0, max_score)
     ax.set_ylim(-0.42, 0.42)
     ax.set_yticks([])
     ax.set_xticks(range(0, max_score + 1, 20))
-    ax.tick_params(axis="x", labelsize=9, colors="#5d6778")
+    ax.tick_params(axis="x", labelsize=8.2, colors="black")
     ax.grid(axis="x", alpha=0.12, linestyle="--")
-    fig.text(0.125, 0.92, company_name, fontsize=10.2, color="#5d6778")
-    fig.text(0.125, 0.82, "Overall recruitment score", fontsize=15, color="#142033", fontweight="bold")
-    fig.text(0.125, 0.74, "Overall score against the full 120-point framework", fontsize=9.2, color="#5d6778")
-    fig.text(0.89, 0.84, f"{score}/120", ha="right", fontsize=14.2, color="#142033", fontweight="bold")
-    fig.text(0.89, 0.76, f"{pct}% · {rating}", ha="right", fontsize=9.5, color=fill_color, fontweight="bold")
+    fig.text(0.1, 0.92, company_name, fontsize=9, color="black")
+    fig.text(0.1, 0.82, "Overall score", fontsize=12.5, color="black", fontweight="bold")
+    fig.text(0.9, 0.84, f"{score}/120 | {pct}% | {rating}", ha="right", fontsize=9.5, color="black", fontweight="bold")
     ax.annotate(
         f"{score}/120 ({pct}%)",
         xy=(score, 0),
-        xytext=(0, 14),
+        xytext=(0, 10),
         textcoords="offset points",
         ha="center",
         va="bottom",
-        fontsize=9.5,
-        color="#142033",
+        fontsize=8.5,
+        color="black",
         fontweight="bold",
     )
     for spine in ax.spines.values():
         spine.set_visible(False)
-    fig.subplots_adjust(left=0.1, right=0.97, bottom=0.24, top=0.62)
+    fig.subplots_adjust(left=0.09, right=0.97, bottom=0.24, top=0.62)
     fig.savefig(path, dpi=220, bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close(fig)
     return path
@@ -641,65 +640,81 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         ("Offer acceptance", metrics.get("offer_acceptance"), _safe_float(benchmark_row.get("avg_offer_acceptance_pct")), "%", True),
         ("First-year attrition", metrics.get("first_year_attrition"), _safe_float(benchmark_row.get("avg_attrition_pct")), "%", False),
     ]
+    items = [item for item in items if item[1] is not None and item[2] is not None]
 
-    fig, axes = plt.subplots(4, 1, figsize=(9.0, 7.6))
-    fig.patch.set_facecolor("#f8f3ed")
+    if not items:
+        fig, ax = plt.subplots(figsize=(7.0, 1.5))
+        _apply_chart_style(fig, ax)
+        ax.axis("off")
+        ax.text(0.5, 0.5, "No benchmark comparison available", ha="center", va="center", fontsize=10, color="black")
+        fig.savefig(path, dpi=220, bbox_inches="tight", facecolor=fig.get_facecolor())
+        plt.close(fig)
+        return path
+
+    fig, axes = plt.subplots(len(items), 1, figsize=(7.0, 1.2 + (len(items) * 1.0)))
+    if len(items) == 1:
+        axes = [axes]
     for ax, (label, client_value, benchmark_value, suffix, higher_is_better) in zip(axes, items):
         _apply_chart_style(fig, ax)
-        client_value = client_value or 0
-        benchmark_value = benchmark_value or 0
         lower = min(client_value, benchmark_value, 0)
         upper = max(client_value, benchmark_value, 1)
         spread = max(upper - lower, upper * 0.2, 1)
         x_min = max(0, lower - spread * 0.2)
         x_max = upper + spread * 0.2
         ahead = client_value >= benchmark_value if higher_is_better else client_value <= benchmark_value
-        client_color = "#047857" if ahead else "#b91c1c"
+        client_color = "#222222"
         ax.set_xlim(x_min, x_max)
-        ax.set_ylim(-0.7, 0.7)
-        ax.hlines(0, x_min, x_max, color="#d6dde6", linewidth=2)
-        ax.scatter([benchmark_value], [0], s=85, color="#cbd5e1", edgecolors="#94a3b8", linewidths=0.8, zorder=3)
-        ax.scatter([client_value], [0], s=95, color=client_color, edgecolors="#142033", linewidths=0.8, marker="D", zorder=4)
+        ax.set_ylim(-0.5, 0.5)
+        ax.hlines(0, x_min, x_max, color="#BFBFBF", linewidth=1.4)
+        ax.scatter([benchmark_value], [0], s=60, color="#D7D7D7", edgecolors="black", linewidths=0.6, zorder=3)
+        ax.scatter([client_value], [0], s=65, color=client_color, edgecolors="black", linewidths=0.6, marker="D", zorder=4)
         ax.set_yticks([])
         ax.xaxis.set_major_locator(MaxNLocator(4))
-        ax.tick_params(axis="x", labelsize=8.5, colors="#5d6778")
-        ax.set_title(label, fontsize=11.5, color="#142033", fontweight="bold", pad=3)
+        ax.tick_params(axis="x", labelsize=8, colors="black")
+        ax.set_title(label, fontsize=10.2, color="black", fontweight="bold", pad=2)
         ax.grid(axis="x", alpha=0.12, linestyle="--")
         client_offset = 10 if client_value >= benchmark_value else -12
         client_va = "bottom" if client_value >= benchmark_value else "top"
         benchmark_offset = -12 if client_value >= benchmark_value else 10
         benchmark_va = "top" if client_value >= benchmark_value else "bottom"
         ax.annotate(
-            f"Client {client_value:.1f}{suffix}",
+            f"Client {_format_metric_value(client_value, suffix)}",
             xy=(client_value, 0),
             xytext=(0, client_offset),
             textcoords="offset points",
             ha="center",
             va=client_va,
-            fontsize=9,
-            color="#142033",
+            fontsize=8.1,
+            color="black",
             fontweight="bold",
         )
         ax.annotate(
-            f"Benchmark {benchmark_value:.1f}{suffix}",
+            f"Benchmark {_format_metric_value(benchmark_value, suffix)}",
             xy=(benchmark_value, 0),
             xytext=(0, benchmark_offset),
             textcoords="offset points",
             ha="center",
             va=benchmark_va,
-            fontsize=8.8,
-            color="#5d6778",
+            fontsize=8,
+            color="black",
         )
         delta = abs(client_value - benchmark_value)
         direction = "Ahead of benchmark" if ahead else "Behind benchmark"
-        ax.text(0.0, 0.05, f"{direction} by {delta:.1f}{suffix}", transform=ax.transAxes, fontsize=9, color=client_color, fontweight="bold")
+        ax.text(
+            0.0,
+            0.04,
+            f"{direction} by {_format_metric_value(delta, suffix)}",
+            transform=ax.transAxes,
+            fontsize=8,
+            color="black",
+            fontweight="bold",
+        )
         for spine in ax.spines.values():
             spine.set_visible(False)
 
-    fig.suptitle("Benchmark comparison", fontsize=15, y=0.98, color="#142033", fontweight="bold")
-    fig.text(0.125, 0.955, company_name, fontsize=10.2, color="#5d6778")
-    fig.text(0.125, 0.93, "Key recruitment metrics compared against the relevant UK benchmark reference point", fontsize=9.5, color="#5d6778")
-    fig.tight_layout(rect=(0, 0, 1, 0.94), h_pad=1.1)
+    fig.suptitle("Benchmark comparison", fontsize=12.5, y=0.99, color="black", fontweight="bold")
+    fig.text(0.11, 0.95, company_name, fontsize=9, color="black")
+    fig.tight_layout(rect=(0, 0, 1, 0.93), h_pad=0.7)
     fig.savefig(path, dpi=220, bbox_inches="tight", facecolor=fig.get_facecolor())
     plt.close(fig)
     return path
@@ -714,22 +729,22 @@ def save_word_report(
     benchmark_chart: Path,
 ) -> Path:
     output_path = _output_dir() / f"{_slug(data['company_name'])}_recruitment_audit.docx"
-    report = _normalise_report(report, data["section_scores"])
+    report = _clean_report(_normalise_report(report, data["section_scores"]), data)
     document = Document()
     _set_document_defaults(document)
     _add_cover_page(document, data)
-    _add_executive_snapshot(document, data, report)
-    _add_key_findings_panel(document, data, report)
+    _add_executive_overview(document, report)
+    _add_overall_score_section(document, data, report, overall_chart)
+    _add_key_insights(document, data, report, benchmark_summary)
     _add_score_summary(document, data)
-    _add_scoring_methodology(document, data, benchmark_summary)
     _add_benchmark_snapshot(document, benchmark_summary)
     _add_priority_matrix(document, data, report)
-    _add_chart_section(document, [overall_chart, section_chart, benchmark_chart])
+    _add_chart_section(document, [section_chart, benchmark_chart])
     document.add_page_break()
     _add_detailed_findings(document, data, report)
+    document.add_page_break()
     _add_roadmap(document, report)
-    _add_closing_page(document, report)
-    _apply_brand_headers_and_footers(document, data)
+    _add_final_verdict(document, report)
     document.save(output_path)
     return output_path
 
@@ -774,6 +789,50 @@ def _normalise_report(report: dict, fallback_scores: list[int]) -> dict:
     return report
 
 
+def _clean_report(report: dict, data: dict) -> dict:
+    cleaned = {
+        "executive_overview": _clean_text(report.get("executive_overview"), max_sentences=6, max_words=150),
+        "top_strengths": _clean_list(report.get("top_strengths"), max_items=5, max_words=18),
+        "top_problems": _clean_list(report.get("top_problems"), max_items=5, max_words=18),
+        "day_30_plan": _clean_list(report.get("day_30_plan"), max_items=5, max_words=18),
+        "day_60_plan": _clean_list(report.get("day_60_plan"), max_items=5, max_words=18),
+        "day_90_plan": _clean_list(report.get("day_90_plan"), max_items=5, max_words=18),
+        "overall_recruitment_score": _clean_text(report.get("overall_recruitment_score"), max_sentences=2, max_words=45),
+        "final_verdict": _clean_text(report.get("final_verdict"), max_sentences=3, max_words=70),
+        "sections": [],
+    }
+
+    for index, section in enumerate(report.get("sections", [])):
+        section = section or {}
+        cleaned["sections"].append(
+            {
+                "title": SECTION_ORDER[index],
+                "score": int(section.get("score", data["section_scores"][index])),
+                "current_state": _compose_current_state(section.get("current_state"), data["section_notes"][index]),
+                "key_risks": _clean_list(section.get("key_risks"), max_items=2, max_words=18),
+                "commercial_impact": _clean_text(section.get("commercial_impact"), max_sentences=2, max_words=38),
+                "immediate_actions": _clean_list(section.get("immediate_actions"), max_items=2, max_words=18),
+                "structural_improvements": _clean_list(section.get("structural_improvements"), max_items=2, max_words=18),
+            }
+        )
+
+    if not cleaned["executive_overview"]:
+        cleaned["executive_overview"] = (
+            "This audit shows how the recruitment function is performing in practice. "
+            "The current operating model has clear strengths, but control and pace are inconsistent in weaker areas. "
+            "The priority is to improve the parts of the process that are slowing hiring or reducing decision quality."
+        )
+    if not cleaned["overall_recruitment_score"]:
+        cleaned["overall_recruitment_score"] = (
+            "The overall score points to a recruitment function that is workable, but not yet consistent enough in the areas that matter most."
+        )
+    if not cleaned["final_verdict"]:
+        cleaned["final_verdict"] = (
+            "The recruitment function can support current hiring demand, but it needs tighter control in weaker areas to improve pace, consistency and confidence."
+        )
+    return cleaned
+
+
 def _ensure_list(value, min_items: int) -> list[str]:
     if isinstance(value, list):
         items = [str(item).strip() for item in value if str(item).strip()]
@@ -782,190 +841,126 @@ def _ensure_list(value, min_items: int) -> list[str]:
     else:
         items = []
     while len(items) < min_items:
-        items.append("Further detail should be validated against the next review cycle.")
+        items.append("This area needs clearer definition in the next review cycle.")
     return items
 
 
 def _set_document_defaults(document: Document) -> None:
+    font_name = "Aptos"
     normal = document.styles["Normal"]
-    normal.font.name = "Aptos"
-    normal.font.size = Pt(10.5)
+    normal.font.name = font_name
+    normal.font.size = Pt(10)
     normal.font.color.rgb = TEXT
+    normal.paragraph_format.line_spacing = 1.15
+    normal.paragraph_format.space_after = Pt(4)
 
-    for name in ["Heading 1", "Heading 2", "Heading 3", "Title"]:
-        if name in document.styles:
-            document.styles[name].font.name = "Aptos"
+    heading_specs = {
+        "Title": 22,
+        "Heading 1": 14,
+        "Heading 2": 11.5,
+        "Heading 3": 10,
+    }
+    for name, size in heading_specs.items():
+        if name not in document.styles:
+            continue
+        style = document.styles[name]
+        style.font.name = font_name
+        style.font.size = Pt(size)
+        style.font.bold = True
+        style.font.color.rgb = TEXT
+
+    if "List Bullet" in document.styles:
+        style = document.styles["List Bullet"]
+        style.font.name = font_name
+        style.font.size = Pt(10)
+        style.font.color.rgb = TEXT
 
     section = document.sections[0]
-    section.top_margin = Inches(0.6)
-    section.bottom_margin = Inches(0.6)
-    section.left_margin = Inches(0.75)
-    section.right_margin = Inches(0.75)
+    section.top_margin = Inches(0.75)
+    section.bottom_margin = Inches(0.7)
+    section.left_margin = Inches(0.8)
+    section.right_margin = Inches(0.8)
 
 
 def _add_cover_page(document: Document, data: dict) -> None:
-    p = document.add_paragraph()
-    p.paragraph_format.space_before = Pt(96)
-    p.paragraph_format.space_after = Pt(4)
-    run = p.add_run(REPORT_TITLE)
+    title = document.add_paragraph()
+    title.paragraph_format.space_before = Pt(125)
+    title.paragraph_format.space_after = Pt(8)
+    title.style = document.styles["Title"]
+    title.add_run(REPORT_TITLE)
+
+    company = document.add_paragraph()
+    company.paragraph_format.space_after = Pt(18)
+    run = company.add_run(data["company_name"].strip())
     run.bold = True
     run.font.name = "Aptos"
-    run.font.size = Pt(22)
-    run.font.color.rgb = PRIMARY
+    run.font.size = Pt(15)
+    run.font.color.rgb = TEXT
 
-    p2 = document.add_paragraph()
-    p2.paragraph_format.space_after = Pt(6)
-    run2 = p2.add_run(data["company_name"])
-    run2.bold = True
-    run2.font.name = "Aptos"
-    run2.font.size = Pt(17)
-    run2.font.color.rgb = SECONDARY
-
-    _add_paragraph(
-        document,
-        "This report evaluates recruitment operating maturity, benchmark position and delivery risk, with priority actions designed for leadership review.",
-        after=12,
-    )
-
-    table = document.add_table(rows=4, cols=2)
-    table.autofit = True
-    rows = [
-        ("Sector", data["sector"]),
-        ("Location", data["location"]),
-        ("Headcount", data["headcount"]),
-        ("Annual hiring volume", data["annual_hiring_volume"]),
+    detail_lines = [
+        f"Report date: {datetime.now().strftime('%d %B %Y')}",
+        f"Sector: {data['sector']}",
+        f"Location: {data['location']}",
+        f"Headcount: {data['headcount']}",
+        f"Annual hiring volume: {data['annual_hiring_volume']}",
+        f"Contact: {data['contact_name']} | {data['job_title']}",
+        f"Email: {data['email_address']}",
+        f"Phone: {data['phone_number']}",
+        f"Office address: {data['office_address']}",
     ]
-    for i, (label, value) in enumerate(rows):
-        _shade_cell(table.cell(i, 0), LIGHT_BG)
-        _set_cell(table.cell(i, 0), label, bold=True, color=PRIMARY)
-        _set_cell(table.cell(i, 1), value, size=10.3)
-
-    document.add_paragraph("")
-    contact_table = document.add_table(rows=5, cols=2)
-    contact_table.autofit = True
-    contact_rows = [
-        ("Contact name", data["contact_name"]),
-        ("Job title", data["job_title"]),
-        ("Phone number", data["phone_number"]),
-        ("Email address", data["email_address"]),
-        ("Office address", data["office_address"]),
-    ]
-    for i, (label, value) in enumerate(contact_rows):
-        _shade_cell(contact_table.cell(i, 0), SOFT_BG)
-        _set_cell(contact_table.cell(i, 0), label, bold=True, color=SECONDARY)
-        _set_cell(contact_table.cell(i, 1), value, size=10.1)
-
-    document.add_paragraph("")
-    _add_paragraph(
-        document,
-        f"Prepared by {BRAND_NAME}. Distribution should be limited to the client leadership team and relevant hiring stakeholders.",
-        after=0,
-    )
+    for line in detail_lines:
+        _add_paragraph(document, line, after=2)
     document.add_page_break()
 
 
-def _add_executive_snapshot(document: Document, data: dict, report: dict) -> None:
-    _add_section_banner(document, "Executive overview")
-    _add_paragraph(document, report["executive_overview"], after=6)
-
-    cards = document.add_table(rows=1, cols=3)
-    cards.autofit = True
-    values = [
-        ("Overall score", f"{data['total_score']}/120"),
-        ("Rating", _rating_for_score(data["total_score"])),
-        ("Key roles / job titles", data["key_roles_hired"]),
-    ]
-    for index, (label, value) in enumerate(values):
-        cell = cards.cell(0, index)
-        if index == 0:
-            _shade_cell(cell, _score_fill(round((data["total_score"] / 120) * 10)))
-        elif index == 1:
-            _shade_cell(cell, _score_fill(round((data["total_score"] / 120) * 10)))
-        else:
-            _shade_cell(cell, SOFT_BG)
-        _set_cell(cell, f"{label}\n{value}", bold=False)
-    document.add_paragraph("")
+def _add_executive_overview(document: Document, report: dict) -> None:
+    _add_heading(document, "Executive overview", level=1)
+    _add_paragraph(document, report["executive_overview"], after=8)
 
 
-def _add_key_findings_panel(document: Document, data: dict, report: dict) -> None:
-    strongest = max(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])
-    weakest = min(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])
-    problem = report["top_problems"][0] if report.get("top_problems") else "No priority issue identified."
-    table = document.add_table(rows=1, cols=3)
+def _add_overall_score_section(document: Document, data: dict, report: dict, chart_path: Path) -> None:
+    _add_heading(document, "Overall score", level=1)
+
+    score = int(data["total_score"])
+    percentage = round((score / 120) * 100)
+    rating = _rating_for_score(score)
+
+    table = document.add_table(rows=2, cols=4)
     table.autofit = True
-    cards = [
-        ("Strongest area", f"{strongest[0]}\n{strongest[1]}/10", GREEN_FILL, GREEN),
-        ("Most urgent weakness", f"{weakest[0]}\n{weakest[1]}/10", RED_FILL, RED),
-        ("Primary diagnosis", problem, AMBER_FILL, AMBER),
-    ]
-    for index, (label, value, fill, color) in enumerate(cards):
-        cell = table.cell(0, index)
-        _shade_cell(cell, fill)
-        _set_cell(cell, f"{label}\n{value}", color=color)
+    labels = ["Total score", "Percentage", "Rating", "Key roles"]
+    values = [f"{score}/120", f"{percentage}%", rating, data["key_roles_hired"]]
+    for index, label in enumerate(labels):
+        _shade_cell(table.cell(0, index), "EDEDED")
+        _set_cell(table.cell(0, index), label, bold=True)
+        _set_cell(table.cell(1, index), values[index])
+
+    document.add_paragraph("")
+    if chart_path.exists():
+        document.add_picture(str(chart_path), width=Inches(5.4))
+    _add_paragraph(document, report["overall_recruitment_score"], after=8)
+
+
+def _add_key_insights(document: Document, data: dict, report: dict, benchmark_summary: dict) -> None:
+    _add_heading(document, "Key insights", level=1)
+    for line in _build_key_insights(data, report, benchmark_summary):
+        _add_paragraph(document, line, after=2)
     document.add_paragraph("")
 
 
 def _add_score_summary(document: Document, data: dict) -> None:
-    _add_section_banner(document, "Score summary")
-    table = document.add_table(rows=1, cols=2)
-    table.autofit = True
-    header = table.rows[0].cells
-    _set_cell(header[0], "Area", bold=True, color=PRIMARY)
-    _set_cell(header[1], "Score", bold=True, color=PRIMARY)
-    _shade_cell(header[0], LIGHT_BG)
-    _shade_cell(header[1], LIGHT_BG)
-
-    for title, score in zip(SECTION_ORDER, data["section_scores"]):
-        cells = table.add_row().cells
-        _set_cell(cells[0], title)
-        _shade_cell(cells[1], _score_fill(score))
-        _set_cell(cells[1], f"{score}/10", bold=True, color=_score_rgb(score))
-    document.add_paragraph("")
-
-
-def _add_scoring_methodology(document: Document, data: dict, benchmark_summary: dict) -> None:
-    _add_section_banner(document, "Scoring methodology")
-    _add_paragraph(
-        document,
-        (
-            "The audit uses a 120-point framework across twelve operating areas, with each section scored out of 10. "
-            "Scores are informed by three inputs: the performance metrics submitted, the process-control responses supplied in the assessment, "
-            "and the benchmark position available for the selected sector. Higher scores indicate more repeatable control, stronger delivery discipline and lower operating risk."
-        ),
-        after=4,
-    )
-    benchmark_row = benchmark_summary.get("benchmark_row", {}) or {}
-    source_basis = str(benchmark_row.get("source_basis", "")).strip()
-    data_quality_note = str(benchmark_row.get("data_quality_note", "")).strip()
-    if source_basis or data_quality_note:
-        _add_supporting_note(
-            document,
-            "Benchmark basis: "
-            + " ".join(part for part in [source_basis, data_quality_note] if part),
-        )
-
+    _add_heading(document, "Score summary", level=1)
     table = document.add_table(rows=1, cols=3)
     table.autofit = True
     header = table.rows[0].cells
-    for idx, label in enumerate(["Score band", "Interpretation", "Typical implication"]):
-        _set_cell(header[idx], label, bold=True, color=PRIMARY)
-        _shade_cell(header[idx], LIGHT_BG)
+    for index, label in enumerate(["Area", "Score", "Rating"]):
+        _shade_cell(header[index], "EDEDED")
+        _set_cell(header[index], label, bold=True)
 
-    rows = [
-        ("7-10", "Established or strong", "Controls are embedded and performance risk is lower.", GREEN_FILL, GREEN),
-        ("4-6", "Functional but inconsistent", "Capability exists, but execution quality is uneven or delayed.", AMBER_FILL, AMBER),
-        ("1-3", "Material weakness", "The process is exposed to avoidable delay, quality leakage or governance risk.", RED_FILL, RED),
-    ]
-    for band, interpretation, implication, fill, color in rows:
-        cells = table.add_row().cells
-        _shade_cell(cells[0], fill)
-        _set_cell(cells[0], band, bold=True, color=color)
-        _set_cell(cells[1], interpretation)
-        _set_cell(cells[2], implication)
-
-    strongest_benchmark = benchmark_summary.get("comparisons", [])[:1]
-    if strongest_benchmark:
-        document.add_paragraph("")
+    for title, score in zip(SECTION_ORDER, data["section_scores"]):
+        row = table.add_row().cells
+        _set_cell(row[0], title)
+        _set_cell(row[1], f"{score}/10", bold=True)
+        _set_cell(row[2], _section_rating(score))
     document.add_paragraph("")
 
 
@@ -974,186 +969,172 @@ def _add_benchmark_snapshot(document: Document, benchmark_summary: dict) -> None
     if not comparisons:
         return
 
-    _add_section_banner(document, "Benchmark snapshot")
+    _add_heading(document, "Benchmark snapshot", level=1)
     table = document.add_table(rows=1, cols=4)
     table.autofit = True
     header = table.rows[0].cells
     for idx, label in enumerate(["Metric", "Client", "Benchmark", "Comment"]):
-        _set_cell(header[idx], label, bold=True, color=PRIMARY)
-        _shade_cell(header[idx], LIGHT_BG)
+        _shade_cell(header[idx], "EDEDED")
+        _set_cell(header[idx], label, bold=True)
 
     for item in comparisons:
         cells = table.add_row().cells
         suffix = item["suffix"]
         _set_cell(cells[0], item["label"])
-        _set_cell(cells[1], "n/a" if item["client_value"] is None else f"{item['client_value']:.1f}{suffix}")
-        _set_cell(cells[2], "n/a" if item["benchmark_value"] is None else f"{item['benchmark_value']:.1f}{suffix}")
-        status_color, status_fill = _status_colors(item["status"])
-        _shade_cell(cells[3], status_fill)
-        _set_cell(cells[3], item["status"], color=status_color)
+        _set_cell(cells[1], _format_metric_value(item["client_value"], suffix))
+        _set_cell(cells[2], _format_metric_value(item["benchmark_value"], suffix))
+        _shade_cell(cells[3], _status_fill(item["status"]))
+        _set_cell(cells[3], item["comment"])
     document.add_paragraph("")
 
 
 def _add_priority_matrix(document: Document, data: dict, report: dict) -> None:
-    _add_section_banner(document, "Priority matrix")
+    _add_heading(document, "Priority matrix", level=1)
     _add_paragraph(
         document,
-        "The matrix below highlights the most commercially important improvement areas based on the lowest-scoring sections and the actions attached to them.",
+        "These priorities focus on the areas with the weakest control, the clearest commercial drag and the strongest case for action.",
         after=4,
     )
 
     priorities = _build_priority_matrix(data, report)
-    table = document.add_table(rows=1, cols=5)
+    table = document.add_table(rows=1, cols=4)
     table.autofit = True
     header = table.rows[0].cells
-    for idx, label in enumerate(["Priority area", "Urgency", "Impact", "Why it matters", "First move"]):
-        _set_cell(header[idx], label, bold=True, color=PRIMARY)
-        _shade_cell(header[idx], LIGHT_BG)
+    for idx, label in enumerate(["Priority area", "Why it matters", "Action", "Timing"]):
+        _shade_cell(header[idx], "EDEDED")
+        _set_cell(header[idx], label, bold=True)
 
     for item in priorities:
         cells = table.add_row().cells
-        urgency_fill = {"Immediate": RED_FILL, "Next 30 days": AMBER_FILL, "Planned": GREEN_FILL}[item["urgency"]]
-        urgency_color = {"Immediate": RED, "Next 30 days": AMBER, "Planned": GREEN}[item["urgency"]]
         _set_cell(cells[0], item["title"])
-        _shade_cell(cells[1], urgency_fill)
-        _set_cell(cells[1], item["urgency"], bold=True, color=urgency_color)
-        _set_cell(cells[2], item["impact"])
-        _set_cell(cells[3], item["why"])
-        _set_cell(cells[4], item["action"])
+        _set_cell(cells[1], item["why"])
+        _set_cell(cells[2], item["action"])
+        _set_cell(cells[3], item["urgency"])
     document.add_paragraph("")
 
 
 def _add_chart_section(document: Document, chart_paths: list[Path]) -> None:
-    _add_section_banner(document, "Charts and visual analysis")
+    _add_heading(document, "Charts", level=1)
     _add_paragraph(
         document,
-        "The charts below are intended for leadership review and should be read alongside the detailed findings and priority actions in the report.",
+        "The charts below support the score and benchmark findings. They are scaled for board-level review.",
         after=6,
     )
     captions = [
-        "Overall score against the full 120-point framework.",
         "Section-by-section scoring profile.",
-        "Benchmark comparison with each metric plotted on its own scale.",
+        "Benchmark comparison for the most useful submitted metrics.",
     ]
     for chart_path, caption in zip(chart_paths, captions):
         if chart_path.exists():
-            document.add_picture(str(chart_path), width=Inches(6.45))
-            cap = document.add_paragraph()
-            cap.paragraph_format.space_before = Pt(2)
-            cap.paragraph_format.space_after = Pt(8)
-            run = cap.add_run(caption)
-            run.italic = True
-            run.font.name = "Aptos"
-            run.font.size = Pt(9.2)
-            run.font.color.rgb = MUTED
+            document.add_picture(str(chart_path), width=Inches(5.4))
+            _add_paragraph(document, caption, after=8)
             document.add_paragraph("")
 
 
 def _add_detailed_findings(document: Document, data: dict, report: dict) -> None:
-    _add_section_banner(document, "Detailed findings")
-    for section, note in zip(report["sections"], data["section_notes"]):
+    _add_heading(document, "Detailed findings", level=1)
+    for section in report["sections"]:
         _add_heading(document, section["title"], level=2)
-        _add_metric_callout(document, f"Score: {section['score']}/10", section["score"])
-        _add_supporting_note(document, note)
-        for key, label in SECTION_KEYS.items():
-            _add_heading(document, label, level=3)
-            _add_bullets(document, section[key])
+        _add_metric_callout(document, f"Score: {section['score']}/10")
+        _add_heading(document, "Current state", level=3)
+        _add_paragraph(document, section["current_state"], after=3)
+        _add_heading(document, "Key risks", level=3)
+        _add_bullets(document, section["key_risks"])
+        _add_heading(document, "Commercial impact", level=3)
+        _add_paragraph(document, section["commercial_impact"], after=3)
+        _add_heading(document, "Actions", level=3)
+        _add_action_line(document, "Immediate", section["immediate_actions"])
+        _add_action_line(document, "Next phase", section["structural_improvements"])
+        document.add_paragraph("")
 
 
 def _add_roadmap(document: Document, report: dict) -> None:
-    document.add_section(WD_SECTION.NEW_PAGE)
-    _add_section_banner(document, "Priorities and roadmap")
-
-    _add_heading(document, "Top 5 strengths", level=2)
+    _add_heading(document, "Top 5 strengths", level=1)
     _add_bullets(document, report["top_strengths"])
-
-    _add_heading(document, "Top 5 problems", level=2)
-    _add_bullets(document, report["top_problems"])
-
-    _add_heading(document, "30 day plan", level=2)
-    _add_bullets(document, report["day_30_plan"])
-
-    _add_heading(document, "60 day plan", level=2)
-    _add_bullets(document, report["day_60_plan"])
-
-    _add_heading(document, "90 day plan", level=2)
-    _add_bullets(document, report["day_90_plan"])
-
-
-def _add_closing_page(document: Document, report: dict) -> None:
-    document.add_section(WD_SECTION.NEW_PAGE)
-    _add_section_banner(document, "Overall recruitment score")
-    _add_paragraph(document, report["overall_recruitment_score"], after=8)
-    _add_section_banner(document, "Final verdict")
-    _add_paragraph(document, report["final_verdict"], after=6)
-    _add_paragraph(
-        document,
-        f"{BRAND_NAME} can use this audit as the working baseline for a follow-on process redesign, benchmarking refresh or leadership implementation plan.",
-        after=0,
-    )
-
-
-def _add_section_banner(document: Document, title: str) -> None:
-    table = document.add_table(rows=1, cols=1)
-    table.autofit = True
-    cell = table.cell(0, 0)
-    _shade_cell(cell, PRIMARY_HEX)
-    _set_cell(cell, title, bold=True, color=WHITE, size=11.2)
     document.add_paragraph("")
+
+    _add_heading(document, "Top 5 problems", level=1)
+    _add_bullets(document, report["top_problems"])
+    document.add_paragraph("")
+
+    _add_heading(document, "30 day plan", level=1)
+    _add_bullets(document, report["day_30_plan"])
+    document.add_paragraph("")
+
+    _add_heading(document, "60 day plan", level=1)
+    _add_bullets(document, report["day_60_plan"])
+    document.add_paragraph("")
+
+    _add_heading(document, "90 day plan", level=1)
+    _add_bullets(document, report["day_90_plan"])
+    document.add_paragraph("")
+
+
+def _add_final_verdict(document: Document, report: dict) -> None:
+    _add_heading(document, "Final verdict", level=1)
+    _add_paragraph(document, report["final_verdict"], after=0)
 
 
 def _add_heading(document: Document, title: str, level: int) -> None:
     paragraph = document.add_paragraph()
     paragraph.style = document.styles[f"Heading {min(level, 3)}"]
-    paragraph.paragraph_format.space_before = Pt(8 if level == 1 else 5)
+    paragraph.paragraph_format.space_before = Pt(12 if level == 1 else 8 if level == 2 else 4)
     paragraph.paragraph_format.space_after = Pt(3)
     run = paragraph.add_run(title)
     run.bold = True
     run.font.name = "Aptos"
-    run.font.size = Pt(13 if level == 1 else 11.4 if level == 2 else 10.4)
-    run.font.color.rgb = PRIMARY if level == 1 else SECONDARY
-
-
-def _add_paragraph(document: Document, text: str, after: float = 3) -> None:
-    paragraph = document.add_paragraph()
-    paragraph.paragraph_format.space_after = Pt(after)
-    paragraph.paragraph_format.line_spacing = 1.1
-    run = paragraph.add_run(text.strip())
-    run.font.name = "Aptos"
-    run.font.size = Pt(10.4)
+    run.font.size = Pt(14 if level == 1 else 11.5 if level == 2 else 10)
     run.font.color.rgb = TEXT
 
 
-def _add_supporting_note(document: Document, text: str) -> None:
+def _add_paragraph(document: Document, text: str, after: float = 3) -> None:
+    text = _clean_text(text)
+    if not text:
+        return
     paragraph = document.add_paragraph()
-    paragraph.paragraph_format.space_after = Pt(4)
+    paragraph.paragraph_format.space_after = Pt(after)
+    paragraph.paragraph_format.line_spacing = 1.15
     run = paragraph.add_run(text.strip())
-    run.italic = True
     run.font.name = "Aptos"
-    run.font.size = Pt(9.6)
-    run.font.color.rgb = MUTED
+    run.font.size = Pt(10)
+    run.font.color.rgb = TEXT
 
 
 def _add_bullets(document: Document, items: list[str]) -> None:
-    for item in items:
+    for item in _clean_list(items, max_items=len(items) if items else 0, max_words=18):
         bullet = document.add_paragraph(style="List Bullet")
         bullet.paragraph_format.space_before = Pt(0)
-        bullet.paragraph_format.space_after = Pt(0.5)
+        bullet.paragraph_format.space_after = Pt(1)
         bullet.paragraph_format.left_indent = Inches(0.18)
         run = bullet.add_run(item)
         run.font.name = "Aptos"
-        run.font.size = Pt(10.1)
+        run.font.size = Pt(10)
         run.font.color.rgb = TEXT
 
 
-def _add_metric_callout(document: Document, text: str, score: int) -> None:
+def _add_action_line(document: Document, label: str, items: list[str]) -> None:
+    paragraph = document.add_paragraph()
+    paragraph.paragraph_format.space_after = Pt(2)
+    paragraph.paragraph_format.line_spacing = 1.1
+    lead = paragraph.add_run(f"{label}: ")
+    lead.bold = True
+    lead.font.name = "Aptos"
+    lead.font.size = Pt(10)
+    lead.font.color.rgb = TEXT
+    body = paragraph.add_run("; ".join(_clean_list(items, max_items=2, max_words=18)))
+    body.font.name = "Aptos"
+    body.font.size = Pt(10)
+    body.font.color.rgb = TEXT
+
+
+def _add_metric_callout(document: Document, text: str) -> None:
     paragraph = document.add_paragraph()
     paragraph.paragraph_format.space_after = Pt(4)
     run = paragraph.add_run(text)
     run.bold = True
     run.font.name = "Aptos"
-    run.font.size = Pt(10.5)
-    run.font.color.rgb = _score_rgb(score)
+    run.font.size = Pt(10)
+    run.font.color.rgb = TEXT
 
 
 def _shade_cell(cell, fill: str) -> None:
@@ -1175,81 +1156,22 @@ def _set_cell(
     paragraph = cell.paragraphs[0]
     paragraph.alignment = alignment
     paragraph.paragraph_format.space_after = Pt(0)
-    run = paragraph.add_run(text)
+    paragraph.paragraph_format.line_spacing = 1.05
+    run = paragraph.add_run(_clean_text(text))
     run.bold = bold
     run.font.name = "Aptos"
     run.font.size = Pt(size)
-    run.font.color.rgb = color
+    run.font.color.rgb = TEXT
     cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
 
 
 def _apply_chart_style(fig, ax) -> None:
-    fig.patch.set_facecolor("#f8f3ed")
-    ax.set_facecolor("#f8f3ed")
-    ax.tick_params(axis="x", colors="#5d6778", labelsize=9)
-    ax.tick_params(axis="y", colors="#142033", labelsize=9)
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
+    ax.tick_params(axis="x", colors="black", labelsize=8.5)
+    ax.tick_params(axis="y", colors="black", labelsize=8.5)
     for spine in ax.spines.values():
         spine.set_visible(False)
-
-
-def _apply_brand_headers_and_footers(document: Document, data: dict) -> None:
-    for section in document.sections:
-        section.header.is_linked_to_previous = False
-        section.footer.is_linked_to_previous = False
-        section.top_margin = Inches(0.6)
-        section.bottom_margin = Inches(0.6)
-        section.left_margin = Inches(0.75)
-        section.right_margin = Inches(0.75)
-
-        header = section.header.paragraphs[0]
-        header.text = ""
-        header.paragraph_format.space_after = Pt(0)
-        header.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        title_run = header.add_run(LETTERHEAD_TITLE)
-        title_run.bold = True
-        title_run.font.name = "Times New Roman"
-        title_run.font.size = Pt(14)
-        title_run.font.color.rgb = SECONDARY
-
-        sub_header = section.header.add_paragraph()
-        sub_header.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        sub_header.paragraph_format.space_before = Pt(0)
-        sub_header.paragraph_format.space_after = Pt(0)
-        sub_run = sub_header.add_run(LETTERHEAD_SUBTITLE)
-        sub_run.bold = False
-        sub_run.font.name = "Aptos"
-        sub_run.font.size = Pt(6.8)
-        sub_run.font.color.rgb = MUTED
-
-        rule = section.header.add_paragraph()
-        rule.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        rule.paragraph_format.space_before = Pt(0)
-        rule.paragraph_format.space_after = Pt(0)
-        rule_run = rule.add_run("______________________________")
-        rule_run.font.name = "Aptos"
-        rule_run.font.size = Pt(7)
-        rule_run.font.color.rgb = MUTED
-
-        footer = section.footer.paragraphs[0]
-        footer.text = ""
-        footer.paragraph_format.space_after = Pt(0)
-        footer_table = section.footer.add_table(rows=1, cols=1, width=Inches(6.8))
-        footer_table.autofit = True
-        footer_cell = footer_table.cell(0, 0)
-        _shade_cell(footer_cell, "B8B8B8")
-        footer_text = (
-            f"{LETTERHEAD_COMPANY_NO}\n"
-            f"{LETTERHEAD_REGISTERED_ADDRESS}\n"
-            f"{LETTERHEAD_PHONE}\n"
-            f"{LETTERHEAD_WEBSITE}"
-        )
-        _set_cell(
-            footer_cell,
-            footer_text,
-            color=WHITE,
-            size=6.8,
-            alignment=WD_ALIGN_PARAGRAPH.CENTER,
-        )
 
 
 def _output_dir() -> Path:
@@ -1412,72 +1334,184 @@ def _rating_for_score(total_score: int) -> str:
 
 
 def _score_rgb(score: int) -> RGBColor:
-    if score >= 7:
-        return GREEN
-    if score >= 4:
-        return AMBER
-    return RED
+    return TEXT
 
 
 def _score_fill(score: int) -> str:
     if score >= 7:
-        return GREEN_FILL
+        return "D9D9D9"
     if score >= 4:
-        return AMBER_FILL
-    return RED_FILL
+        return "EBEBEB"
+    return "F5F5F5"
 
 
 def _score_hex(score: int) -> str:
     if score >= 7:
-        return "#16a34a"
+        return "#3A3A3A"
     if score >= 4:
-        return "#d97706"
-    return "#dc2626"
+        return "#6A6A6A"
+    return "#9A9A9A"
 
 
 def _status_colors(status: str) -> tuple[RGBColor, str]:
-    lowered = status.lower()
-    if "better" in lowered or "ahead" in lowered or "in line" in lowered:
-        return GREEN, GREEN_FILL
-    if "behind" in lowered:
-        return RED, RED_FILL
-    return AMBER, AMBER_FILL
+    return TEXT, _status_fill(status)
 
 
 def _fmt(value: float | None, suffix: str) -> str:
-    return "not provided" if value is None else f"{value:.1f}{suffix}"
+    return "not provided" if value is None else _format_metric_value(value, suffix)
 
 
 def _build_priority_matrix(data: dict, report: dict) -> list[dict[str, str]]:
-    sections = report.get("sections", [])
-    if isinstance(sections, dict):
-        sections = [
-            {
-                "title": SECTION_ID_TO_TITLE.get(section_id, section_id.replace("_", " ").title()),
-                **section,
-            }
-            for section_id, section in sections.items()
-        ]
-
     priorities = []
-    for section in sorted(sections, key=lambda item: item["score"])[:4]:
-        if section["score"] <= 4:
-            urgency = "Immediate"
-            impact = "High"
-        elif section["score"] <= 6:
-            urgency = "Next 30 days"
-            impact = "High"
-        else:
-            urgency = "Planned"
-            impact = "Medium"
-
+    sections = sorted(report.get("sections", []), key=lambda item: item["score"])[:4]
+    for section in sections:
+        urgency = "Immediate" if section["score"] <= 4 else "Next 30 days" if section["score"] <= 6 else "Planned"
         priorities.append(
             {
                 "title": section["title"],
                 "urgency": urgency,
-                "impact": impact,
-                "why": section["commercial_impact"][0],
+                "impact": _section_rating(section["score"]),
+                "why": section["commercial_impact"],
                 "action": section["immediate_actions"][0],
             }
         )
     return priorities
+
+
+def _clean_text(value, max_sentences: int | None = None, max_words: int | None = None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, list):
+        value = " ".join(str(item) for item in value)
+    text = str(value)
+    text = text.replace("\r", "\n")
+    text = re.sub(r"(?m)^\s*[*#>-]+\s*", "", text)
+    text = re.sub(r"(?m)^\s*\d+[.)]\s*", "", text)
+    text = text.replace("•", " ")
+    text = text.replace("–", "-").replace("—", "-")
+    text = re.sub(r"\s+", " ", text).strip()
+
+    replacements = {
+        "best-in-class": "strong",
+        "best in class": "strong",
+        "robust": "clear",
+        "hampered": "slowed",
+        "material": "clear",
+        "leverage": "use",
+        "seamless": "consistent",
+    }
+    for source, target in replacements.items():
+        text = re.sub(rf"\b{re.escape(source)}\b", target, text, flags=re.IGNORECASE)
+
+    text = re.sub(r"\s+([,.;:])", r"\1", text)
+    text = re.sub(r"([.?!]){2,}", r"\1", text)
+
+    if max_sentences is not None:
+        sentences = _split_sentences(text)
+        text = " ".join(sentences[:max_sentences])
+    if max_words is not None:
+        words = text.split()
+        if len(words) > max_words:
+            text = " ".join(words[:max_words]).rstrip(",;:")
+            if text and text[-1] not in ".!?":
+                text += "."
+    return text.strip()
+
+
+def _clean_list(items, max_items: int, max_words: int = 18) -> list[str]:
+    if items is None:
+        source_items = []
+    elif isinstance(items, list):
+        source_items = items
+    else:
+        source_items = [items]
+
+    cleaned = []
+    for item in source_items:
+        text = _clean_text(item, max_sentences=1, max_words=max_words)
+        if text:
+            cleaned.append(text)
+        if max_items and len(cleaned) >= max_items:
+            break
+    return cleaned
+
+
+def _compose_current_state(value, fallback_note: str) -> str:
+    sentences = []
+    for text in _clean_list(value, max_items=3, max_words=22):
+        sentences.extend(_split_sentences(text))
+    if fallback_note:
+        sentences.extend(_split_sentences(_clean_text(fallback_note, max_sentences=2, max_words=28)))
+
+    unique = []
+    seen = set()
+    for sentence in sentences:
+        key = sentence.lower()
+        if key not in seen:
+            unique.append(sentence)
+            seen.add(key)
+        if len(unique) == 3:
+            break
+    return " ".join(unique)
+
+
+def _split_sentences(text: str) -> list[str]:
+    text = text.strip()
+    if not text:
+        return []
+    parts = re.split(r"(?<=[.!?])\s+", text)
+    cleaned = [part.strip() for part in parts if part.strip()]
+    return cleaned or [text]
+
+
+def _build_key_insights(data: dict, report: dict, benchmark_summary: dict) -> list[str]:
+    strongest = max(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])
+    weakest = min(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])
+    comparisons = benchmark_summary.get("comparisons", [])
+    benchmark_line = "Benchmark comparison was limited by the data supplied."
+    for item in comparisons:
+        if item["status"] != "In line":
+            benchmark_line = f"{item['label']} is {item['comment'].lower()}."
+            break
+
+    first_problem = report["top_problems"][0] if report["top_problems"] else "Control is uneven across the hiring process."
+    first_action = report["day_30_plan"][0] if report["day_30_plan"] else "Tighten the weakest part of the process first."
+    return [
+        f"The strongest area is {strongest[0]} at {strongest[1]}/10.",
+        f"The weakest area is {weakest[0]} at {weakest[1]}/10.",
+        benchmark_line,
+        f"First priority: {first_action.rstrip('.')}.",
+    ]
+
+
+def _section_rating(score: int) -> str:
+    if score >= 8:
+        return "Strong"
+    if score >= 6:
+        return "Sound with gaps"
+    if score >= 4:
+        return "Inconsistent"
+    return "Weak"
+
+
+def _status_fill(status: str) -> str:
+    lowered = status.lower()
+    if "ahead" in lowered:
+        return "E7E7E7"
+    if "behind" in lowered:
+        return "F1F1F1"
+    return "F7F7F7"
+
+
+def _format_metric_value(value: float | None, suffix: str) -> str:
+    if value is None:
+        return "n/a"
+    if float(value).is_integer():
+        number = str(int(value))
+    else:
+        number = f"{value:.1f}".rstrip("0").rstrip(".")
+    if suffix == "days":
+        return f"{number} days"
+    if suffix == "%":
+        return f"{number}%"
+    return number
