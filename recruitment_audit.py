@@ -1405,7 +1405,8 @@ def _add_list_section(story: list, styles: StyleSheet1, title: str, items: list[
 
 def _add_final_verdict(story: list, styles: StyleSheet1, report: dict) -> None:
     story.append(Paragraph("Final verdict", styles["Heading1"]))
-    story.append(Paragraph(report["final_verdict"], styles["Body"]))
+    for paragraph in _build_final_verdict_paragraphs(report):
+        story.append(Paragraph(paragraph, styles["Body"]))
 
 
 def _bullet_list(items: list[str], styles: StyleSheet1) -> ListFlowable:
@@ -1721,6 +1722,38 @@ def _build_key_insights(data: dict, report: dict, benchmark_summary: dict) -> li
         f"Weakest area: {weakest[0]} at {weakest[1]}/10.",
         benchmark_line,
         f"Immediate priority: {first_action.rstrip('.')}.",
+    ]
+
+
+def _build_final_verdict_paragraphs(report: dict) -> list[str]:
+    sections = report.get("sections", [])
+    if not sections:
+        return [
+            "The recruitment operating model can support current hiring activity, but it is not yet controlled closely enough to give leadership a dependable result.",
+            "The main risk is uneven execution across the hiring process, which is likely creating delay, wasted effort and weaker decision quality.",
+            "The next step is to tighten ownership, simplify control points and manage the process against a smaller set of hard measures so hiring becomes more predictable.",
+        ]
+
+    strongest = max(sections, key=lambda section: section["score"])
+    weakest = min(sections, key=lambda section: section["score"])
+    total_score = sum(section["score"] for section in sections)
+    rating = _rating_for_score(total_score).lower()
+    return [
+        _clean_text(
+            f"The recruitment operating model is {rating} at {total_score}/120. {strongest['title']} is providing the strongest foundation, but that is being diluted by weaker control in {weakest['title'].lower()}.",
+            max_sentences=2,
+            max_words=42,
+        ),
+        _clean_text(
+            f"The main business risk is weak control in {weakest['title'].lower()}. That is likely slowing hiring decisions, increasing avoidable process waste and making hiring outcomes less reliable than they should be.",
+            max_sentences=2,
+            max_words=40,
+        ),
+        _clean_text(
+            f"The next step is to tighten the weakest operating controls, assign clearer accountability and manage performance more closely. That matters because stronger discipline in those areas will improve pace, raise decision quality and give the business a more dependable hiring model.",
+            max_sentences=2,
+            max_words=42,
+        ),
     ]
 
 
