@@ -8,6 +8,10 @@ export type SectionReport = {
   strapline: string;
   score: number;
   status: ScoreStatus;
+  currentState: string;
+  keyRisks: string[];
+  commercialImpact: string;
+  immediateActions: string[];
   diagnosis: string;
   impact: string;
   recommendations: string[];
@@ -426,6 +430,31 @@ function diagnosisFor(section: AuditSection, score: number, answers: AuditAnswer
   );
 }
 
+function keyRisksFor(section: AuditSection, score: number, answers: AuditAnswers): string[] {
+  const lowPoints = lowSignal(section.id, answers);
+  const weakestPoint = lowPoints[0] ?? "process control";
+  const secondaryPoint = lowPoints[1] ?? "decision quality";
+
+  if (score <= 39) {
+    return [
+      `Weak control over ${weakestPoint} is slowing the process and increasing inconsistency.`,
+      `The current position is likely to damage shortlist quality, conversion and candidate confidence.`,
+    ];
+  }
+
+  if (score <= 70) {
+    return [
+      `${weakestPoint} is not consistent enough and is creating avoidable variance between roles or teams.`,
+      `If ${secondaryPoint} is not tightened, hiring quality and pace will remain uneven.`,
+    ];
+  }
+
+  return [
+    `${weakestPoint} is the main area that still needs tighter discipline.`,
+    `Without that improvement, stronger parts of the process will end up carrying weaker ones.`,
+  ];
+}
+
 function impactFor(section: AuditSection, score: number): string {
   const sectionTitle = section.title.toLowerCase();
   if (score <= 39) {
@@ -544,6 +573,9 @@ function scoreMeaning(score: number): string {
 
 function buildSectionReport(section: AuditSection, answers: AuditAnswers): SectionReport {
   const score = scoreBySection(section.id, answers);
+  const diagnosis = diagnosisFor(section, score, answers);
+  const impact = impactFor(section, score);
+  const recommendations = recommendationsFor(section.id);
 
   return {
     id: section.id,
@@ -551,9 +583,13 @@ function buildSectionReport(section: AuditSection, answers: AuditAnswers): Secti
     strapline: section.strapline,
     score,
     status: band(score),
-    diagnosis: diagnosisFor(section, score, answers),
-    impact: impactFor(section, score),
-    recommendations: recommendationsFor(section.id),
+    currentState: diagnosis,
+    keyRisks: keyRisksFor(section, score, answers),
+    commercialImpact: impact,
+    immediateActions: recommendations.slice(0, 2),
+    diagnosis,
+    impact,
+    recommendations,
     consultantNote: consultantNoteFor(section, score),
     evidence: lowSignal(section.id, answers),
   };

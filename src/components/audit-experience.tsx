@@ -175,6 +175,95 @@ function SectionQuestions({
   );
 }
 
+function ScorePill({ score, status, large = false }: { score: number; status: ScoreStatus; large?: boolean }) {
+  const colours = sectionColours(status);
+
+  return (
+    <div
+      className={`inline-flex items-center rounded-full font-semibold ${large ? "px-4 py-2 text-base" : "px-3 py-1 text-sm"}`}
+      style={{ backgroundColor: colours.soft, color: colours.text }}
+    >
+      {score}/100
+    </div>
+  );
+}
+
+function ScoreTableRow({ title, score, status }: { title: string; score: number; status: ScoreStatus }) {
+  const colours = sectionColours(status);
+
+  return (
+    <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4">
+      <div className="flex items-center justify-between gap-4">
+        <div className="text-sm font-semibold text-slate-900">{title}</div>
+        <ScorePill score={score} status={status} />
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+        <div className="h-full rounded-full" style={{ width: `${score}%`, backgroundColor: colours.line }} />
+      </div>
+    </div>
+  );
+}
+
+function SectionReportCard({ section }: { section: AuditReport["sections"][number] }) {
+  const colours = sectionColours(section.status);
+
+  return (
+    <article className="rounded-[1.75rem] border border-slate-200 bg-white p-7 shadow-[0_18px_50px_rgba(15,23,42,0.05)]">
+      <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{section.strapline}</div>
+          <h3 className="text-2xl font-semibold tracking-tight text-slate-950">{section.title}</h3>
+        </div>
+        <div className="flex flex-col items-start gap-2 sm:items-end">
+          <ScorePill score={section.score} status={section.status} large />
+          <div className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: colours.text }}>
+            {statusCopy(section.status)}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-5 lg:grid-cols-2">
+        <div className="rounded-[1.25rem] bg-slate-50 p-5">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Current State</div>
+          <p className="text-sm leading-7 text-slate-700">{section.currentState}</p>
+        </div>
+
+        <div className="rounded-[1.25rem] bg-slate-50 p-5">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Key Risks</div>
+          <div className="space-y-2">
+            {section.keyRisks.map((risk) => (
+              <div key={risk} className="rounded-2xl bg-white px-4 py-3 text-sm leading-6 text-slate-700">
+                {risk}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-[1.25rem] bg-slate-50 p-5">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Commercial Impact</div>
+          <p className="text-sm leading-7 text-slate-700">{section.commercialImpact}</p>
+        </div>
+
+        <div className="rounded-[1.25rem] bg-slate-50 p-5">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Immediate Actions</div>
+          <div className="space-y-2">
+            {section.immediateActions.map((action) => (
+              <div key={action} className="rounded-2xl bg-white px-4 py-3 text-sm leading-6 text-slate-700">
+                {action}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-[1.25rem] border border-slate-200 px-5 py-4">
+        <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Consultant Note</div>
+        <p className="text-sm leading-7 text-slate-700">{section.consultantNote}</p>
+      </div>
+    </article>
+  );
+}
+
 function ResultsView({
   report,
   onDownload,
@@ -190,47 +279,47 @@ function ResultsView({
 
   return (
     <div className="space-y-8">
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-[0_28px_80px_rgba(15,23,42,0.08)]">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-4">
+      <section className="rounded-[2.25rem] border border-slate-200 bg-white p-8 shadow-[0_32px_90px_rgba(15,23,42,0.08)] md:p-10">
+        <div className="flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
+          <div className="space-y-5">
             <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
               Recruitment audit summary
             </div>
             <div>
-              <h2 className="max-w-3xl text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+              <h2 className="max-w-4xl text-4xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-5xl">
                 {report.profile.companyName} recruitment audit
               </h2>
-              <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">{report.executiveSummary}</p>
+              <p className="mt-4 max-w-4xl text-lg leading-8 text-slate-600">{report.executiveSummary}</p>
             </div>
           </div>
-          <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-6">
-            <div className="text-sm font-medium text-slate-500">Overall score</div>
-            <div className="mt-2 text-5xl font-semibold tracking-tight" style={{ color: overallColours.text }}>
+          <div className="rounded-[2rem] border border-slate-200 bg-slate-50 px-8 py-7">
+            <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Overall score</div>
+            <div className="mt-3 text-7xl font-semibold tracking-[-0.06em]" style={{ color: overallColours.text }}>
               {report.overallScore}
             </div>
-            <div className="mt-2 inline-flex rounded-full px-3 py-1 text-sm font-semibold" style={{ backgroundColor: overallColours.soft, color: overallColours.text }}>
+            <div className="mt-3 inline-flex rounded-full px-4 py-2 text-sm font-semibold" style={{ backgroundColor: overallColours.soft, color: overallColours.text }}>
               {statusCopy(report.overallStatus)}
             </div>
           </div>
         </div>
 
-        <div className="mt-8 h-3 overflow-hidden rounded-full bg-slate-100">
+        <div className="mt-10 h-3 overflow-hidden rounded-full bg-slate-100">
           <div className="h-full rounded-full transition-all" style={{ width: `${report.overallScore}%`, backgroundColor: overallColours.line }} />
         </div>
-        <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600">{report.scoreMeaning}</p>
+        <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">{report.scoreMeaning}</p>
 
         <div className="mt-8 grid gap-4 md:grid-cols-3">
-          <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
+          <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-6">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Strongest area</div>
             <div className="mt-3 text-lg font-semibold tracking-tight text-slate-950">{strongestArea.title}</div>
             <div className="mt-2 text-sm leading-6 text-slate-600">{strongestArea.score}/100 and operating with the most control.</div>
           </div>
-          <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
+          <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-6">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Weakest area</div>
             <div className="mt-3 text-lg font-semibold tracking-tight text-slate-950">{weakestArea.title}</div>
             <div className="mt-2 text-sm leading-6 text-slate-600">{weakestArea.score}/100 and the first area that needs tighter operating discipline.</div>
           </div>
-          <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
+          <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-6">
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Audit scope</div>
             <div className="mt-3 text-lg font-semibold tracking-tight text-slate-950">{report.sections.length} sections assessed</div>
             <div className="mt-2 text-sm leading-6 text-slate-600">
@@ -239,91 +328,125 @@ function ResultsView({
           </div>
         </div>
 
-        <div className="mt-8 grid gap-4 lg:grid-cols-[1.2fr_1fr]">
-          <div className="rounded-[1.5rem] border border-slate-200 bg-white p-6">
-            <div className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Top 3 issues</div>
+        <div className="mt-8 grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+          <div className="rounded-[1.75rem] border border-slate-200 bg-white p-7">
+            <div className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Key findings</div>
             <div className="mt-5 space-y-4">
               {report.topIssues.map((issue) => {
-                const colours = sectionColours(issue.status);
                 return (
-                  <div key={issue.id} className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
+                  <div key={issue.id} className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-5">
                     <div className="flex items-center justify-between gap-4">
-                      <h3 className="text-base font-semibold text-slate-950">{issue.title}</h3>
-                      <div className="rounded-full px-3 py-1 text-sm font-semibold" style={{ backgroundColor: colours.soft, color: colours.text }}>
-                        {issue.score}/100
-                      </div>
+                      <h3 className="text-lg font-semibold text-slate-950">{issue.title}</h3>
+                      <ScorePill score={issue.score} status={issue.status} />
                     </div>
-                    <p className="mt-3 text-sm leading-6 text-slate-600">{issue.diagnosis}</p>
+                    <p className="mt-3 text-sm leading-7 text-slate-600">{issue.currentState}</p>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          <div className="rounded-[1.5rem] border border-slate-200 bg-slate-950 p-6 text-white">
-            <div className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-300">Priority actions</div>
-            <div className="mt-5 space-y-4">
-              {report.priorityActions.map((action, index) => (
-                <div key={action} className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Action {index + 1}</div>
-                  <p className="mt-2 text-sm leading-6 text-slate-100">{action}</p>
-                </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={onDownload}
-              disabled={downloading}
-              className="mt-6 inline-flex items-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {downloading ? "Preparing PDF..." : "Download PDF report"}
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-2">
-        {report.sections.map((section) => {
-          const colours = sectionColours(section.status);
-          return (
-            <article key={section.id} className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_16px_44px_rgba(15,23,42,0.06)]">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{section.strapline}</div>
-                  <h3 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">{section.title}</h3>
-                </div>
-                <div className="rounded-full px-3 py-1 text-sm font-semibold" style={{ backgroundColor: colours.soft, color: colours.text }}>
-                  {section.score}/100
-                </div>
+          <div className="space-y-5">
+            <div className="rounded-[1.75rem] border border-slate-200 bg-slate-950 p-7 text-white">
+              <div className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-300">Priority actions</div>
+              <div className="mt-5 space-y-4">
+                {report.priorityActions.map((action, index) => (
+                  <div key={action} className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4">
+                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Action {index + 1}</div>
+                    <p className="mt-2 text-sm leading-6 text-slate-100">{action}</p>
+                  </div>
+                ))}
               </div>
+              <button
+                type="button"
+                onClick={onDownload}
+                disabled={downloading}
+                className="mt-6 inline-flex items-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {downloading ? "Preparing PDF..." : "Download PDF report"}
+              </button>
+            </div>
 
-              <div className="mt-5 space-y-5 text-sm leading-6 text-slate-600">
-                <div>
-                  <div className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Diagnosis</div>
-                  <p>{section.diagnosis}</p>
-                </div>
-                <div>
-                  <div className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Impact</div>
-                  <p>{section.impact}</p>
-                </div>
-                <div>
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Recommendation</div>
-                  <div className="space-y-2">
-                    {section.recommendations.map((recommendation) => (
-                      <div key={recommendation} className="rounded-2xl bg-slate-50 px-4 py-3 text-slate-700">
-                        {recommendation}
+            <div className="rounded-[1.75rem] border border-slate-200 bg-white p-7">
+              <div className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Priority matrix</div>
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-[1.25rem] bg-red-50 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-red-700">Immediate attention</div>
+                  <div className="mt-3 space-y-2">
+                    {report.topIssues.slice(0, 2).map((issue) => (
+                      <div key={issue.id} className="rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-800">
+                        {issue.title}
                       </div>
                     ))}
                   </div>
                 </div>
-                <div>
-                  <div className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Consultant note</div>
-                  <p>{section.consultantNote}</p>
+                <div className="rounded-[1.25rem] bg-amber-50 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Tighten next</div>
+                  <div className="mt-3 space-y-2">
+                    {report.topIssues.slice(2, 3).map((issue) => (
+                      <div key={issue.id} className="rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-800">
+                        {issue.title}
+                      </div>
+                    ))}
+                    {report.strongestAreas.slice(2, 3).map((issue) => (
+                      <div key={issue.id} className="rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-800">
+                        {issue.title}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-[1.25rem] bg-slate-50 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Watch closely</div>
+                  <div className="mt-3 space-y-2">
+                    {report.sections
+                      .filter((section) => section.score > 70 && section.score < 85)
+                      .slice(0, 2)
+                      .map((section) => (
+                        <div key={section.id} className="rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-800">
+                          {section.title}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+                <div className="rounded-[1.25rem] bg-green-50 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-green-700">Maintain</div>
+                  <div className="mt-3 space-y-2">
+                    {report.strongestAreas.slice(0, 2).map((area) => (
+                      <div key={area.id} className="rounded-2xl bg-white px-4 py-3 text-sm font-medium text-slate-800">
+                        {area.title}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </article>
-          );
-        })}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-5">
+        <div className="rounded-[1.75rem] border border-slate-200 bg-white p-7 shadow-[0_18px_50px_rgba(15,23,42,0.05)]">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">Section score overview</div>
+              <h3 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-slate-950">Performance by recruitment area</h3>
+            </div>
+            <p className="max-w-2xl text-sm leading-7 text-slate-600">
+              Each score reflects the current operating position for that part of the process. Lower-scoring sections should be addressed first where they are slowing hiring or weakening conversion.
+            </p>
+          </div>
+          <div className="mt-6 grid gap-3 lg:grid-cols-2">
+            {report.sections.map((section) => (
+              <ScoreTableRow key={section.id} title={section.title} score={section.score} status={section.status} />
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-5">
+          {report.sections.map((section) => (
+            <SectionReportCard key={section.id} section={section} />
+          ))}
+        </div>
       </section>
 
       <section className="rounded-[1.75rem] border border-slate-200 bg-white p-8 shadow-[0_16px_44px_rgba(15,23,42,0.06)]">
@@ -436,7 +559,7 @@ export function AuditExperience() {
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_28px_80px_rgba(15,23,42,0.08)] sm:p-8">
+      <section className="rounded-[2.25rem] border border-slate-200 bg-white p-8 shadow-[0_32px_90px_rgba(15,23,42,0.08)] md:p-10">
         <div className="mb-8 flex flex-col gap-5 border-b border-slate-200 pb-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="space-y-3">
@@ -444,10 +567,10 @@ export function AuditExperience() {
                 Step {completionLabel(step)}
               </div>
               <div>
-                <h2 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                <h2 className="text-4xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-5xl">
                   {step === 0 ? "Company profile" : currentSection?.title}
                 </h2>
-                <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">
+                <p className="mt-4 max-w-3xl text-lg leading-8 text-slate-600">
                   {step === 0
                     ? "Set the report context first. This information is used in the final audit and PDF output."
                     : currentSection?.summary}

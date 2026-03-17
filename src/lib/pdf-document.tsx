@@ -156,10 +156,12 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   issueBlock: {
-    borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
-    paddingTop: 12,
-    marginTop: 12,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: "#f8fafc",
+    marginBottom: 10,
   },
   sectionBlock: {
     borderWidth: 1,
@@ -208,7 +210,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   listItem: {
-    marginBottom: 4,
+    marginBottom: 6,
   },
   finalNote: {
     borderWidth: 1,
@@ -243,6 +245,60 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
     marginBottom: 4,
   },
+  metricGrid: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 10,
+    marginBottom: 18,
+  },
+  metricColumn: {
+    flex: 1,
+  },
+  matrixGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 10,
+  },
+  matrixCell: {
+    width: "48%",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    borderRadius: 12,
+    padding: 12,
+  },
+  matrixTitle: {
+    fontSize: 8.5,
+    fontFamily: "Helvetica-Bold",
+    textTransform: "uppercase",
+    marginBottom: 6,
+  },
+  matrixItem: {
+    borderRadius: 10,
+    backgroundColor: "#ffffff",
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginTop: 6,
+  },
+  scoreRowCard: {
+    width: "48%",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+  },
+  scoreBarTrack: {
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: "#e5e7eb",
+    overflow: "hidden",
+    marginTop: 8,
+  },
+  scoreBarFill: {
+    height: 6,
+    borderRadius: 999,
+  },
 });
 
 function statusColours(status: ScoreStatus) {
@@ -273,14 +329,18 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function SectionOverviewCard({ section }: { section: SectionReport }) {
+function ScoreOverviewRow({ section }: { section: SectionReport }) {
   const colours = statusColours(section.status);
 
   return (
-    <View style={[styles.card, styles.scoreCard]}>
-      <Text style={styles.scoreCardTitle}>{section.title}</Text>
-      <Text style={[styles.scoreCardValue, { color: colours.text }]}>{section.score}/100</Text>
-      <Text>{section.diagnosis}</Text>
+    <View style={styles.scoreRowCard}>
+      <View style={styles.scoreRow}>
+        <Text style={styles.scoreCardTitle}>{section.title}</Text>
+        <Text style={[styles.label, { color: colours.text }]}>{section.score}/100</Text>
+      </View>
+      <View style={styles.scoreBarTrack}>
+        <View style={[styles.scoreBarFill, { width: `${section.score}%`, backgroundColor: colours.line }]} />
+      </View>
     </View>
   );
 }
@@ -302,20 +362,29 @@ function DetailSection({ section }: { section: SectionReport }) {
       </View>
 
       <View style={styles.listBlock}>
-        <Text style={styles.sectionMiniLabel}>Diagnosis</Text>
-        <Text>{section.diagnosis}</Text>
+        <Text style={styles.sectionMiniLabel}>Current State</Text>
+        <Text>{section.currentState}</Text>
       </View>
 
       <View style={styles.listBlock}>
-        <Text style={styles.sectionMiniLabel}>Impact</Text>
-        <Text>{section.impact}</Text>
+        <Text style={styles.sectionMiniLabel}>Key Risks</Text>
+        {section.keyRisks.map((risk) => (
+          <Text key={risk} style={styles.listItem}>
+            • {risk}
+          </Text>
+        ))}
       </View>
 
       <View style={styles.listBlock}>
-        <Text style={styles.sectionMiniLabel}>Recommendation</Text>
-        {section.recommendations.map((recommendation) => (
-          <Text key={recommendation} style={styles.listItem}>
-            • {recommendation}
+        <Text style={styles.sectionMiniLabel}>Commercial Impact</Text>
+        <Text>{section.commercialImpact}</Text>
+      </View>
+
+      <View style={styles.listBlock}>
+        <Text style={styles.sectionMiniLabel}>Immediate Actions</Text>
+        {section.immediateActions.map((action) => (
+          <Text key={action} style={styles.listItem}>
+            • {action}
           </Text>
         ))}
       </View>
@@ -332,6 +401,7 @@ export function AuditPdfDocument({ report }: { report: AuditReport }) {
   const overallColours = statusColours(report.overallStatus);
   const strongestArea = report.strongestAreas[0];
   const weakestArea = report.topIssues[0];
+  const watchAreas = report.sections.filter((section) => section.score > 70 && section.score < 85).slice(0, 2);
 
   return (
     <Document title={`${report.profile.companyName} Recruitment Audit`}>
@@ -416,21 +486,62 @@ export function AuditPdfDocument({ report }: { report: AuditReport }) {
             <Text style={[styles.label, { color: statusColours(issue.status).text }]}>
               {issue.title} ({issue.score}/100)
             </Text>
-            <Text>{issue.diagnosis}</Text>
+            <Text>{issue.currentState}</Text>
           </View>
         ))}
 
-        <Text style={[styles.sectionTitle, { marginTop: 18 }]}>Priority actions</Text>
-        {report.priorityActions.map((action) => (
-          <Text key={action} style={styles.listItem}>
-            • {action}
-          </Text>
-        ))}
+        <View style={styles.metricGrid}>
+          <View style={styles.metricColumn}>
+            <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Priority actions</Text>
+            {report.priorityActions.map((action) => (
+              <Text key={action} style={styles.listItem}>
+                • {action}
+              </Text>
+            ))}
+          </View>
+          <View style={styles.metricColumn}>
+            <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Priority matrix</Text>
+            <View style={styles.matrixGrid}>
+              <View style={[styles.matrixCell, { backgroundColor: "#fef2f2" }]}>
+                <Text style={[styles.matrixTitle, { color: "#991b1b" }]}>Immediate attention</Text>
+                {report.topIssues.slice(0, 2).map((issue) => (
+                  <View key={issue.id} style={styles.matrixItem}>
+                    <Text>{issue.title}</Text>
+                  </View>
+                ))}
+              </View>
+              <View style={[styles.matrixCell, { backgroundColor: "#fffbeb" }]}>
+                <Text style={[styles.matrixTitle, { color: "#92400e" }]}>Tighten next</Text>
+                {report.topIssues.slice(2, 3).map((issue) => (
+                  <View key={issue.id} style={styles.matrixItem}>
+                    <Text>{issue.title}</Text>
+                  </View>
+                ))}
+              </View>
+              <View style={[styles.matrixCell, { backgroundColor: "#f8fafc" }]}>
+                <Text style={[styles.matrixTitle, { color: "#475569" }]}>Watch closely</Text>
+                {watchAreas.map((issue) => (
+                  <View key={issue.id} style={styles.matrixItem}>
+                    <Text>{issue.title}</Text>
+                  </View>
+                ))}
+              </View>
+              <View style={[styles.matrixCell, { backgroundColor: "#f0fdf4" }]}>
+                <Text style={[styles.matrixTitle, { color: "#166534" }]}>Maintain</Text>
+                {report.strongestAreas.slice(0, 2).map((issue) => (
+                  <View key={issue.id} style={styles.matrixItem}>
+                    <Text>{issue.title}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+        </View>
 
         <Text style={[styles.sectionTitle, { marginTop: 18 }]}>Score overview</Text>
         <View style={styles.grid}>
           {report.sections.map((section) => (
-            <SectionOverviewCard key={section.id} section={section} />
+            <ScoreOverviewRow key={section.id} section={section} />
           ))}
         </View>
       </Page>
