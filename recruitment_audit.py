@@ -5,7 +5,6 @@ import os
 import re
 import textwrap
 from datetime import datetime
-from difflib import get_close_matches
 from pathlib import Path
 
 import matplotlib
@@ -313,6 +312,14 @@ def get_benchmark(sector: str, role: str, benchmarks: pd.DataFrame | None = None
         return industry_row
     if not function_row.empty:
         return function_row
+    industry_average = _average_benchmark(df, "industry")
+    function_average = _average_benchmark(df, "function")
+    if not industry_average.empty and not function_average.empty:
+        return _blend_benchmarks(industry_average, function_average)
+    if not industry_average.empty:
+        return industry_average
+    if not function_average.empty:
+        return function_average
     return _average_benchmark(df, "all")
 
 
@@ -363,10 +370,10 @@ def build_benchmark_summary(metrics: dict, benchmark: pd.DataFrame, sector: str,
             status = "In line"
             comment = "In line with benchmark"
         else:
-            ahead = delta > 0 if higher_is_better else delta < 0
-            status = "Ahead" if ahead else "Behind"
-            direction = "ahead of" if ahead else "behind"
-            comment = f"{_format_metric_value(abs(delta), suffix)} {direction} benchmark"
+            above = delta > 0
+            status = "Above" if above else "Below"
+            direction = "above benchmark" if above else "below benchmark"
+            comment = f"{_format_metric_value(abs(delta), suffix)} {direction}"
         comparisons.append(
             {
                 "label": label,
@@ -1494,18 +1501,6 @@ def _closest_benchmark_match(frame: pd.DataFrame, target: str) -> pd.Series:
     exact = working[working["_match_key"] == normalised_target]
     if not exact.empty:
         return exact.iloc[0].drop(labels="_match_key")
-
-    contains = working[
-        working["_match_key"].str.contains(re.escape(normalised_target), na=False)
-        | working["_match_key"].map(lambda value: normalised_target in value if value else False)
-    ]
-    if not contains.empty:
-        return contains.iloc[0].drop(labels="_match_key")
-
-    match_keys = working["_match_key"].dropna().tolist()
-    closest = get_close_matches(normalised_target, match_keys, n=1, cutoff=0.55)
-    if closest:
-        return working[working["_match_key"] == closest[0]].iloc[0].drop(labels="_match_key")
     return pd.Series(dtype=object)
 
 
@@ -1539,9 +1534,7 @@ def _select_benchmark_by_type(df: pd.DataFrame, benchmark_type: str, target: str
         return pd.Series(dtype=object)
 
     matched = _closest_benchmark_match(typed, target)
-    if not matched.empty:
-        return matched
-    return _average_benchmark(typed, benchmark_type)
+    return matched if not matched.empty else pd.Series(dtype=object)
 
 
 def _select_function_benchmark(df: pd.DataFrame, role: str) -> pd.Series:
@@ -1555,7 +1548,7 @@ def _select_function_benchmark(df: pd.DataFrame, role: str) -> pd.Series:
         matched = _closest_benchmark_match(typed, candidate)
         if not matched.empty:
             return matched
-    return _average_benchmark(typed, "function")
+    return pd.Series(dtype=object)
 
 
 def _blend_benchmarks(industry_row: pd.Series, function_row: pd.Series) -> pd.Series:
