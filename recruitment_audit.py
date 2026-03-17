@@ -143,6 +143,9 @@ Rules:
 - Do not use these words or phrases: robust, hampered, material, leverage, seamless, best-in-class, best in class, laid the groundwork, it is important to note, overall this suggests, in today's market.
 - Keep the executive overview below 150 words.
 - Make strengths, problems and actions specific.
+- Every section diagnosis must identify the stage of the hiring process, the supporting metric or observable behaviour, and the root cause.
+- Every commercial impact statement must refer to time, cost or revenue exposure.
+- Every action must name an owner, a timeframe, and a measurable outcome.
 - Each detailed section must include current state, key risks, commercial impact, immediate actions and structural improvements.
 - Keep key risks to 2 points.
 - Keep immediate actions to 2 points.
@@ -576,6 +579,9 @@ Output requirements
 - Be commercially sharp and direct.
 - Do not invent facts.
 - Keep the final verdict concise.
+- In each section diagnosis, state the exact hiring stage, the supporting metric or observable behaviour, and the root cause.
+- In each commercial impact paragraph, refer to time, cost or revenue exposure.
+- In each action, name the owner, timeframe and measurable outcome.
 """.strip()
 
 
@@ -837,32 +843,27 @@ def _clean_report(report: dict, data: dict, benchmark_summary: dict) -> dict:
         "day_30_plan": _clean_list(report.get("day_30_plan"), max_items=5, max_words=16),
         "day_60_plan": _clean_list(report.get("day_60_plan"), max_items=5, max_words=16),
         "day_90_plan": _clean_list(report.get("day_90_plan"), max_items=5, max_words=16),
+        "core_constraint": "",
         "sections": [],
     }
 
     for index, section in enumerate(report.get("sections", [])):
-        current_state_source = section.get("current_state")
-        commercial_impact_source = section.get("commercial_impact")
-        current_state = _compose_paragraph(
-            current_state_source,
-            None if current_state_source else data["section_notes"][index],
-            max_sentences=3,
-            max_words=60,
-        )
-        commercial_impact = _compose_paragraph(commercial_impact_source, None, max_sentences=2, max_words=42)
-        immediate_actions = _clean_list(section.get("immediate_actions"), max_items=2, max_words=14)
-        structural_improvements = _clean_list(section.get("structural_improvements"), max_items=2, max_words=14)
-        key_risks = _clean_list(section.get("key_risks"), max_items=2, max_words=14)
+        title = SECTION_ORDER[index]
+        score = int(section.get("score", data["section_scores"][index]))
+        current_state = _build_section_current_state(title, score, data, benchmark_summary)
+        commercial_impact = _build_section_commercial_impact(title, score, data, benchmark_summary)
+        immediate_actions, structural_improvements = _build_section_actions(title, score, data)
+        key_risks = _build_section_key_risks(title, score, data, benchmark_summary)
         cleaned["sections"].append(
             {
-                "title": SECTION_ORDER[index],
-                "score": int(section.get("score", data["section_scores"][index])),
-                "headline": _build_section_headline(SECTION_ORDER[index], int(section.get("score", data["section_scores"][index])), current_state),
+                "title": title,
+                "score": score,
+                "headline": _build_section_headline(title, score, data, benchmark_summary),
                 "current_state": current_state,
-                "key_risks": key_risks or _fallback_key_risks(SECTION_ORDER[index]),
-                "commercial_impact": commercial_impact or _fallback_commercial_impact(SECTION_ORDER[index]),
-                "immediate_actions": immediate_actions or _fallback_actions_for_section(SECTION_ORDER[index]),
-                "structural_improvements": structural_improvements or _fallback_structural_improvements(SECTION_ORDER[index]),
+                "key_risks": key_risks,
+                "commercial_impact": commercial_impact,
+                "immediate_actions": immediate_actions,
+                "structural_improvements": structural_improvements,
             }
         )
 
@@ -877,6 +878,7 @@ def _clean_report(report: dict, data: dict, benchmark_summary: dict) -> dict:
         cleaned["final_verdict"] = "The recruitment function can support current hiring demand, but the weakest areas need tighter control if the business wants better pace, stronger decision quality and lower hiring risk."
 
     cleaned["executive_overview"] = _build_executive_overview(data, cleaned, benchmark_summary)
+    cleaned["core_constraint"] = _build_core_constraint(data, cleaned, benchmark_summary)
     return cleaned
 
 
@@ -1201,6 +1203,28 @@ def _add_executive_overview(story: list, styles: StyleSheet1, data: dict, report
         )
     )
     story.append(overview_card)
+    story.append(Spacer(1, 3 * mm))
+    constraint_card = Table(
+        [
+            [Paragraph("Core Constraint", styles["SectionLabel"])],
+            [Paragraph(report["core_constraint"], styles["Body"])],
+        ],
+        colWidths=[170 * mm],
+        hAlign="LEFT",
+    )
+    constraint_card.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), BRAND_PANEL_ALT),
+                ("BOX", (0, 0), (-1, -1), 0.5, RULE_COLOR),
+                ("LEFTPADDING", (0, 0), (-1, -1), 12),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+                ("TOPPADDING", (0, 0), (-1, -1), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+            ]
+        )
+    )
+    story.append(constraint_card)
 
 
 def _add_overall_score(story: list, styles: StyleSheet1, data: dict, report: dict, overall_chart: Path) -> None:
@@ -1383,11 +1407,11 @@ def _add_detailed_findings(story: list, styles: StyleSheet1, report: dict) -> No
             Paragraph("Current state", styles["Heading3"]),
             Paragraph(section["current_state"], styles["Body"]),
             Paragraph("Key risks", styles["Heading3"]),
-            _bullet_list(section["key_risks"], styles),
+            _bullet_list(section["key_risks"], styles, max_words=22),
             Paragraph("Commercial impact", styles["Heading3"]),
             Paragraph(section["commercial_impact"], styles["Body"]),
             Paragraph("Actions", styles["Heading3"]),
-            _bullet_list(actions, styles),
+            _bullet_list(actions, styles, max_words=42),
         ]
         story.append(KeepTogether(_section_card_table(section["title"], block, background=BRAND_PANEL_ALT)))
         story.append(Spacer(1, 3 * mm))
@@ -1404,11 +1428,11 @@ def _add_final_verdict(story: list, styles: StyleSheet1, report: dict) -> None:
         story.append(Paragraph(paragraph, styles["Body"]))
 
 
-def _bullet_list(items: list[str], styles: StyleSheet1) -> ListFlowable:
+def _bullet_list(items: list[str], styles: StyleSheet1, max_words: int = 18) -> ListFlowable:
     list_items = [
-        ListItem(Paragraph(_clean_text(item, max_sentences=1, max_words=18), styles["BodyTight"]), leftIndent=0)
+        ListItem(Paragraph(_clean_text(item, max_sentences=2, max_words=max_words), styles["BodyTight"]), leftIndent=0)
         for item in items
-        if _clean_text(item, max_sentences=1, max_words=18)
+        if _clean_text(item, max_sentences=2, max_words=max_words)
     ]
     return ListFlowable(
         list_items,
@@ -1768,6 +1792,425 @@ def _build_priority_matrix(report: dict) -> list[dict]:
     return quadrants
 
 
+SECTION_DIAGNOSTIC_MAP = {
+    "Recruitment strategy and workforce planning": {
+        "location": "role approval and workforce planning",
+        "metric_label": "Time to hire",
+        "metric_key": "time_to_hire_days",
+        "suffix": "days",
+        "owner": "Managing director and hiring lead",
+        "timeframe": "within 10 working days",
+        "next_timeframe": "within 4 weeks",
+        "result": "open roles are prioritised against one live hiring plan",
+        "next_result": "every open vacancy has a dated owner, target hire date and escalation route",
+    },
+    "Performance metrics and funnel conversion": {
+        "location": "funnel measurement and conversion tracking",
+        "metric_label": "Offer acceptance",
+        "metric_key": "offer_acceptance",
+        "suffix": "%",
+        "owner": "Recruitment lead",
+        "timeframe": "within 2 weeks",
+        "next_timeframe": "within 5 weeks",
+        "result": "weekly funnel conversion data is visible for every active role",
+        "next_result": "drop-off points are reviewed each week and corrected faster",
+    },
+    "Employer brand and market perception": {
+        "location": "candidate attraction and market positioning",
+        "metric_label": "Applications per role",
+        "metric_key": "applications_per_role",
+        "suffix": "",
+        "owner": "Recruitment lead and marketing lead",
+        "timeframe": "within 3 weeks",
+        "next_timeframe": "within 6 weeks",
+        "result": "the market message is aligned to the roles the business most needs to fill",
+        "next_result": "application quality and offer acceptance improve on priority roles",
+    },
+    "Job adverts and job specifications": {
+        "location": "role briefing and advert drafting",
+        "metric_label": "Applications per role",
+        "metric_key": "applications_per_role",
+        "suffix": "",
+        "owner": "Hiring manager and recruitment lead",
+        "timeframe": "within 10 working days",
+        "next_timeframe": "within 4 weeks",
+        "result": "every new role uses one approved brief and advert structure",
+        "next_result": "shortlists contain a higher share of interview-ready applicants",
+    },
+    "Sourcing and advertising process": {
+        "location": "channel selection and candidate sourcing",
+        "metric_label": "Candidates reaching interview",
+        "metric_key": "candidates_reaching_interview",
+        "suffix": "",
+        "owner": "Recruitment lead",
+        "timeframe": "within 2 weeks",
+        "next_timeframe": "within 6 weeks",
+        "result": "channel choice is based on conversion rather than habit",
+        "next_result": "the business reaches a reliable volume of interview-ready candidates",
+    },
+    "Application handling and screening": {
+        "location": "application review and shortlist decision",
+        "metric_label": "Candidates reaching interview",
+        "metric_key": "candidates_reaching_interview",
+        "suffix": "",
+        "owner": "Recruitment lead",
+        "timeframe": "within 10 working days",
+        "next_timeframe": "within 4 weeks",
+        "result": "applications are screened to one standard within 48 hours",
+        "next_result": "shortlists are faster and stronger across active roles",
+    },
+    "Interview process quality": {
+        "location": "interview design and feedback",
+        "metric_label": "Interview feedback time",
+        "metric_key": "interview_feedback_time_days",
+        "suffix": "days",
+        "owner": "Hiring manager and recruitment lead",
+        "timeframe": "within 2 weeks",
+        "next_timeframe": "within 5 weeks",
+        "result": "all interview stages use one question set and scorecard",
+        "next_result": "feedback returns within 48 hours and decisions are more consistent",
+    },
+    "Decision making and offer process": {
+        "location": "offer approval and release",
+        "metric_label": "Offer acceptance",
+        "metric_key": "offer_acceptance",
+        "suffix": "%",
+        "owner": "Hiring manager and approval owner",
+        "timeframe": "within 10 working days",
+        "next_timeframe": "within 4 weeks",
+        "result": "offer decisions move through one approval path without avoidable delay",
+        "next_result": "offer release time drops and acceptance improves",
+    },
+    "Onboarding and early retention": {
+        "location": "onboarding and first-90-day integration",
+        "metric_label": "First-year attrition",
+        "metric_key": "first_year_attrition",
+        "suffix": "%",
+        "owner": "HR lead and hiring manager",
+        "timeframe": "within 3 weeks",
+        "next_timeframe": "within 8 weeks",
+        "result": "every new hire follows a defined onboarding plan with named checkpoints",
+        "next_result": "first-90-day dropout becomes visible and easier to reduce",
+    },
+    "Staff turnover risks": {
+        "location": "first-year retention review",
+        "metric_label": "First-year attrition",
+        "metric_key": "first_year_attrition",
+        "suffix": "%",
+        "owner": "HR lead",
+        "timeframe": "within 2 weeks",
+        "next_timeframe": "within 6 weeks",
+        "result": "avoidable first-year exits are reviewed by cause each month",
+        "next_result": "backfill demand and repeat hiring cost begin to fall",
+    },
+    "Candidate experience": {
+        "location": "candidate communication and feedback",
+        "metric_label": "Interview feedback time",
+        "metric_key": "interview_feedback_time_days",
+        "suffix": "days",
+        "owner": "Recruitment lead",
+        "timeframe": "within 10 working days",
+        "next_timeframe": "within 4 weeks",
+        "result": "candidates receive one clear communication standard at every stage",
+        "next_result": "drop-off reduces and candidate sentiment becomes measurable",
+    },
+    "Process ownership and accountability": {
+        "location": "end-to-end process ownership",
+        "metric_label": "Time to hire",
+        "metric_key": "time_to_hire_days",
+        "suffix": "days",
+        "owner": "Managing director",
+        "timeframe": "within 10 working days",
+        "next_timeframe": "within 4 weeks",
+        "result": "one named owner is accountable for weekly recruitment performance",
+        "next_result": "handoffs, decisions and escalations move faster",
+    },
+}
+
+
+def _section_context(title: str) -> dict:
+    return SECTION_DIAGNOSTIC_MAP[title]
+
+
+def _annual_hiring_volume(data: dict) -> float | None:
+    return parse_numeric_value(data.get("annual_hiring_volume"))
+
+
+def _metric_display(value: float | None, suffix: str) -> str:
+    return _format_metric_value(value, suffix)
+
+
+def _find_comparison(benchmark_summary: dict, label: str) -> dict | None:
+    for item in benchmark_summary.get("comparisons", []):
+        if item.get("label") == label:
+            return item
+    return None
+
+
+def _section_supporting_evidence(title: str, data: dict, benchmark_summary: dict) -> str:
+    metrics = data["metrics"]
+    flags = data["process_flags"]
+    applications = metrics.get("applications_per_role")
+    interviews = metrics.get("candidates_reaching_interview")
+    feedback = metrics.get("interview_feedback_time_days")
+    stages = metrics.get("interview_stages")
+    time_to_hire = metrics.get("time_to_hire_days")
+    offer_acceptance = metrics.get("offer_acceptance")
+    attrition = metrics.get("first_year_attrition")
+
+    if title == "Recruitment strategy and workforce planning":
+        return f"time to hire is {_metric_display(time_to_hire, 'days')} and a formal hiring plan is {'in place' if flags.get('has_hiring_plan') else 'not in place'}"
+    if title == "Performance metrics and funnel conversion":
+        return f"offer acceptance is {_metric_display(offer_acceptance, '%')} and KPI tracking is {'present' if flags.get('tracks_metrics') else 'not present'}"
+    if title == "Employer brand and market perception":
+        return f"applications per role are {_metric_display(applications, '')} and the employer proposition is {'defined' if flags.get('has_employer_brand') else 'not clearly defined'}"
+    if title == "Job adverts and job specifications":
+        return f"job documents are {'standardised' if flags.get('standardised_job_specs') else 'not standardised'} and applications per role are {_metric_display(applications, '')}"
+    if title == "Sourcing and advertising process":
+        return f"multi-channel sourcing is {'used' if flags.get('multi_channel_sourcing') else 'not used consistently'} and interview-ready flow is {_metric_display(interviews, '')} candidates per role"
+    if title == "Application handling and screening":
+        return f"screening is {'structured' if flags.get('structured_screening') else 'informal'} and only {_metric_display(interviews, '')} candidates are reaching interview per role"
+    if title == "Interview process quality":
+        return f"the process uses {int(stages) if stages else 'an unclear number of'} interview stages and feedback takes {_metric_display(feedback, 'days')}"
+    if title == "Decision making and offer process":
+        return f"offer acceptance is {_metric_display(offer_acceptance, '%')} and the approval path is {'fast' if flags.get('fast_offer_process') else 'exposed to delay'}"
+    if title == "Onboarding and early retention":
+        return f"first-year attrition is {_metric_display(attrition, '%')} and onboarding is {'documented' if flags.get('formal_onboarding') else 'not documented'}"
+    if title == "Staff turnover risks":
+        return f"first-year attrition is {_metric_display(attrition, '%')} and the business is carrying repeated backfill risk"
+    if title == "Candidate experience":
+        return f"candidate feedback is {'collected' if flags.get('collects_candidate_feedback') else 'not collected consistently'} and interview feedback takes {_metric_display(feedback, 'days')}"
+    return f"ownership is {'clear' if flags.get('named_process_owner') else 'unclear'} and hiring manager training is {'in place' if flags.get('hiring_manager_training') else 'limited'}"
+
+
+def _section_root_cause(title: str, data: dict) -> str:
+    flags = data["process_flags"]
+    if title == "Recruitment strategy and workforce planning":
+        return "an ownership issue around workforce planning and role prioritisation"
+    if title == "Performance metrics and funnel conversion":
+        return "a process issue because the funnel is not being measured consistently"
+    if title == "Employer brand and market perception":
+        return "a decision issue because the market message is not clear enough for the roles being hired"
+    if title == "Job adverts and job specifications":
+        return "a process issue in how roles are briefed and written before launch"
+    if title == "Sourcing and advertising process":
+        return "a decision issue in channel choice and sourcing mix"
+    if title == "Application handling and screening":
+        return "a process issue in how applications are reviewed and shortlisted"
+    if title == "Interview process quality":
+        return "a decision issue because interview structure and interviewer calibration are inconsistent"
+    if title == "Decision making and offer process":
+        return "an ownership issue in approval speed and final decision control"
+    if title == "Onboarding and early retention":
+        return "a process issue because new hires are not being brought into role with enough structure"
+    if title == "Staff turnover risks":
+        return "an ownership issue because early exits are not being tracked back to their cause tightly enough"
+    if title == "Candidate experience":
+        return "a process issue because candidate communication is not managed to one standard"
+    if flags.get("named_process_owner"):
+        return "a decision issue because accountabilities are spread across too many people"
+    return "an ownership issue because no single person is controlling the recruitment model end to end"
+
+
+def _headline_templates(score: int) -> list[str]:
+    if score >= 8:
+        return [
+            "In the part of the process covering {location}, {title_lower} is comparatively settled: {support}, which reflects {root_cause}.",
+            "Across the stage covering {location}, {title_lower} is one of the stronger areas: {support}, supported by {root_cause}.",
+            "The clearest stability in the hiring model sits in the stage covering {location}: {support}, with {root_cause} giving this area a firmer base.",
+        ]
+    if score >= 6:
+        return [
+            "In the part of the process covering {location}, {title_lower} is serviceable but uneven: {support}, which points to {root_cause}.",
+            "Around the stage covering {location}, {title_lower} is producing mixed results: {support}, driven largely by {root_cause}.",
+            "{title} is not failing in the stage covering {location}, but {support} shows the effect of {root_cause}.",
+        ]
+    if score >= 4:
+        return [
+            "The pressure point sits in the stage covering {location}: {support}, and the underlying cause is {root_cause}.",
+            "In the stage covering {location}, {title_lower} is creating visible friction: {support}, which traces back to {root_cause}.",
+            "{title} is slowing the process in the stage covering {location}; {support} and the main cause is {root_cause}.",
+        ]
+    return [
+        "The main breakdown sits in the stage covering {location}: {support}, and the root cause is {root_cause}.",
+        "In the stage covering {location}, {title_lower} is now a serious constraint: {support}, driven by {root_cause}.",
+        "{title} is failing in the stage covering {location}; {support} and the business is dealing with {root_cause}.",
+    ]
+
+
+def _build_section_headline(title: str, score: int, data: dict, benchmark_summary: dict) -> str:
+    context = _section_context(title)
+    support = _section_supporting_evidence(title, data, benchmark_summary)
+    root_cause = _section_root_cause(title, data)
+    templates = _headline_templates(score)
+    index = sum(ord(char) for char in title) % len(templates)
+    return _clean_text(
+        templates[index].format(
+            title=title,
+            title_lower=title.lower(),
+            location=context["location"],
+            support=support,
+            root_cause=root_cause,
+        ),
+        max_sentences=2,
+        max_words=56,
+    )
+
+
+def _build_section_current_state(title: str, score: int, data: dict, benchmark_summary: dict) -> str:
+    context = _section_context(title)
+    support = _section_supporting_evidence(title, data, benchmark_summary)
+    root_cause = _section_root_cause(title, data)
+    comparison = _find_comparison(benchmark_summary, context["metric_label"])
+    benchmark_line = ""
+    if comparison:
+        benchmark_line = f"Against the benchmark, {context['metric_label'].lower()} is {comparison['comment'].lower()}."
+    text = " ".join(
+        sentence
+        for sentence in [
+            f"In the part of the process covering {context['location']}, the evidence shows that {support}.",
+            f"The underlying issue is {root_cause}.",
+            benchmark_line,
+        ]
+        if sentence
+    )
+    return _clean_text(text, max_sentences=3, max_words=62)
+
+
+def _vacancy_day_exposure(data: dict) -> str:
+    annual_volume = _annual_hiring_volume(data)
+    time_to_hire = data["metrics"].get("time_to_hire_days")
+    if annual_volume is None or time_to_hire is None:
+        return "Vacancy cover is taking management time back out of the business."
+    total_days = int(round(annual_volume * time_to_hire))
+    return f"At the current pace, the business is carrying roughly {total_days} vacancy days across the year."
+
+
+def _build_section_commercial_impact(title: str, score: int, data: dict, benchmark_summary: dict) -> str:
+    metrics = data["metrics"]
+    annual_volume = _annual_hiring_volume(data)
+    if title == "Recruitment strategy and workforce planning":
+        return _clean_text(
+            f"{_vacancy_day_exposure(data)} That extends time to productivity on open roles and keeps senior managers in repeated approval discussions instead of revenue-producing work.",
+            max_sentences=2,
+            max_words=46,
+        )
+    if title == "Performance metrics and funnel conversion":
+        return _clean_text(
+            "Without clean funnel reporting, the business loses time in the wrong stages and repeats spend on channels that are not converting. That pushes up cost per hire and delays corrective action when roles stall.",
+            max_sentences=2,
+            max_words=42,
+        )
+    if title == "Employer brand and market perception":
+        return _clean_text(
+            "Weak attraction quality means more advertising effort is needed to reach the same shortlist volume. That raises sourcing cost and stretches time to hire on commercially important roles.",
+            max_sentences=2,
+            max_words=40,
+        )
+    if title == "Job adverts and job specifications":
+        return _clean_text(
+            "Poor role definition creates irrelevant applications, weak briefs and rework for hiring managers. That increases screening time and slows down the point at which a viable shortlist can be built.",
+            max_sentences=2,
+            max_words=41,
+        )
+    if title == "Sourcing and advertising process":
+        return _clean_text(
+            "When sourcing mix is chosen poorly, the business pays for activity that does not create interview-ready candidates. That adds direct channel cost and lengthens vacancy days on revenue-critical roles.",
+            max_sentences=2,
+            max_words=41,
+        )
+    if title == "Application handling and screening":
+        return _clean_text(
+            "Slow or inconsistent screening keeps weak applicants in the funnel and delays contact with strong ones. That wastes recruiter hours and increases the risk of losing viable candidates before interview.",
+            max_sentences=2,
+            max_words=41,
+        )
+    if title == "Interview process quality":
+        return _clean_text(
+            "Each extra interview stage and delayed feedback cycle adds management time and pushes decisions back. That raises interview cost, slows time to hire and lowers the odds of securing strong candidates.",
+            max_sentences=2,
+            max_words=41,
+        )
+    if title == "Decision making and offer process":
+        return _clean_text(
+            f"At {_metric_display(metrics.get('offer_acceptance'), '%')} offer acceptance, the business is already losing part of the shortlist after the final decision. That means repeated interview effort, longer vacancy cover and more manager time spent on replacement offers.",
+            max_sentences=2,
+            max_words=44,
+        )
+    if title == "Onboarding and early retention":
+        return _clean_text(
+            f"At {_metric_display(metrics.get('first_year_attrition'), '%')} first-year attrition, replacement cost is returning quickly after each hire. The business is paying twice through repeat recruitment effort and lost ramp-up time.",
+            max_sentences=2,
+            max_words=38,
+        )
+    if title == "Staff turnover risks":
+        return _clean_text(
+            f"Early exits at {_metric_display(metrics.get('first_year_attrition'), '%')} create repeated backfill demand and lost productive time. That increases recruitment cost and keeps teams operating below required capacity.",
+            max_sentences=2,
+            max_words=37,
+        )
+    if title == "Candidate experience":
+        return _clean_text(
+            "Poor communication slows decision cycles and reduces the chance that candidates stay engaged through to offer. That weakens conversion, increases drop-off and forces more sourcing work into the process.",
+            max_sentences=2,
+            max_words=39,
+        )
+    return _clean_text(
+        "Weak ownership means decisions sit in queues, actions drift and issues are found too late. That adds time to open vacancies and increases management effort across the full recruitment cycle.",
+        max_sentences=2,
+        max_words=38,
+    )
+
+
+def _build_section_key_risks(title: str, score: int, data: dict, benchmark_summary: dict) -> list[str]:
+    if title == "Interview process quality":
+        return [
+            "Interview decisions depend too much on individual judgement rather than one scoring standard.",
+            "Feedback delay gives strong candidates more time to exit the process.",
+        ]
+    if title in {"Onboarding and early retention", "Staff turnover risks"}:
+        return [
+            "Early attrition will keep creating repeat vacancies and replacement cost.",
+            "The business will struggle to learn why hires leave if ownership stays fragmented.",
+        ]
+    if title == "Process ownership and accountability":
+        return [
+            "Issues will continue to move slowly because no one owns the full hiring cycle.",
+            "Performance drift will remain hidden until vacancies have already aged.",
+        ]
+    return [
+        f"The weakness at { _section_context(title)['location'] } will continue to slow the wider hiring process.",
+        "Management time will keep being pulled into avoidable rework if the root cause is left unresolved.",
+    ]
+
+
+def _build_section_actions(title: str, score: int, data: dict) -> tuple[list[str], list[str]]:
+    context = _section_context(title)
+    owner = context["owner"]
+    first = _clean_text(
+        f"{owner} - {context['timeframe']}: tighten control in the stage covering {context['location']}. Outcome: {context['result']}.",
+        max_sentences=2,
+        max_words=40,
+    )
+    second = _clean_text(
+        f"{owner} - {context['next_timeframe']}: track the agreed change against one weekly measure. Outcome: {context['next_result']}.",
+        max_sentences=2,
+        max_words=40,
+    )
+    return [first], [second]
+
+
+def _build_core_constraint(data: dict, report: dict, benchmark_summary: dict) -> str:
+    weakest = min(report["sections"], key=lambda section: section["score"])
+    context = _section_context(weakest["title"])
+    support = _section_supporting_evidence(weakest["title"], data, benchmark_summary)
+    return _clean_text(
+        f"{weakest['title']} is the current core constraint. The bottleneck sits {context['location']}, where {support}. Because every downstream decision depends on this part of the process, weak control here slows the whole hiring system and reduces the quality of the outcome.",
+        max_sentences=3,
+        max_words=60,
+    )
+
+
 def _build_executive_overview(data: dict, report: dict, benchmark_summary: dict) -> str:
     strongest = max(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])
     weakest = min(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])
@@ -1779,11 +2222,11 @@ def _build_executive_overview(data: dict, report: dict, benchmark_summary: dict)
         benchmark_line = f"Against the UK benchmark, {highlight['label'].lower()} is {highlight['comment'].lower()}."
 
     sentences = [
-        f"The recruitment process is {_rating_for_score(data['total_score']).lower()} at {data['total_score']}/120.",
-        f"{strongest[0]} is holding up best at {strongest[1]}/10, while {weakest[0].lower()} is the clearest operational weakness at {weakest[1]}/10.",
-        "The main commercial drag is uneven process control, which is likely slowing decisions and weakening hiring consistency.",
+        f"The recruitment operating model is {_rating_for_score(data['total_score']).lower()} at {data['total_score']}/120.",
+        f"{strongest[0]} is the strongest area at {strongest[1]}/10, while {weakest[0].lower()} is the weakest at {weakest[1]}/10.",
+        f"The main commercial issue is pressure in {weakest[0].lower()}, which is adding delay, management time and avoidable hiring risk.",
         benchmark_line,
-        f"The immediate priority is to {next_step.rstrip('.').lower()}.",
+        f"The immediate next move is to {next_step.rstrip('.').lower()}.",
     ]
     text = " ".join(sentence for sentence in sentences if sentence)
     return _clean_text(text, max_sentences=5, max_words=145)
@@ -1903,6 +2346,9 @@ def _clean_text(value, max_sentences: int | None = None, max_words: int | None =
         "it is important to note": "",
         "overall this suggests": "",
         "in today's market": "",
+        "not controlled tightly enough": "",
+        "functioning but not optimised": "",
+        "holding together": "",
     }
     for source, target in replacements.items():
         if " " in source or "-" in source:
@@ -1966,60 +2412,6 @@ def _compose_paragraph(value, fallback: str | None, max_sentences: int, max_word
             if len(sentences) >= max_sentences:
                 return _clean_text(" ".join(sentences), max_sentences=max_sentences, max_words=max_words)
     return _clean_text(" ".join(sentences), max_sentences=max_sentences, max_words=max_words)
-
-
-def _build_section_headline(title: str, score: int, current_state: str) -> str:
-    title_lower = title.lower()
-    if score >= 8:
-        templates = [
-            f"{title} is operating from a stronger base than the rest of the hiring process.",
-            f"{title} is one of the more controlled parts of the recruitment model.",
-            f"{title} is giving the business a more dependable platform than most other areas.",
-            f"{title} is standing up better than the rest of the operating model.",
-            f"{title} is one of the few parts of hiring that looks properly settled.",
-            f"{title} is carrying stronger discipline than most of the wider process.",
-            f"In {title.lower()}, the business is seeing better control than in most other parts of hiring.",
-            f"{title} is currently giving leadership one of the more reliable parts of the operating model.",
-            f"Compared with the rest of the process, {title.lower()} is in better shape.",
-        ]
-    elif score >= 6:
-        templates = [
-            f"{title} is workable, but control and consistency still need tightening.",
-            f"{title} is serviceable, though delivery discipline is not yet consistent enough.",
-            f"{title} is holding together, but it is still not controlled tightly enough.",
-            f"{title} is functioning, but it is not yet being run with enough discipline.",
-            f"{title} can support hiring demand, but the operating standard is still uneven.",
-            f"{title} is moving in the right direction, but execution still drifts too often.",
-            f"In {title.lower()}, the process is serviceable but still too uneven for leadership confidence.",
-            f"{title} is not failing, but it is still short of the control standard the business needs.",
-            f"The current position in {title.lower()} is acceptable, though not yet dependable.",
-        ]
-    elif score >= 4:
-        templates = [
-            f"{title} is creating avoidable drag in the recruitment process.",
-            f"{title} is starting to slow pace and weaken consistency across the wider process.",
-            f"{title} is exposing the hiring model to delay and uneven execution.",
-            f"{title} is now holding the wider process back.",
-            f"{title} is putting pace and control under visible pressure.",
-            f"{title} is becoming a recurring source of hiring friction.",
-            f"The current position in {title.lower()} is now starting to undermine wider recruitment delivery.",
-            f"{title} is adding unnecessary friction at a point where the process needs tighter control.",
-            f"In practical terms, {title.lower()} is beginning to work against the rest of the hiring model.",
-        ]
-    else:
-        templates = [
-            f"{title} is a clear operational weakness in the current hiring model.",
-            f"{title} is one of the main breakdown points in the recruitment process.",
-            f"{title} is materially weakening control across the hiring cycle.".replace("materially", "clearly"),
-            f"{title} is now one of the clearest points of failure in the operating model.",
-            f"{title} is causing the most serious control gap in the hiring process.",
-            f"{title} is leaving the business too exposed to delay and weak execution.",
-            f"In its current state, {title.lower()} is a serious weakness in the recruitment model.",
-            f"{title} is where the process is currently breaking down most clearly.",
-            f"Of all the sections reviewed, {title.lower()} is creating the sharpest operational risk.",
-        ]
-    index = sum(ord(char) for char in f"{title_lower}|{current_state.lower()}") % len(templates)
-    return templates[index]
 
 
 def _fallback_key_risks(title: str) -> list[str]:
