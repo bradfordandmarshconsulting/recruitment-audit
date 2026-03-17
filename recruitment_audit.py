@@ -21,6 +21,7 @@ from reportlab.lib.styles import ParagraphStyle, StyleSheet1
 from reportlab.lib.units import inch, mm
 from reportlab.platypus import (
     Image,
+    KeepTogether,
     ListFlowable,
     ListItem,
     PageBreak,
@@ -37,6 +38,7 @@ BENCHMARK_FILE = BASE_DIR / "uk_recruitment_benchmark_framework.xlsx"
 BENCHMARK_CSV_FILE = BASE_DIR / "uk_recruitment_benchmarks.csv"
 OUTPUT_DIR = Path(os.environ.get("AUDIT_OUTPUT_DIR", "/tmp/BradfordMarshAI"))
 BENCHMARK_ENV_VAR = "RECRUITMENT_BENCHMARK_FILE"
+BRAND_LOGO = BASE_DIR / "public" / "brand" / "bradford-marsh-logo.png"
 
 PAGE_WIDTH, PAGE_HEIGHT = A4
 PAGE_MARGIN_X = 18 * mm
@@ -46,10 +48,20 @@ CHART_WIDTH = 5.4 * inch
 PDF_FONT = "Helvetica"
 PDF_FONT_BOLD = "Helvetica-Bold"
 
-TEXT_COLOR = colors.HexColor("#111111")
-SUBTLE_TEXT = colors.HexColor("#444444")
-RULE_COLOR = colors.HexColor("#D8D8D8")
-TABLE_SHADE = colors.HexColor("#F4F4F4")
+TEXT_COLOR = colors.HexColor("#1C2430")
+SUBTLE_TEXT = colors.HexColor("#5F6876")
+RULE_COLOR = colors.HexColor("#D8DCE3")
+TABLE_SHADE = colors.HexColor("#F7F5F1")
+BRAND_NAVY = colors.HexColor("#1F2A40")
+BRAND_GOLD = colors.HexColor("#B5935A")
+BRAND_PANEL = colors.HexColor("#F7F5F1")
+BRAND_PANEL_ALT = colors.HexColor("#FAFBFC")
+GREEN_TEXT = colors.HexColor("#166534")
+GREEN_BG = colors.HexColor("#DCFCE7")
+AMBER_TEXT = colors.HexColor("#9A6700")
+AMBER_BG = colors.HexColor("#FEF3C7")
+RED_TEXT = colors.HexColor("#991B1B")
+RED_BG = colors.HexColor("#FEE2E2")
 
 BRAND_NAME = "Bradford & Marsh Consulting"
 REPORT_TITLE = "Recruitment Operating Model Audit"
@@ -101,10 +113,10 @@ Rules:
 - Do not use these words or phrases: robust, hampered, material, leverage, seamless, best-in-class, best in class, laid the groundwork, it is important to note, overall this suggests, in today's market.
 - Keep the executive overview below 150 words.
 - Make strengths, problems and actions specific.
-- Each detailed section must include current state, key risks, commercial impact, immediate actions and next phase actions.
+- Each detailed section must include current state, key risks, commercial impact, immediate actions and structural improvements.
 - Keep key risks to 2 points.
 - Keep immediate actions to 2 points.
-- Keep next phase actions to 2 points.
+- Keep structural improvements to 2 points.
 """.strip()
 
 REPORT_SCHEMA = {
@@ -777,15 +789,28 @@ def _clean_report(report: dict, data: dict, benchmark_summary: dict) -> dict:
     }
 
     for index, section in enumerate(report.get("sections", [])):
+        current_state_source = section.get("current_state")
+        commercial_impact_source = section.get("commercial_impact")
+        current_state = _compose_paragraph(
+            current_state_source,
+            None if current_state_source else data["section_notes"][index],
+            max_sentences=3,
+            max_words=60,
+        )
+        commercial_impact = _compose_paragraph(commercial_impact_source, None, max_sentences=2, max_words=42)
+        immediate_actions = _clean_list(section.get("immediate_actions"), max_items=2, max_words=14)
+        structural_improvements = _clean_list(section.get("structural_improvements"), max_items=2, max_words=14)
+        key_risks = _clean_list(section.get("key_risks"), max_items=2, max_words=14)
         cleaned["sections"].append(
             {
                 "title": SECTION_ORDER[index],
                 "score": int(section.get("score", data["section_scores"][index])),
-                "current_state": _compose_paragraph(section.get("current_state"), data["section_notes"][index], max_sentences=3, max_words=60),
-                "key_risks": _clean_list(section.get("key_risks"), max_items=2, max_words=14),
-                "commercial_impact": _compose_paragraph(section.get("commercial_impact"), None, max_sentences=2, max_words=42),
-                "immediate_actions": _clean_list(section.get("immediate_actions"), max_items=2, max_words=14),
-                "structural_improvements": _clean_list(section.get("structural_improvements"), max_items=2, max_words=14),
+                "headline": _build_section_headline(SECTION_ORDER[index], int(section.get("score", data["section_scores"][index])), current_state),
+                "current_state": current_state,
+                "key_risks": key_risks or _fallback_key_risks(SECTION_ORDER[index]),
+                "commercial_impact": commercial_impact or _fallback_commercial_impact(SECTION_ORDER[index]),
+                "immediate_actions": immediate_actions or _fallback_actions_for_section(SECTION_ORDER[index]),
+                "structural_improvements": structural_improvements or _fallback_structural_improvements(SECTION_ORDER[index]),
             }
         )
 
@@ -818,21 +843,21 @@ def _build_pdf_styles() -> StyleSheet1:
         ParagraphStyle(
             name="CoverBrand",
             fontName=PDF_FONT_BOLD,
-            fontSize=18,
-            leading=22,
+            fontSize=17,
+            leading=20,
             alignment=TA_CENTER,
-            textColor=TEXT_COLOR,
-            spaceAfter=8,
+            textColor=BRAND_NAVY,
+            spaceAfter=6,
         )
     )
     styles.add(
         ParagraphStyle(
             name="CoverTitle",
             fontName=PDF_FONT_BOLD,
-            fontSize=22,
-            leading=26,
+            fontSize=24,
+            leading=28,
             alignment=TA_CENTER,
-            textColor=TEXT_COLOR,
+            textColor=BRAND_NAVY,
             spaceAfter=14,
         )
     )
@@ -840,8 +865,8 @@ def _build_pdf_styles() -> StyleSheet1:
         ParagraphStyle(
             name="CoverMeta",
             fontName=PDF_FONT,
-            fontSize=11,
-            leading=14,
+            fontSize=10.2,
+            leading=13,
             alignment=TA_CENTER,
             textColor=TEXT_COLOR,
             spaceAfter=4,
@@ -851,10 +876,10 @@ def _build_pdf_styles() -> StyleSheet1:
         ParagraphStyle(
             name="Heading1",
             fontName=PDF_FONT_BOLD,
-            fontSize=14,
-            leading=17,
+            fontSize=15,
+            leading=18,
             alignment=TA_LEFT,
-            textColor=TEXT_COLOR,
+            textColor=BRAND_NAVY,
             spaceBefore=10,
             spaceAfter=6,
         )
@@ -863,10 +888,10 @@ def _build_pdf_styles() -> StyleSheet1:
         ParagraphStyle(
             name="Heading2",
             fontName=PDF_FONT_BOLD,
-            fontSize=11.5,
-            leading=14,
+            fontSize=12,
+            leading=14.5,
             alignment=TA_LEFT,
-            textColor=TEXT_COLOR,
+            textColor=BRAND_NAVY,
             spaceBefore=8,
             spaceAfter=4,
         )
@@ -878,7 +903,7 @@ def _build_pdf_styles() -> StyleSheet1:
             fontSize=10,
             leading=12,
             alignment=TA_LEFT,
-            textColor=TEXT_COLOR,
+            textColor=BRAND_NAVY,
             spaceBefore=4,
             spaceAfter=2,
         )
@@ -888,7 +913,7 @@ def _build_pdf_styles() -> StyleSheet1:
             name="Body",
             fontName=PDF_FONT,
             fontSize=10,
-            leading=13,
+            leading=14,
             alignment=TA_LEFT,
             textColor=TEXT_COLOR,
             spaceAfter=5,
@@ -914,6 +939,37 @@ def _build_pdf_styles() -> StyleSheet1:
     )
     styles.add(
         ParagraphStyle(
+            name="SectionLabel",
+            fontName=PDF_FONT_BOLD,
+            fontSize=8.2,
+            leading=10,
+            alignment=TA_LEFT,
+            textColor=SUBTLE_TEXT,
+            spaceAfter=2,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
+            name="ScoreBadge",
+            fontName=PDF_FONT_BOLD,
+            fontSize=10,
+            leading=12,
+            alignment=TA_CENTER,
+            textColor=TEXT_COLOR,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
+            name="Footer",
+            fontName=PDF_FONT,
+            fontSize=8.2,
+            leading=9,
+            alignment=TA_LEFT,
+            textColor=SUBTLE_TEXT,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
             name="List",
             fontName=PDF_FONT,
             fontSize=10,
@@ -925,28 +981,94 @@ def _build_pdf_styles() -> StyleSheet1:
     return styles
 
 
+def _logo_image(width_mm: float) -> Image | None:
+    if not BRAND_LOGO.exists():
+        return None
+    width = width_mm * mm
+    height = width * (186 / 913)
+    return Image(str(BRAND_LOGO), width=width, height=height)
+
+
+def _score_colours(score: int) -> tuple[colors.Color, colors.Color]:
+    if score >= 8:
+        return GREEN_BG, GREEN_TEXT
+    if score >= 6:
+        return AMBER_BG, AMBER_TEXT
+    return RED_BG, RED_TEXT
+
+
+def _status_label(score: int) -> str:
+    if score >= 8:
+        return "Strong"
+    if score >= 6:
+        return "Needs attention"
+    return "Priority"
+
+
+def _section_card_table(title: str, body: list, background: colors.Color = colors.white) -> Table:
+    table = Table([[item] for item in body], colWidths=[170 * mm], hAlign="LEFT")
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), background),
+                ("BOX", (0, 0), (-1, -1), 0.6, RULE_COLOR),
+                ("ROUNDEDCORNERS", [12, 12, 12, 12]),
+                ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+    return table
+
+
 def _add_cover_page(story: list, styles: StyleSheet1, data: dict) -> None:
-    story.append(Spacer(1, 72 * mm))
-    story.append(Paragraph(BRAND_NAME, styles["CoverBrand"]))
+    story.append(Spacer(1, 42 * mm))
+    logo = _logo_image(90)
+    if logo:
+        logo.hAlign = "CENTER"
+        story.append(logo)
+        story.append(Spacer(1, 8 * mm))
+    else:
+        story.append(Paragraph(BRAND_NAME, styles["CoverBrand"]))
     story.append(Paragraph(REPORT_TITLE, styles["CoverTitle"]))
     story.append(Paragraph(_clean_text(data["company_name"]), styles["CoverMeta"]))
     story.append(Spacer(1, 10 * mm))
-    meta_lines = [
-        f"Sector: {_clean_text(data['sector'])}",
-        f"Location: {_clean_text(data['location'])}",
-        f"Date: {datetime.now().strftime('%d %B %Y')}",
-        CONFIDENTIAL_LABEL,
+    meta_rows = [
+        ["Sector", _clean_text(data["sector"])],
+        ["Location", _clean_text(data["location"])],
+        ["Date", datetime.now().strftime("%d %B %Y")],
+        ["Classification", CONFIDENTIAL_LABEL],
     ]
-    for line in meta_lines:
-        story.append(Paragraph(line, styles["CoverMeta"]))
+    meta_table = Table(meta_rows, colWidths=[44 * mm, 80 * mm], hAlign="CENTER")
+    meta_table.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 0), (-1, -1), PDF_FONT),
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
+                ("TEXTCOLOR", (0, 0), (-1, -1), TEXT_COLOR),
+                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                ("BACKGROUND", (0, 0), (0, -1), TABLE_SHADE),
+                ("LINEBELOW", (0, 0), (-1, -1), 0.35, RULE_COLOR),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+    story.append(meta_table)
+    story.append(Spacer(1, 90 * mm))
+    story.append(Paragraph(CONFIDENTIAL_LABEL, styles["CoverMeta"]))
     story.append(PageBreak())
 
 
 def _add_md_letter(story: list, styles: StyleSheet1, data: dict) -> None:
-    story.append(Paragraph(MANAGING_DIRECTOR_NAME, styles["Body"]))
-    story.append(Paragraph(MANAGING_DIRECTOR_TITLE, styles["BodyTight"]))
-    story.append(Paragraph(BRAND_NAME, styles["Body"]))
-    story.append(Spacer(1, 6 * mm))
+    logo = _logo_image(72)
+    if logo:
+        story.append(logo)
+        story.append(Spacer(1, 8 * mm))
     story.append(Paragraph(f"Dear {_clean_text(data['contact_name'])},", styles["Body"]))
 
     paragraphs = [
@@ -1061,12 +1183,41 @@ def _add_benchmark_snapshot(story: list, styles: StyleSheet1, benchmark_summary:
 
 def _add_priority_matrix(story: list, styles: StyleSheet1, report: dict) -> None:
     story.append(Paragraph("Priority matrix", styles["Heading1"]))
-    rows = [["Priority area", "Why it matters", "Action", "Timing"]]
-    for item in _build_priority_matrix(report):
-        rows.append([item["title"], item["why"], item["action"], item["urgency"]])
-    table = Table(rows, colWidths=[54 * mm, 60 * mm, 44 * mm, 22 * mm], repeatRows=1, hAlign="LEFT")
-    table.setStyle(_table_style())
-    story.append(table)
+    story.append(
+        Paragraph(
+            "This matrix groups the most important issues by likely commercial impact and the urgency of action.",
+            styles["Body"],
+        )
+    )
+    quadrants = _build_priority_matrix(report)
+    cells = []
+    for item in quadrants:
+        cell_body = [
+            Paragraph(item["eyebrow"], styles["SectionLabel"]),
+            Paragraph(item["title"], styles["Heading3"]),
+        ]
+        for row in item["items"]:
+            cell_body.append(Paragraph(f"{row['title']}", styles["BodyTight"]))
+            cell_body.append(Paragraph(f"Action: {row['action']}", styles["Small"]))
+        if not item["items"]:
+            cell_body.append(Paragraph("No additional areas currently sit in this quadrant.", styles["Small"]))
+        cell = Table([[entry] for entry in cell_body], colWidths=[80 * mm])
+        cell.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), item["background"]),
+                    ("BOX", (0, 0), (-1, -1), 0.45, RULE_COLOR),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ]
+            )
+        )
+        cells.append(cell)
+    matrix = Table([[cells[0], cells[1]], [cells[2], cells[3]]], colWidths=[84 * mm, 84 * mm], hAlign="LEFT")
+    matrix.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 0)]))
+    story.append(matrix)
 
 
 def _add_charts_section(story: list, styles: StyleSheet1, section_chart: Path, benchmark_chart: Path) -> None:
@@ -1081,21 +1232,51 @@ def _add_charts_section(story: list, styles: StyleSheet1, section_chart: Path, b
 
 
 def _add_detailed_findings(story: list, styles: StyleSheet1, report: dict) -> None:
+    story.append(PageBreak())
     story.append(Paragraph("Detailed findings", styles["Heading1"]))
     for section in report["sections"]:
-        story.append(Paragraph(section["title"], styles["Heading2"]))
-        story.append(Paragraph(f"Score: {section['score']}/10", styles["Body"]))
-        story.append(Paragraph("Current state", styles["Heading3"]))
-        story.append(Paragraph(section["current_state"], styles["Body"]))
-        story.append(Paragraph("Key risks", styles["Heading3"]))
-        story.append(_bullet_list(section["key_risks"], styles))
-        story.append(Paragraph("Commercial impact", styles["Heading3"]))
-        story.append(Paragraph(section["commercial_impact"], styles["Body"]))
-        story.append(Paragraph("Immediate actions", styles["Heading3"]))
-        story.append(_bullet_list(section["immediate_actions"], styles))
-        story.append(Paragraph("Next phase actions", styles["Heading3"]))
-        story.append(_bullet_list(section["structural_improvements"], styles))
-        story.append(Spacer(1, 2 * mm))
+        score_bg, score_text = _score_colours(section["score"])
+        badge = Table(
+            [[Paragraph(f"{section['score']}/10", styles["ScoreBadge"]), Paragraph(_status_label(section["score"]), styles["Small"])]],
+            colWidths=[18 * mm, 30 * mm],
+        )
+        badge.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), score_bg),
+                    ("TEXTCOLOR", (0, 0), (-1, -1), score_text),
+                    ("BOX", (0, 0), (-1, -1), 0.4, score_bg),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ]
+            )
+        )
+        header = Table(
+            [[Paragraph(section["title"], styles["Heading2"]), badge]],
+            colWidths=[122 * mm, 48 * mm],
+            hAlign="LEFT",
+        )
+        header.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0)]))
+
+        actions = list(dict.fromkeys(section["immediate_actions"] + section["structural_improvements"]))[:3]
+        block = [
+            header,
+            Paragraph(section["headline"], styles["Body"]),
+            Paragraph("Current state", styles["Heading3"]),
+            Paragraph(section["current_state"], styles["Body"]),
+            Paragraph("Key risks", styles["Heading3"]),
+            _bullet_list(section["key_risks"], styles),
+            Paragraph("Commercial impact", styles["Heading3"]),
+            Paragraph(section["commercial_impact"], styles["Body"]),
+            Paragraph("Actions", styles["Heading3"]),
+            _bullet_list(actions, styles),
+        ]
+        story.append(KeepTogether(_section_card_table(section["title"], block, background=BRAND_PANEL_ALT)))
+        story.append(Spacer(1, 3 * mm))
 
 
 def _add_list_section(story: list, styles: StyleSheet1, title: str, items: list[str]) -> None:
@@ -1131,8 +1312,11 @@ def _table_style() -> TableStyle:
             ("FONTNAME", (0, 1), (-1, -1), PDF_FONT),
             ("FONTSIZE", (0, 0), (-1, -1), 9.5),
             ("TEXTCOLOR", (0, 0), (-1, -1), TEXT_COLOR),
-            ("GRID", (0, 0), (-1, -1), 0.35, RULE_COLOR),
-            ("BACKGROUND", (0, 0), (-1, 0), TABLE_SHADE),
+            ("LINEBELOW", (0, 0), (-1, 0), 0.5, RULE_COLOR),
+            ("LINEBELOW", (0, 1), (-1, -1), 0.35, RULE_COLOR),
+            ("BACKGROUND", (0, 0), (-1, 0), BRAND_NAVY),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, BRAND_PANEL_ALT]),
             ("LEFTPADDING", (0, 0), (-1, -1), 5),
             ("RIGHTPADDING", (0, 0), (-1, -1), 5),
             ("TOPPADDING", (0, 0), (-1, -1), 5),
@@ -1146,10 +1330,16 @@ def _draw_page(canvas, doc) -> None:
     canvas.saveState()
     canvas.setStrokeColor(RULE_COLOR)
     canvas.line(doc.leftMargin, PAGE_HEIGHT - 10 * mm, PAGE_WIDTH - doc.rightMargin, PAGE_HEIGHT - 10 * mm)
+    canvas.setFont(PDF_FONT_BOLD, 8)
+    canvas.setFillColor(BRAND_NAVY)
+    canvas.drawString(doc.leftMargin, PAGE_HEIGHT - 8.2 * mm, BRAND_NAME)
     if canvas.getPageNumber() > 2:
+        canvas.setStrokeColor(RULE_COLOR)
+        canvas.line(doc.leftMargin, 11 * mm, PAGE_WIDTH - doc.rightMargin, 11 * mm)
         canvas.setFont(PDF_FONT, 8)
-        canvas.setFillColor(TEXT_COLOR)
-        canvas.drawRightString(PAGE_WIDTH - doc.rightMargin, 10 * mm, f"Page {canvas.getPageNumber() - 2}")
+        canvas.setFillColor(SUBTLE_TEXT)
+        canvas.drawString(doc.leftMargin, 7.6 * mm, "Confidential client report")
+        canvas.drawRightString(PAGE_WIDTH - doc.rightMargin, 7.6 * mm, f"Page {canvas.getPageNumber() - 2}")
     canvas.restoreState()
 
 
@@ -1336,38 +1526,62 @@ def _fmt(value: float | None, suffix: str) -> str:
     return "not provided" if value is None else _format_metric_value(value, suffix)
 
 
-def _build_priority_matrix(report: dict) -> list[dict[str, str]]:
-    priorities = []
-    for section in sorted(report.get("sections", []), key=lambda item: item["score"])[:4]:
-        urgency = "Immediate" if section["score"] <= 4 else "Next 30 days" if section["score"] <= 6 else "Planned"
-        priorities.append(
-            {
-                "title": section["title"],
-                "urgency": urgency,
-                "why": section["commercial_impact"],
-                "action": section["immediate_actions"][0],
-            }
-        )
-    return priorities
+def _build_priority_matrix(report: dict) -> list[dict]:
+    sections = report.get("sections", [])
+    weakest = sorted(sections, key=lambda item: item["score"])[:4]
+    strongest = sorted(sections, key=lambda item: item["score"], reverse=True)[:2]
+    watch = [item for item in sections if 6 <= item["score"] <= 7 and item not in weakest][:2]
+
+    def row(section: dict) -> dict:
+        return {
+            "title": section["title"],
+            "action": (section.get("immediate_actions") or ["Set one named owner and correct the process discipline."])[0],
+        }
+
+    return [
+        {
+            "eyebrow": "High impact | High urgency",
+            "title": "Stabilise now",
+            "background": RED_BG,
+            "items": [row(item) for item in weakest[:2]],
+        },
+        {
+            "eyebrow": "High impact | Lower urgency",
+            "title": "Tighten next",
+            "background": AMBER_BG,
+            "items": [row(item) for item in weakest[2:4]],
+        },
+        {
+            "eyebrow": "Lower impact | High visibility",
+            "title": "Monitor",
+            "background": TABLE_SHADE,
+            "items": [row(item) for item in watch],
+        },
+        {
+            "eyebrow": "Lower impact | Lower urgency",
+            "title": "Maintain",
+            "background": GREEN_BG,
+            "items": [row(item) for item in strongest],
+        },
+    ]
 
 
 def _build_executive_overview(data: dict, report: dict, benchmark_summary: dict) -> str:
     strongest = max(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])
     weakest = min(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])
-    issue = report["top_problems"][0] if report["top_problems"] else "Control is uneven across the hiring process."
-    next_step = report["day_30_plan"][0] if report["day_30_plan"] else "Focus first on the weakest part of the recruitment process."
-    benchmark_line = ""
+    next_step = report["day_30_plan"][0] if report["day_30_plan"] else "assign one named owner to the weakest part of the process"
     comparisons = benchmark_summary.get("comparisons", [])
+    benchmark_line = ""
     if comparisons:
         highlight = comparisons[0]
         benchmark_line = f"Against the UK benchmark, {highlight['label'].lower()} is {highlight['comment'].lower()}."
 
     sentences = [
-        f"The recruitment function currently sits in the {_rating_for_score(data['total_score']).lower()} range at {data['total_score']}/120.",
+        f"The recruitment process is {_rating_for_score(data['total_score']).lower()} at {data['total_score']}/120.",
         f"The strongest area is {strongest[0].lower()} at {strongest[1]}/10, while the weakest area is {weakest[0].lower()} at {weakest[1]}/10.",
-        _clean_text(issue, max_sentences=1, max_words=22),
+        f"The main commercial issue is that weaker process control is likely increasing hiring delay and reducing decision quality.",
         benchmark_line,
-        f"The immediate next step is to {next_step.rstrip('.').lower()}.",
+        f"The first action should be to {next_step.rstrip('.').lower()}.",
     ]
     text = " ".join(sentence for sentence in sentences if sentence)
     return _clean_text(text, max_sentences=5, max_words=145)
@@ -1426,7 +1640,7 @@ def _ensure_list(value, min_items: int) -> list[str]:
     else:
         items = []
     while len(items) < min_items:
-        items.append("This area needs clearer definition in the next review cycle.")
+        items.append("")
     return items
 
 
@@ -1440,8 +1654,10 @@ def _clean_text(value, max_sentences: int | None = None, max_words: int | None =
     text = re.sub(r"(?m)^\s*\d+[.)]\s*", "", text)
     text = text.replace("•", " ")
     text = text.replace("–", "-").replace("—", "-")
+    text = re.sub(r"This area needs clearer definition in the next review cycle\.?", "", text, flags=re.IGNORECASE)
     text = re.sub(r"\s+", " ", text).strip()
     replacements = {
+        "This area needs clearer definition in the next review cycle.": "",
         "best-in-class": "strong",
         "best in class": "strong",
         "robust": "clear",
@@ -1455,9 +1671,14 @@ def _clean_text(value, max_sentences: int | None = None, max_words: int | None =
         "in today's market": "",
     }
     for source, target in replacements.items():
-        text = re.sub(rf"\b{re.escape(source)}\b", target, text, flags=re.IGNORECASE)
+        if " " in source or "-" in source:
+            text = re.sub(re.escape(source), target, text, flags=re.IGNORECASE)
+        else:
+            text = re.sub(rf"\b{re.escape(source)}\b", target, text, flags=re.IGNORECASE)
     text = re.sub(r"\s+([,.;:])", r"\1", text)
     text = re.sub(r"([.?!]){2,}", r"\1", text)
+    text = re.sub(r"\b(top_problems|day_30_plan|day_60_plan|day_90_plan|sections)\b", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s{2,}", " ", text).strip()
     if max_sentences is not None:
         text = " ".join(_split_sentences(text)[:max_sentences])
     if max_words is not None:
@@ -1505,6 +1726,41 @@ def _compose_paragraph(value, fallback: str | None, max_sentences: int, max_word
             if len(sentences) >= max_sentences:
                 return _clean_text(" ".join(sentences), max_sentences=max_sentences, max_words=max_words)
     return _clean_text(" ".join(sentences), max_sentences=max_sentences, max_words=max_words)
+
+
+def _build_section_headline(title: str, score: int, current_state: str) -> str:
+    if score >= 8:
+        return f"{title} is operating from a stronger base than the rest of the hiring process."
+    if score >= 6:
+        return f"{title} is workable, but control and consistency still need tightening."
+    if score >= 4:
+        return f"{title} is creating avoidable drag in the recruitment process."
+    return f"{title} is a clear operational weakness in the current hiring model."
+
+
+def _fallback_key_risks(title: str) -> list[str]:
+    return [
+        f"{title} is leaving too much room for inconsistency.",
+        "Slow decisions and uneven execution will continue if ownership stays unclear.",
+    ]
+
+
+def _fallback_commercial_impact(title: str) -> str:
+    return f"Weakness in {title.lower()} is likely increasing time to hire and reducing confidence in hiring decisions."
+
+
+def _fallback_actions_for_section(title: str) -> list[str]:
+    return [
+        f"Set one named owner for {title.lower()}.",
+        "Agree the next operating change and track it weekly.",
+    ]
+
+
+def _fallback_structural_improvements(title: str) -> list[str]:
+    return [
+        f"Standardise how {title.lower()} is managed across all hires.",
+        "Review delivery against the agreed process each month.",
+    ]
 
 
 def _split_sentences(text: str) -> list[str]:
