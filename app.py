@@ -17,7 +17,7 @@ from recruitment_audit import (
     create_section_score_chart,
     create_overall_score_chart,
     create_benchmark_chart,
-    save_word_report,
+    save_pdf_report,
     parse_time_to_hire_days,
     parse_numeric_value,
 )
@@ -448,10 +448,10 @@ def render_page(title: str, body: str) -> str:
                 <div class="completion-state" id="completionState">
                     <div class="completion-kicker">Report ready</div>
                     <h3>Your recruitment audit has been prepared</h3>
-                    <p>The Word report has been downloaded and is ready for leadership review.</p>
+                    <p>The PDF report has been downloaded and is ready for leadership review.</p>
                     <div class="completion-list">
                         <div class="completion-item">Includes an executive overview, section-by-section scorecard and benchmark comparison.</div>
-                        <div class="completion-item">Highlights the most material gaps, operating risks and the actions that should be prioritised first.</div>
+                        <div class="completion-item">Highlights the clearest gaps, operating risks and the actions that should be prioritised first.</div>
                         <div class="completion-item" id="completionFilename">File prepared</div>
                     </div>
                     <div class="completion-actions">
@@ -672,7 +672,7 @@ def render_page(title: str, body: str) -> str:
                         const blob = await response.blob();
                         const disposition = response.headers.get("Content-Disposition") || "";
                         const match = disposition.match(/filename=([^;]+)/i);
-                        const filename = match ? match[1].trim().replace(/^\"|\"$/g, "") : "recruitment_audit.docx";
+                        const filename = match ? match[1].trim().replace(/^\"|\"$/g, "") : "recruitment_audit.pdf";
 
                         visualProgress = 100;
                         setLoadingState(100, "Report ready. Starting download", 3);
@@ -747,11 +747,11 @@ def form():
     <div class="topbar">
         <div class="brand-lockup">
             <div class="brand-mark">B&amp;M</div>
-            <div class="brand">
-                <div class="brand-overline">Bradford & Marsh Consulting</div>
-                <div class="brand-name">Recruitment Operating Model Audit</div>
-                <div class="brand-sub">A structured review of how your hiring function performs in practice, with clear scoring, UK benchmark comparison and a board-ready Word report.</div>
-            </div>
+                <div class="brand">
+                    <div class="brand-overline">Bradford & Marsh Consulting</div>
+                    <div class="brand-name">Recruitment Operating Model Audit</div>
+                    <div class="brand-sub">A structured review of how your hiring function performs in practice, with clear scoring, UK benchmark comparison and a board-ready PDF report.</div>
+                </div>
         </div>
         <div class="trust-pill">Confidential diagnostic workflow · benchmark-led output</div>
     </div>
@@ -783,7 +783,7 @@ def form():
                     </div>
                     <div class="hero-proof">
                         <div class="hero-proof-label">Report ready for leadership review</div>
-                        <div class="hero-proof-value">The final output is a structured Word report with scoring, charts, findings and recommendations, written for directors, senior stakeholders and hiring leaders.</div>
+                        <div class="hero-proof-value">The final output is a fixed-layout PDF report with scoring, charts, findings and recommendations, written for directors, senior stakeholders and hiring leaders.</div>
                     </div>
                 </div>
             </div>
@@ -1198,7 +1198,7 @@ def generate():
         overall_chart = create_overall_score_chart(data["company_name"], data["total_score"])
         benchmark_chart = create_benchmark_chart(data["company_name"], data["metrics"], benchmark)
 
-        word_path = save_word_report(
+        pdf_path = save_pdf_report(
             data=data,
             report=report,
             benchmark_summary=benchmark_summary,
@@ -1207,13 +1207,13 @@ def generate():
             benchmark_chart=benchmark_chart,
         )
 
-        download_name = f"{data['company_name'].strip().replace(' ', '_')}_recruitment_audit.docx"
+        download_name = f"{data['company_name'].strip().replace(' ', '_')}_recruitment_audit.pdf"
 
         return send_file(
-            word_path,
+            pdf_path,
             as_attachment=True,
             download_name=download_name,
-            mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            mimetype="application/pdf",
         )
 
     except Exception as exc:

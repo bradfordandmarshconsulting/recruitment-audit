@@ -14,13 +14,22 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.ticker import MaxNLocator
-from docx import Document
-from docx.enum.section import WD_SECTION
-from docx.enum.table import WD_ALIGN_VERTICAL
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml import OxmlElement
-from docx.oxml.ns import qn
-from docx.shared import Inches, Pt, RGBColor
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, StyleSheet1
+from reportlab.lib.units import inch, mm
+from reportlab.platypus import (
+    Image,
+    ListFlowable,
+    ListItem,
+    PageBreak,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -28,6 +37,25 @@ BENCHMARK_FILE = BASE_DIR / "uk_recruitment_benchmark_framework.xlsx"
 BENCHMARK_CSV_FILE = BASE_DIR / "uk_recruitment_benchmarks.csv"
 OUTPUT_DIR = Path(os.environ.get("AUDIT_OUTPUT_DIR", "/tmp/BradfordMarshAI"))
 BENCHMARK_ENV_VAR = "RECRUITMENT_BENCHMARK_FILE"
+
+PAGE_WIDTH, PAGE_HEIGHT = A4
+PAGE_MARGIN_X = 18 * mm
+PAGE_MARGIN_Y = 18 * mm
+CHART_WIDTH = 5.4 * inch
+
+PDF_FONT = "Helvetica"
+PDF_FONT_BOLD = "Helvetica-Bold"
+
+TEXT_COLOR = colors.HexColor("#111111")
+SUBTLE_TEXT = colors.HexColor("#444444")
+RULE_COLOR = colors.HexColor("#D8D8D8")
+TABLE_SHADE = colors.HexColor("#F4F4F4")
+
+BRAND_NAME = "Bradford & Marsh Consulting"
+REPORT_TITLE = "Recruitment Operating Model Audit"
+CONFIDENTIAL_LABEL = "Confidential"
+MANAGING_DIRECTOR_NAME = "Michael Marsh"
+MANAGING_DIRECTOR_TITLE = "Managing Director"
 
 SECTION_ORDER = [
     "Recruitment strategy and workforce planning",
@@ -42,17 +70,6 @@ SECTION_ORDER = [
     "Staff turnover risks",
     "Candidate experience",
     "Process ownership and accountability",
-]
-
-FINAL_SECTION_ORDER = [
-    "Executive overview",
-    "Top 5 strengths",
-    "Top 5 problems",
-    "30 day plan",
-    "60 day plan",
-    "90 day plan",
-    "Overall recruitment score",
-    "Final verdict",
 ]
 
 SECTION_IDS = [
@@ -72,54 +89,6 @@ SECTION_IDS = [
 
 SECTION_ID_TO_TITLE = dict(zip(SECTION_IDS, SECTION_ORDER))
 
-SECTION_KEYS = {
-    "current_state": "Current state",
-    "key_risks": "Key risks",
-    "commercial_impact": "Commercial impact",
-    "immediate_actions": "Immediate actions",
-    "structural_improvements": "Structural improvements",
-}
-
-BRAND_NAME = "Bradford & Marsh Consulting"
-BRAND_STRAPLINE = "Recruitment advisory and operating model diagnostics"
-REPORT_TITLE = "Recruitment Operating Model Audit"
-CONFIDENTIAL_LABEL = "Confidential client report"
-LETTERHEAD_TITLE = "BRADFORD & MARSH"
-LETTERHEAD_SUBTITLE = "CONSULTING"
-LETTERHEAD_COMPANY_NO = "Company Registration No. 17059554"
-LETTERHEAD_REGISTERED_ADDRESS = (
-    "Registered Company Address: Riverside Mill, Mountbatten Way, Congleton, Cheshire, CW12 1DY"
-)
-LETTERHEAD_PHONE = "T. 01260 544934"
-LETTERHEAD_WEBSITE = "www.bradfordandmarsh.co.uk"
-
-PRIMARY_HEX = "182647"
-SECONDARY_HEX = "4F627A"
-ACCENT_HEX = "C19A6B"
-TEXT_HEX = "000000"
-MUTED_HEX = "66707A"
-WHITE_HEX = "FFFFFF"
-LIGHT_BG = "F6F8FB"
-SOFT_BG = "F8FAFC"
-GREEN_FILL = "DCFCE7"
-AMBER_FILL = "FEF3C7"
-RED_FILL = "FEE2E2"
-
-PRIMARY = RGBColor(24, 38, 71)
-SECONDARY = RGBColor(79, 98, 122)
-ACCENT = RGBColor(193, 154, 107)
-TEXT = RGBColor(0, 0, 0)
-MUTED = RGBColor(102, 112, 122)
-WHITE = RGBColor(255, 255, 255)
-GREEN = RGBColor(22, 101, 52)
-AMBER = RGBColor(180, 83, 9)
-RED = RGBColor(185, 28, 28)
-RAG_BANDS = [
-    (0, 4, "#dc2626"),
-    (4, 7, "#d97706"),
-    (7, 10.01, "#16a34a"),
-]
-
 SYSTEM_PROMPT = """
 You are writing a final client report for a Recruitment Operating Model Audit.
 
@@ -127,20 +96,23 @@ Write in British English. Use short sentences. Be direct, commercial and precise
 
 Rules:
 - No markdown.
-- No headings inside body text.
 - No asterisks, hashes or raw bullet symbols.
-- No filler or generic corporate language.
-- Do not use these words or phrases: robust, hampered, material, leverage, seamless, best-in-class, best in class.
-- Avoid repeating the company name unless needed.
-- Keep the tone credible and board-ready.
-- Keep the executive overview under 150 words.
-- For each detailed section, keep current state to 3 sentences, key risks to 2 points, commercial impact to 2 sentences, immediate actions to 2 points, and next phase actions to 2 points.
+- No consultant filler.
+- Do not use these words or phrases: robust, hampered, material, leverage, seamless, best-in-class, best in class, laid the groundwork, it is important to note, overall this suggests, in today's market.
+- Keep the executive overview below 150 words.
+- Make strengths, problems and actions specific.
+- Each detailed section must include current state, key risks, commercial impact, immediate actions and next phase actions.
+- Keep key risks to 2 points.
+- Keep immediate actions to 2 points.
+- Keep next phase actions to 2 points.
 """.strip()
 
 REPORT_SCHEMA = {
     "type": "object",
     "properties": {
         "executive_overview": {"type": "string"},
+        "overall_recruitment_score": {"type": "string"},
+        "final_verdict": {"type": "string"},
         "top_strengths": {
             "type": "array",
             "items": {"type": "string"},
@@ -171,8 +143,6 @@ REPORT_SCHEMA = {
             "minItems": 3,
             "maxItems": 5,
         },
-        "overall_recruitment_score": {"type": "string"},
-        "final_verdict": {"type": "string"},
         "sections": {
             "type": "object",
             "properties": {
@@ -181,10 +151,10 @@ REPORT_SCHEMA = {
                     "properties": {
                         "score": {"type": "integer", "minimum": 1, "maximum": 10},
                         "current_state": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 4},
-                        "key_risks": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 4},
+                        "key_risks": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 3},
                         "commercial_impact": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 3},
-                        "immediate_actions": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 4},
-                        "structural_improvements": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 4},
+                        "immediate_actions": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 3},
+                        "structural_improvements": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 3},
                     },
                     "required": [
                         "score",
@@ -204,13 +174,13 @@ REPORT_SCHEMA = {
     },
     "required": [
         "executive_overview",
+        "overall_recruitment_score",
+        "final_verdict",
         "top_strengths",
         "top_problems",
         "day_30_plan",
         "day_60_plan",
         "day_90_plan",
-        "overall_recruitment_score",
-        "final_verdict",
         "sections",
     ],
     "additionalProperties": False,
@@ -277,12 +247,10 @@ def list_benchmark_sectors() -> list[str]:
 
 def load_benchmarks(sector: str) -> pd.DataFrame:
     df = _load_benchmark_table()
-
     if sector.strip():
         matches = df[df["sector"].str.contains(sector.strip(), case=False, na=False)]
         if not matches.empty:
             return matches.reset_index(drop=True)
-
     national = df[df["region"].astype(str).str.contains("UK National", case=False, na=False)]
     return national.reset_index(drop=True) if not national.empty else df.reset_index(drop=True)
 
@@ -301,7 +269,6 @@ def _resolve_benchmark_file() -> Path:
     configured = os.environ.get(BENCHMARK_ENV_VAR, "").strip()
     if configured:
         candidates.append(Path(configured).expanduser())
-
     candidates.extend(
         [
             BENCHMARK_FILE,
@@ -311,11 +278,9 @@ def _resolve_benchmark_file() -> Path:
             Path.home() / "Desktop" / "uk_recruitment_benchmarks.csv",
         ]
     )
-
     for path in candidates:
         if path.exists():
             return path
-
     searched = ", ".join(str(path) for path in candidates)
     raise FileNotFoundError(f"Benchmark dataset not found. Checked: {searched}")
 
@@ -341,27 +306,19 @@ def _normalise_benchmark_columns(df: pd.DataFrame) -> pd.DataFrame:
         "company_size_band": "All sizes",
         "region": "UK National",
         "avg_time_to_hire_days": pd.NA,
-        "avg_time_to_fill_days": pd.NA,
         "avg_applications_per_role": pd.NA,
         "avg_offer_acceptance_pct": pd.NA,
         "avg_attrition_pct": pd.NA,
-        "avg_application_to_interview_pct": pd.NA,
-        "avg_interview_to_offer_pct": pd.NA,
-        "salary_competitiveness_index": pd.NA,
-        "data_quality_note": "Imported benchmark dataset.",
-        "source_basis": "Benchmark import",
+        "source_basis": "UK benchmark dataset",
+        "data_quality_note": "",
     }
     for column, default in defaults.items():
         if column not in renamed.columns:
             renamed[column] = default
 
     renamed["sector"] = renamed["sector"].astype(str).str.strip()
-    renamed["company_size_band"] = (
-        renamed["company_size_band"].fillna("All sizes").astype(str).str.strip().replace("", "All sizes")
-    )
-    renamed["region"] = (
-        renamed["region"].fillna("UK National").astype(str).str.strip().replace("", "UK National")
-    )
+    renamed["company_size_band"] = renamed["company_size_band"].fillna("All sizes").astype(str).str.strip()
+    renamed["region"] = renamed["region"].fillna("UK National").astype(str).str.strip()
     return renamed
 
 
@@ -378,13 +335,11 @@ def build_benchmark_summary(metrics: dict, benchmark: pd.DataFrame) -> dict:
     ]
 
     comparisons = []
-    summary_lines = []
     for client_key, benchmark_key, label, suffix, higher_is_better in mapping:
         client_value = metrics.get(client_key)
         benchmark_value = _safe_float(benchmark_row.get(benchmark_key))
         if client_value is None or benchmark_value is None:
             continue
-
         delta = client_value - benchmark_value
         tolerance = max(1.0, abs(benchmark_value) * 0.03)
         if abs(delta) <= tolerance:
@@ -395,7 +350,6 @@ def build_benchmark_summary(metrics: dict, benchmark: pd.DataFrame) -> dict:
             status = "Ahead" if ahead else "Behind"
             direction = "ahead of" if ahead else "behind"
             comment = f"{_format_metric_value(abs(delta), suffix)} {direction} benchmark"
-
         comparisons.append(
             {
                 "label": label,
@@ -406,14 +360,17 @@ def build_benchmark_summary(metrics: dict, benchmark: pd.DataFrame) -> dict:
                 "comment": comment,
             }
         )
-        summary_lines.append(
-            f"{label}: {_format_metric_value(client_value, suffix)} versus {_format_metric_value(benchmark_value, suffix)}. {comment}."
-        )
+
+    selected = _select_benchmark_comparisons(comparisons)
+    summary_text = " ".join(
+        f"{item['label']}: {_format_metric_value(item['client_value'], item['suffix'])} versus {_format_metric_value(item['benchmark_value'], item['suffix'])}. {item['comment']}."
+        for item in selected
+    )
 
     return {
         "benchmark_row": benchmark_row.to_dict(),
-        "comparisons": comparisons,
-        "summary_text": " ".join(summary_lines) if summary_lines else "No useful benchmark comparisons were available.",
+        "comparisons": selected,
+        "summary_text": summary_text or "No useful benchmark comparisons were available.",
     }
 
 
@@ -423,10 +380,26 @@ def auto_score_sections(data: dict, benchmark: pd.DataFrame) -> tuple[list[int],
     flags = data["process_flags"]
 
     metric_scores = {
-        "time_to_hire": _metric_score(metrics.get("time_to_hire_days"), _safe_float(benchmark_row.get("avg_time_to_hire_days")), higher_is_better=False),
-        "applications": _metric_score(metrics.get("applications_per_role"), _safe_float(benchmark_row.get("avg_applications_per_role")), higher_is_better=True),
-        "offer_acceptance": _metric_score(metrics.get("offer_acceptance"), _safe_float(benchmark_row.get("avg_offer_acceptance_pct")), higher_is_better=True),
-        "attrition": _metric_score(metrics.get("first_year_attrition"), _safe_float(benchmark_row.get("avg_attrition_pct")), higher_is_better=False),
+        "time_to_hire": _metric_score(
+            metrics.get("time_to_hire_days"),
+            _safe_float(benchmark_row.get("avg_time_to_hire_days")),
+            higher_is_better=False,
+        ),
+        "applications": _metric_score(
+            metrics.get("applications_per_role"),
+            _safe_float(benchmark_row.get("avg_applications_per_role")),
+            higher_is_better=True,
+        ),
+        "offer_acceptance": _metric_score(
+            metrics.get("offer_acceptance"),
+            _safe_float(benchmark_row.get("avg_offer_acceptance_pct")),
+            higher_is_better=True,
+        ),
+        "attrition": _metric_score(
+            metrics.get("first_year_attrition"),
+            _safe_float(benchmark_row.get("avg_attrition_pct")),
+            higher_is_better=False,
+        ),
         "feedback_speed": _feedback_score(metrics.get("interview_feedback_time_days")),
         "interview_design": _stage_score(metrics.get("interview_stages")),
         "screening_volume": _screening_score(metrics.get("candidates_reaching_interview")),
@@ -457,20 +430,19 @@ def auto_score_sections(data: dict, benchmark: pd.DataFrame) -> tuple[list[int],
     ]
 
     notes = [
-        f"Planning maturity is {'stronger' if flags.get('has_hiring_plan') else 'weaker'} than ideal, with time to hire at {_fmt(metrics.get('time_to_hire_days'), ' days')}.",
-        f"KPI visibility is {'embedded' if flags.get('tracks_metrics') else 'limited'}, with offer acceptance at {_fmt(metrics.get('offer_acceptance'), '%')}.",
-        f"Employer brand is {'defined' if flags.get('has_employer_brand') else 'underdeveloped'}, and applications per role are {_fmt(metrics.get('applications_per_role'), '')}.",
-        f"Job documentation is {'standardised' if flags.get('standardised_job_specs') else 'inconsistent'}, affecting role clarity and shortlist quality.",
+        f"Planning discipline is {'clearer' if flags.get('has_hiring_plan') else 'less structured'} than it should be, with time to hire at {_fmt(metrics.get('time_to_hire_days'), 'days')}.",
+        f"KPI tracking is {'embedded' if flags.get('tracks_metrics') else 'limited'}, with offer acceptance at {_fmt(metrics.get('offer_acceptance'), '%')}.",
+        f"Employer brand is {'defined' if flags.get('has_employer_brand') else 'underdeveloped'}, while applications per role are {_fmt(metrics.get('applications_per_role'), '')}.",
+        f"Job documentation is {'standardised' if flags.get('standardised_job_specs') else 'inconsistent'}, which affects role clarity and shortlist quality.",
         f"Sourcing mix is {'broad' if flags.get('multi_channel_sourcing') else 'narrow'}, with interview-ready candidate flow at {_fmt(metrics.get('candidates_reaching_interview'), '')}.",
-        f"Screening is {'structured' if flags.get('structured_screening') else 'informal'}, which influences response speed and conversion quality.",
-        f"Interview design combines {int(metrics.get('interview_stages') or 0) or 'an unknown number of'} stages with feedback turnaround of {_fmt(metrics.get('interview_feedback_time_days'), ' days')}.",
-        f"Offer process is {'faster' if flags.get('fast_offer_process') else 'more exposed to delay'}, which shapes acceptance performance.",
+        f"Screening is {'structured' if flags.get('structured_screening') else 'informal'}, which affects response speed and conversion quality.",
+        f"Interview design uses {int(metrics.get('interview_stages') or 0) or 'an unknown number of'} stages and feedback turnaround of {_fmt(metrics.get('interview_feedback_time_days'), 'days')}.",
+        f"Offer handling is {'faster' if flags.get('fast_offer_process') else 'more exposed to delay'}, which shapes acceptance outcomes.",
         f"Onboarding is {'documented' if flags.get('formal_onboarding') else 'lightly controlled'}, with first-year attrition at {_fmt(metrics.get('first_year_attrition'), '%')}.",
-        f"Retention pressure remains visible through first-year attrition of {_fmt(metrics.get('first_year_attrition'), '%')}.",
-        f"Candidate feedback is {'captured' if flags.get('collects_candidate_feedback') else 'not systematically captured'}, while interview feedback speed still needs attention.",
-        f"Ownership is {'clear' if flags.get('named_process_owner') else 'blurred'}, and manager training is {'present' if flags.get('hiring_manager_training') else 'limited'}.",
+        f"Turnover pressure remains visible through first-year attrition of {_fmt(metrics.get('first_year_attrition'), '%')}.",
+        f"Candidate feedback is {'captured' if flags.get('collects_candidate_feedback') else 'not captured consistently'}, while interview feedback speed still needs attention.",
+        f"Ownership is {'clear' if flags.get('named_process_owner') else 'blurred'}, and hiring manager training is {'present' if flags.get('hiring_manager_training') else 'limited'}.",
     ]
-
     return scores, notes
 
 
@@ -481,7 +453,7 @@ def generate_report_json(client, data: dict, benchmark_summary: dict) -> dict:
         instructions=SYSTEM_PROMPT,
         input=prompt,
         max_output_tokens=5000,
-        temperature=0.5,
+        temperature=0.4,
         text={
             "verbosity": "medium",
             "format": {
@@ -493,20 +465,14 @@ def generate_report_json(client, data: dict, benchmark_summary: dict) -> dict:
         },
     )
     report = json.loads(response.output_text)
-    return _normalise_report(report, data["section_scores"])
+    normalised = _normalise_report(report, data["section_scores"])
+    return _clean_report(normalised, data, benchmark_summary)
 
 
 def _build_user_prompt(data: dict, benchmark_summary: dict) -> str:
-    strongest_sections = sorted(
-        zip(SECTION_ORDER, data["section_scores"]),
-        key=lambda item: item[1],
-        reverse=True,
-    )[:3]
-    weakest_sections = sorted(
-        zip(SECTION_ORDER, data["section_scores"]),
-        key=lambda item: item[1],
-    )[:3]
-    section_scorecard = "\n".join(
+    strongest = sorted(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1], reverse=True)[:3]
+    weakest = sorted(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])[:3]
+    scorecard = "\n".join(
         f"- {title}: {score}/10. {note}"
         for title, score, note in zip(SECTION_ORDER, data["section_scores"], data["section_notes"])
     )
@@ -542,98 +508,88 @@ Benchmark summary
 {benchmark_summary['summary_text']}
 
 Calculated scorecard
-{section_scorecard}
+{scorecard}
 
 Strongest areas
-{chr(10).join(f"- {title}: {score}/10" for title, score in strongest_sections)}
+{chr(10).join(f"- {title}: {score}/10" for title, score in strongest)}
 
 Weakest areas
-{chr(10).join(f"- {title}: {score}/10" for title, score in weakest_sections)}
+{chr(10).join(f"- {title}: {score}/10" for title, score in weakest)}
 
 Output requirements
-- Use the same score for each detailed section as the supplied scorecard.
-- Make the executive overview flow as a narrative, not as bullets.
-- Keep strengths, problems and plans crisp and commercially grounded.
-- Do not invent client facts that are not implied by the supplied data.
-- Make the detailed sections feel connected rather than written in isolation.
-- Where a benchmark gap is clear, say what it means operationally.
+- Use the supplied score for every section.
+- Make the writing specific to the business context.
+- Be commercially sharp and direct.
+- Do not invent facts.
+- Keep the final verdict concise.
 """.strip()
 
 
-def create_section_score_chart(company_name: str, section_scores: list[int]) -> Path:
-    output_dir = _output_dir()
-    path = output_dir / f"{_slug(company_name)}_section_scores.png"
-
-    labels = [_short_label(title) for title in SECTION_ORDER]
-    positions = list(range(len(labels)))
-
-    fig, ax = plt.subplots(figsize=(7.1, 4.8))
-    _apply_chart_style(fig, ax)
-    bar_colors = [_score_hex(score) for score in section_scores]
-    ax.barh(positions, section_scores, color=bar_colors, edgecolor="black", linewidth=0.5, height=0.56)
-    ax.set_xlim(0, 10)
-    ax.set_xticks(range(0, 11, 2))
-    ax.set_yticks(positions, labels)
-    ax.invert_yaxis()
-    ax.grid(axis="x", alpha=0.12, linestyle="--")
-    ax.set_title("Section scores", fontsize=12.5, pad=10, color="black", fontweight="bold")
-    ax.set_xlabel("Score out of 10", color="black")
-    for pos, score in enumerate(section_scores):
-        ax.text(min(score + 0.15, 9.7), pos, f"{score}/10", va="center", fontsize=8.4, color="black", fontweight="bold")
-    fig.text(0.11, 0.95, company_name, fontsize=9, color="black")
-    fig.tight_layout(rect=(0, 0, 1, 0.93))
-    fig.savefig(path, dpi=220, bbox_inches="tight", facecolor=fig.get_facecolor())
-    plt.close(fig)
-    return path
-
-
 def create_overall_score_chart(company_name: str, total_score: int) -> Path:
-    output_dir = _output_dir()
-    path = output_dir / f"{_slug(company_name)}_overall_score.png"
-
-    max_score = 120
-    score = min(total_score, max_score)
-    pct = round((score / max_score) * 100)
+    path = _output_dir() / f"{_slug(company_name)}_overall_score.png"
+    score = max(0, min(total_score, 120))
+    percentage = round((score / 120) * 100)
     rating = _rating_for_score(score)
-    fill_color = "#333333"
 
-    fig, ax = plt.subplots(figsize=(7.0, 1.55))
+    fig, ax = plt.subplots(figsize=(6.4, 1.4))
     _apply_chart_style(fig, ax)
-    ax.barh([0], [max_score], color="#E5E5E5", height=0.28)
-    ax.barh([0], [score], color=fill_color, height=0.34)
-    ax.set_xlim(0, max_score)
-    ax.set_ylim(-0.42, 0.42)
+    ax.barh([0], [120], color="#E5E5E5", height=0.32)
+    ax.barh([0], [score], color="#1F1F1F", height=0.32)
+    ax.set_xlim(0, 120)
+    ax.set_ylim(-0.45, 0.45)
     ax.set_yticks([])
-    ax.set_xticks(range(0, max_score + 1, 20))
-    ax.tick_params(axis="x", labelsize=8.2, colors="black")
+    ax.set_xticks(range(0, 121, 20))
     ax.grid(axis="x", alpha=0.12, linestyle="--")
-    fig.text(0.1, 0.92, company_name, fontsize=9, color="black")
-    fig.text(0.1, 0.82, "Overall score", fontsize=12.5, color="black", fontweight="bold")
-    fig.text(0.9, 0.84, f"{score}/120 | {pct}% | {rating}", ha="right", fontsize=9.5, color="black", fontweight="bold")
+    fig.text(0.08, 0.92, company_name, fontsize=9, color="black")
+    fig.text(0.08, 0.80, "Overall score", fontsize=12, color="black", fontweight="bold")
+    fig.text(0.92, 0.82, f"{score}/120 | {percentage}% | {rating}", fontsize=9.2, color="black", fontweight="bold", ha="right")
     ax.annotate(
-        f"{score}/120 ({pct}%)",
+        f"{score}/120 ({percentage}%)",
         xy=(score, 0),
         xytext=(0, 10),
         textcoords="offset points",
         ha="center",
         va="bottom",
-        fontsize=8.5,
+        fontsize=8.4,
         color="black",
         fontweight="bold",
     )
     for spine in ax.spines.values():
         spine.set_visible(False)
-    fig.subplots_adjust(left=0.09, right=0.97, bottom=0.24, top=0.62)
-    fig.savefig(path, dpi=220, bbox_inches="tight", facecolor=fig.get_facecolor())
+    fig.subplots_adjust(left=0.08, right=0.97, top=0.60, bottom=0.22)
+    fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    return path
+
+
+def create_section_score_chart(company_name: str, section_scores: list[int]) -> Path:
+    path = _output_dir() / f"{_slug(company_name)}_section_scores.png"
+    labels = [_short_label(title) for title in SECTION_ORDER]
+    positions = list(range(len(labels)))
+    colours = [_score_hex(score) for score in section_scores]
+
+    fig, ax = plt.subplots(figsize=(6.5, 4.8))
+    _apply_chart_style(fig, ax)
+    ax.barh(positions, section_scores, color=colours, edgecolor="black", linewidth=0.5, height=0.56)
+    ax.set_xlim(0, 10)
+    ax.set_xticks(range(0, 11, 2))
+    ax.set_yticks(positions, labels)
+    ax.invert_yaxis()
+    ax.grid(axis="x", alpha=0.12, linestyle="--")
+    ax.set_xlabel("Score out of 10", color="black")
+    ax.set_title("Section scores", fontsize=12, fontweight="bold", color="black", pad=10)
+    for pos, score in enumerate(section_scores):
+        ax.text(min(score + 0.15, 9.75), pos, f"{score}/10", va="center", fontsize=8.2, color="black", fontweight="bold")
+    fig.text(0.11, 0.95, company_name, fontsize=9, color="black")
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
+    fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     return path
 
 
 def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataFrame) -> Path:
-    output_dir = _output_dir()
-    path = output_dir / f"{_slug(company_name)}_benchmark_compare.png"
+    path = _output_dir() / f"{_slug(company_name)}_benchmark_compare.png"
     benchmark_row = _pick_benchmark_row(benchmark, {})
-
     items = [
         ("Time to hire", metrics.get("time_to_hire_days"), _safe_float(benchmark_row.get("avg_time_to_hire_days")), "days", False),
         ("Applications per role", metrics.get("applications_per_role"), _safe_float(benchmark_row.get("avg_applications_per_role")), "", True),
@@ -641,19 +597,21 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         ("First-year attrition", metrics.get("first_year_attrition"), _safe_float(benchmark_row.get("avg_attrition_pct")), "%", False),
     ]
     items = [item for item in items if item[1] is not None and item[2] is not None]
+    items = _select_benchmark_chart_items(items)
 
     if not items:
-        fig, ax = plt.subplots(figsize=(7.0, 1.5))
+        fig, ax = plt.subplots(figsize=(6.0, 1.2))
         _apply_chart_style(fig, ax)
         ax.axis("off")
         ax.text(0.5, 0.5, "No benchmark comparison available", ha="center", va="center", fontsize=10, color="black")
-        fig.savefig(path, dpi=220, bbox_inches="tight", facecolor=fig.get_facecolor())
+        fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
         plt.close(fig)
         return path
 
-    fig, axes = plt.subplots(len(items), 1, figsize=(7.0, 1.2 + (len(items) * 1.0)))
+    fig, axes = plt.subplots(len(items), 1, figsize=(6.5, 1.1 + len(items) * 0.95))
     if len(items) == 1:
         axes = [axes]
+
     for ax, (label, client_value, benchmark_value, suffix, higher_is_better) in zip(axes, items):
         _apply_chart_style(fig, ax)
         lower = min(client_value, benchmark_value, 0)
@@ -662,21 +620,23 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         x_min = max(0, lower - spread * 0.2)
         x_max = upper + spread * 0.2
         ahead = client_value >= benchmark_value if higher_is_better else client_value <= benchmark_value
-        client_color = "#222222"
+
         ax.set_xlim(x_min, x_max)
-        ax.set_ylim(-0.5, 0.5)
-        ax.hlines(0, x_min, x_max, color="#BFBFBF", linewidth=1.4)
-        ax.scatter([benchmark_value], [0], s=60, color="#D7D7D7", edgecolors="black", linewidths=0.6, zorder=3)
-        ax.scatter([client_value], [0], s=65, color=client_color, edgecolors="black", linewidths=0.6, marker="D", zorder=4)
+        ax.set_ylim(-0.45, 0.45)
+        ax.hlines(0, x_min, x_max, color="#BFBFBF", linewidth=1.3)
+        ax.scatter([benchmark_value], [0], s=60, color="#D9D9D9", edgecolors="black", linewidths=0.6, zorder=3)
+        ax.scatter([client_value], [0], s=64, color="#1F1F1F", edgecolors="black", linewidths=0.6, marker="D", zorder=4)
         ax.set_yticks([])
         ax.xaxis.set_major_locator(MaxNLocator(4))
         ax.tick_params(axis="x", labelsize=8, colors="black")
-        ax.set_title(label, fontsize=10.2, color="black", fontweight="bold", pad=2)
-        ax.grid(axis="x", alpha=0.12, linestyle="--")
-        client_offset = 10 if client_value >= benchmark_value else -12
+        ax.grid(axis="x", alpha=0.10, linestyle="--")
+        ax.set_title(label, fontsize=10.2, fontweight="bold", color="black", pad=2)
+
+        client_offset = 9 if client_value >= benchmark_value else -11
         client_va = "bottom" if client_value >= benchmark_value else "top"
-        benchmark_offset = -12 if client_value >= benchmark_value else 10
+        benchmark_offset = -11 if client_value >= benchmark_value else 9
         benchmark_va = "top" if client_value >= benchmark_value else "bottom"
+
         ax.annotate(
             f"Client {_format_metric_value(client_value, suffix)}",
             xy=(client_value, 0),
@@ -684,7 +644,7 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
             textcoords="offset points",
             ha="center",
             va=client_va,
-            fontsize=8.1,
+            fontsize=8,
             color="black",
             fontweight="bold",
         )
@@ -695,14 +655,14 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
             textcoords="offset points",
             ha="center",
             va=benchmark_va,
-            fontsize=8,
+            fontsize=7.9,
             color="black",
         )
         delta = abs(client_value - benchmark_value)
         direction = "Ahead of benchmark" if ahead else "Behind benchmark"
         ax.text(
             0.0,
-            0.04,
+            0.03,
             f"{direction} by {_format_metric_value(delta, suffix)}",
             transform=ax.transAxes,
             fontsize=8,
@@ -712,15 +672,15 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         for spine in ax.spines.values():
             spine.set_visible(False)
 
-    fig.suptitle("Benchmark comparison", fontsize=12.5, y=0.99, color="black", fontweight="bold")
-    fig.text(0.11, 0.95, company_name, fontsize=9, color="black")
-    fig.tight_layout(rect=(0, 0, 1, 0.93), h_pad=0.7)
-    fig.savefig(path, dpi=220, bbox_inches="tight", facecolor=fig.get_facecolor())
+    fig.suptitle("Benchmark comparison", fontsize=12, fontweight="bold", color="black", y=0.99)
+    fig.text(0.10, 0.95, company_name, fontsize=9, color="black")
+    fig.tight_layout(rect=(0, 0, 1, 0.93), h_pad=0.65)
+    fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     return path
 
 
-def save_word_report(
+def save_pdf_report(
     data: dict,
     report: dict,
     benchmark_summary: dict,
@@ -728,34 +688,50 @@ def save_word_report(
     overall_chart: Path,
     benchmark_chart: Path,
 ) -> Path:
-    output_path = _output_dir() / f"{_slug(data['company_name'])}_recruitment_audit.docx"
-    report = _clean_report(_normalise_report(report, data["section_scores"]), data)
-    document = Document()
-    _set_document_defaults(document)
-    _add_cover_page(document, data)
-    _add_executive_overview(document, report)
-    _add_overall_score_section(document, data, report, overall_chart)
-    _add_key_insights(document, data, report, benchmark_summary)
-    _add_score_summary(document, data)
-    _add_benchmark_snapshot(document, benchmark_summary)
-    _add_priority_matrix(document, data, report)
-    _add_chart_section(document, [section_chart, benchmark_chart])
-    document.add_page_break()
-    _add_detailed_findings(document, data, report)
-    document.add_page_break()
-    _add_roadmap(document, report)
-    _add_final_verdict(document, report)
-    document.save(output_path)
+    output_path = _output_dir() / f"{_slug(data['company_name'])}_recruitment_audit.pdf"
+    report = _clean_report(_normalise_report(report, data["section_scores"]), data, benchmark_summary)
+    styles = _build_pdf_styles()
+
+    doc = SimpleDocTemplate(
+        str(output_path),
+        pagesize=A4,
+        leftMargin=PAGE_MARGIN_X,
+        rightMargin=PAGE_MARGIN_X,
+        topMargin=PAGE_MARGIN_Y,
+        bottomMargin=PAGE_MARGIN_Y,
+        title=REPORT_TITLE,
+        author=BRAND_NAME,
+    )
+
+    story = []
+    _add_cover_page(story, styles, data)
+    _add_md_letter(story, styles, data)
+    _add_executive_overview(story, styles, data, report, benchmark_summary)
+    _add_overall_score(story, styles, data, report, overall_chart)
+    _add_key_insights(story, styles, data, report, benchmark_summary)
+    _add_score_summary(story, styles, data)
+    _add_benchmark_snapshot(story, styles, benchmark_summary)
+    _add_priority_matrix(story, styles, report)
+    _add_charts_section(story, styles, section_chart, benchmark_chart)
+    _add_detailed_findings(story, styles, report)
+    _add_list_section(story, styles, "Top 5 strengths", report["top_strengths"])
+    _add_list_section(story, styles, "Top 5 problems", report["top_problems"])
+    _add_list_section(story, styles, "30 day plan", report["day_30_plan"])
+    _add_list_section(story, styles, "60 day plan", report["day_60_plan"])
+    _add_list_section(story, styles, "90 day plan", report["day_90_plan"])
+    _add_final_verdict(story, styles, report)
+
+    doc.build(story, onFirstPage=_draw_page, onLaterPages=_draw_page)
     return output_path
 
 
 def _normalise_report(report: dict, fallback_scores: list[int]) -> dict:
     sections_value = report.get("sections", {}) or {}
     if isinstance(sections_value, list):
-        normalised_sections = []
+        sections = []
         for index, section in enumerate(sections_value):
             section = section or {}
-            normalised_sections.append(
+            sections.append(
                 {
                     "title": str(section.get("title", SECTION_ORDER[index])),
                     "score": int(section.get("score", fallback_scores[index])),
@@ -766,17 +742,15 @@ def _normalise_report(report: dict, fallback_scores: list[int]) -> dict:
                     "structural_improvements": _ensure_list(section.get("structural_improvements"), 2),
                 }
             )
-        report["sections"] = normalised_sections
+        report["sections"] = sections
         return report
 
-    sections_by_id = sections_value
     sections = []
     for index, section_id in enumerate(SECTION_IDS):
-        title = SECTION_ID_TO_TITLE[section_id]
-        section = sections_by_id.get(section_id, {})
+        section = (sections_value or {}).get(section_id, {})
         sections.append(
             {
-                "title": title,
+                "title": SECTION_ID_TO_TITLE[section_id],
                 "score": int(section.get("score", fallback_scores[index])),
                 "current_state": _ensure_list(section.get("current_state"), 2),
                 "key_risks": _ensure_list(section.get("key_risks"), 2),
@@ -789,389 +763,394 @@ def _normalise_report(report: dict, fallback_scores: list[int]) -> dict:
     return report
 
 
-def _clean_report(report: dict, data: dict) -> dict:
+def _clean_report(report: dict, data: dict, benchmark_summary: dict) -> dict:
     cleaned = {
-        "executive_overview": _clean_text(report.get("executive_overview"), max_sentences=6, max_words=150),
-        "top_strengths": _clean_list(report.get("top_strengths"), max_items=5, max_words=18),
-        "top_problems": _clean_list(report.get("top_problems"), max_items=5, max_words=18),
-        "day_30_plan": _clean_list(report.get("day_30_plan"), max_items=5, max_words=18),
-        "day_60_plan": _clean_list(report.get("day_60_plan"), max_items=5, max_words=18),
-        "day_90_plan": _clean_list(report.get("day_90_plan"), max_items=5, max_words=18),
-        "overall_recruitment_score": _clean_text(report.get("overall_recruitment_score"), max_sentences=2, max_words=45),
-        "final_verdict": _clean_text(report.get("final_verdict"), max_sentences=3, max_words=70),
+        "executive_overview": _clean_text(report.get("executive_overview"), max_sentences=5, max_words=140),
+        "overall_recruitment_score": _clean_text(report.get("overall_recruitment_score"), max_sentences=2, max_words=40),
+        "final_verdict": _clean_text(report.get("final_verdict"), max_sentences=3, max_words=65),
+        "top_strengths": _clean_list(report.get("top_strengths"), max_items=5, max_words=16),
+        "top_problems": _clean_list(report.get("top_problems"), max_items=5, max_words=16),
+        "day_30_plan": _clean_list(report.get("day_30_plan"), max_items=5, max_words=16),
+        "day_60_plan": _clean_list(report.get("day_60_plan"), max_items=5, max_words=16),
+        "day_90_plan": _clean_list(report.get("day_90_plan"), max_items=5, max_words=16),
         "sections": [],
     }
 
     for index, section in enumerate(report.get("sections", [])):
-        section = section or {}
         cleaned["sections"].append(
             {
                 "title": SECTION_ORDER[index],
                 "score": int(section.get("score", data["section_scores"][index])),
-                "current_state": _compose_current_state(section.get("current_state"), data["section_notes"][index]),
-                "key_risks": _clean_list(section.get("key_risks"), max_items=2, max_words=18),
-                "commercial_impact": _clean_text(section.get("commercial_impact"), max_sentences=2, max_words=38),
-                "immediate_actions": _clean_list(section.get("immediate_actions"), max_items=2, max_words=18),
-                "structural_improvements": _clean_list(section.get("structural_improvements"), max_items=2, max_words=18),
+                "current_state": _compose_paragraph(section.get("current_state"), data["section_notes"][index], max_sentences=3, max_words=60),
+                "key_risks": _clean_list(section.get("key_risks"), max_items=2, max_words=14),
+                "commercial_impact": _compose_paragraph(section.get("commercial_impact"), None, max_sentences=2, max_words=42),
+                "immediate_actions": _clean_list(section.get("immediate_actions"), max_items=2, max_words=14),
+                "structural_improvements": _clean_list(section.get("structural_improvements"), max_items=2, max_words=14),
             }
         )
 
-    if not cleaned["executive_overview"]:
-        cleaned["executive_overview"] = (
-            "This audit shows how the recruitment function is performing in practice. "
-            "The current operating model has clear strengths, but control and pace are inconsistent in weaker areas. "
-            "The priority is to improve the parts of the process that are slowing hiring or reducing decision quality."
-        )
+    if not cleaned["top_strengths"]:
+        cleaned["top_strengths"] = _fallback_strengths(data)
+    if not cleaned["top_problems"]:
+        cleaned["top_problems"] = _fallback_problems(data, benchmark_summary)
+    if not cleaned["day_30_plan"]:
+        cleaned["day_30_plan"] = _fallback_actions(cleaned["sections"], "immediate_actions")
+    if not cleaned["day_60_plan"]:
+        cleaned["day_60_plan"] = _fallback_actions(cleaned["sections"], "structural_improvements")
+    if not cleaned["day_90_plan"]:
+        cleaned["day_90_plan"] = [
+            "Reset score ownership across the full recruitment process.",
+            "Track the agreed KPIs in a monthly leadership review.",
+            "Re-run the audit after process changes are in place.",
+        ]
     if not cleaned["overall_recruitment_score"]:
-        cleaned["overall_recruitment_score"] = (
-            "The overall score points to a recruitment function that is workable, but not yet consistent enough in the areas that matter most."
-        )
+        cleaned["overall_recruitment_score"] = "The overall score points to a recruitment function that is workable, but not yet consistent enough in the areas that matter most."
     if not cleaned["final_verdict"]:
-        cleaned["final_verdict"] = (
-            "The recruitment function can support current hiring demand, but it needs tighter control in weaker areas to improve pace, consistency and confidence."
-        )
+        cleaned["final_verdict"] = "The recruitment function can support current hiring demand, but the weakest areas need tighter control if the business wants better pace, stronger decision quality and lower hiring risk."
+
+    cleaned["executive_overview"] = _build_executive_overview(data, cleaned, benchmark_summary)
     return cleaned
 
 
-def _ensure_list(value, min_items: int) -> list[str]:
-    if isinstance(value, list):
-        items = [str(item).strip() for item in value if str(item).strip()]
-    elif value:
-        items = [str(value).strip()]
-    else:
-        items = []
-    while len(items) < min_items:
-        items.append("This area needs clearer definition in the next review cycle.")
-    return items
+def _build_pdf_styles() -> StyleSheet1:
+    styles = StyleSheet1()
+    styles.add(
+        ParagraphStyle(
+            name="CoverBrand",
+            fontName=PDF_FONT_BOLD,
+            fontSize=18,
+            leading=22,
+            alignment=TA_CENTER,
+            textColor=TEXT_COLOR,
+            spaceAfter=8,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
+            name="CoverTitle",
+            fontName=PDF_FONT_BOLD,
+            fontSize=22,
+            leading=26,
+            alignment=TA_CENTER,
+            textColor=TEXT_COLOR,
+            spaceAfter=14,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
+            name="CoverMeta",
+            fontName=PDF_FONT,
+            fontSize=11,
+            leading=14,
+            alignment=TA_CENTER,
+            textColor=TEXT_COLOR,
+            spaceAfter=4,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
+            name="Heading1",
+            fontName=PDF_FONT_BOLD,
+            fontSize=14,
+            leading=17,
+            alignment=TA_LEFT,
+            textColor=TEXT_COLOR,
+            spaceBefore=10,
+            spaceAfter=6,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
+            name="Heading2",
+            fontName=PDF_FONT_BOLD,
+            fontSize=11.5,
+            leading=14,
+            alignment=TA_LEFT,
+            textColor=TEXT_COLOR,
+            spaceBefore=8,
+            spaceAfter=4,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
+            name="Heading3",
+            fontName=PDF_FONT_BOLD,
+            fontSize=10,
+            leading=12,
+            alignment=TA_LEFT,
+            textColor=TEXT_COLOR,
+            spaceBefore=4,
+            spaceAfter=2,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
+            name="Body",
+            fontName=PDF_FONT,
+            fontSize=10,
+            leading=13,
+            alignment=TA_LEFT,
+            textColor=TEXT_COLOR,
+            spaceAfter=5,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
+            name="BodyTight",
+            parent=styles["Body"],
+            spaceAfter=2,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
+            name="Small",
+            fontName=PDF_FONT,
+            fontSize=8.4,
+            leading=10.2,
+            alignment=TA_LEFT,
+            textColor=SUBTLE_TEXT,
+            spaceAfter=3,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
+            name="List",
+            fontName=PDF_FONT,
+            fontSize=10,
+            leading=12.5,
+            textColor=TEXT_COLOR,
+            leftIndent=10,
+        )
+    )
+    return styles
 
 
-def _set_document_defaults(document: Document) -> None:
-    font_name = "Aptos"
-    normal = document.styles["Normal"]
-    normal.font.name = font_name
-    normal.font.size = Pt(10)
-    normal.font.color.rgb = TEXT
-    normal.paragraph_format.line_spacing = 1.15
-    normal.paragraph_format.space_after = Pt(4)
-
-    heading_specs = {
-        "Title": 22,
-        "Heading 1": 14,
-        "Heading 2": 11.5,
-        "Heading 3": 10,
-    }
-    for name, size in heading_specs.items():
-        if name not in document.styles:
-            continue
-        style = document.styles[name]
-        style.font.name = font_name
-        style.font.size = Pt(size)
-        style.font.bold = True
-        style.font.color.rgb = TEXT
-
-    if "List Bullet" in document.styles:
-        style = document.styles["List Bullet"]
-        style.font.name = font_name
-        style.font.size = Pt(10)
-        style.font.color.rgb = TEXT
-
-    section = document.sections[0]
-    section.top_margin = Inches(0.75)
-    section.bottom_margin = Inches(0.7)
-    section.left_margin = Inches(0.8)
-    section.right_margin = Inches(0.8)
-
-
-def _add_cover_page(document: Document, data: dict) -> None:
-    title = document.add_paragraph()
-    title.paragraph_format.space_before = Pt(125)
-    title.paragraph_format.space_after = Pt(8)
-    title.style = document.styles["Title"]
-    title.add_run(REPORT_TITLE)
-
-    company = document.add_paragraph()
-    company.paragraph_format.space_after = Pt(18)
-    run = company.add_run(data["company_name"].strip())
-    run.bold = True
-    run.font.name = "Aptos"
-    run.font.size = Pt(15)
-    run.font.color.rgb = TEXT
-
-    detail_lines = [
-        f"Report date: {datetime.now().strftime('%d %B %Y')}",
-        f"Sector: {data['sector']}",
-        f"Location: {data['location']}",
-        f"Headcount: {data['headcount']}",
-        f"Annual hiring volume: {data['annual_hiring_volume']}",
-        f"Contact: {data['contact_name']} | {data['job_title']}",
-        f"Email: {data['email_address']}",
-        f"Phone: {data['phone_number']}",
-        f"Office address: {data['office_address']}",
+def _add_cover_page(story: list, styles: StyleSheet1, data: dict) -> None:
+    story.append(Spacer(1, 72 * mm))
+    story.append(Paragraph(BRAND_NAME, styles["CoverBrand"]))
+    story.append(Paragraph(REPORT_TITLE, styles["CoverTitle"]))
+    story.append(Paragraph(_clean_text(data["company_name"]), styles["CoverMeta"]))
+    story.append(Spacer(1, 10 * mm))
+    meta_lines = [
+        f"Sector: {_clean_text(data['sector'])}",
+        f"Location: {_clean_text(data['location'])}",
+        f"Date: {datetime.now().strftime('%d %B %Y')}",
+        CONFIDENTIAL_LABEL,
     ]
-    for line in detail_lines:
-        _add_paragraph(document, line, after=2)
-    document.add_page_break()
+    for line in meta_lines:
+        story.append(Paragraph(line, styles["CoverMeta"]))
+    story.append(PageBreak())
 
 
-def _add_executive_overview(document: Document, report: dict) -> None:
-    _add_heading(document, "Executive overview", level=1)
-    _add_paragraph(document, report["executive_overview"], after=8)
+def _add_md_letter(story: list, styles: StyleSheet1, data: dict) -> None:
+    story.append(Paragraph(MANAGING_DIRECTOR_NAME, styles["Body"]))
+    story.append(Paragraph(MANAGING_DIRECTOR_TITLE, styles["BodyTight"]))
+    story.append(Paragraph(BRAND_NAME, styles["Body"]))
+    story.append(Spacer(1, 6 * mm))
+    story.append(Paragraph(f"Dear {_clean_text(data['contact_name'])},", styles["Body"]))
+
+    paragraphs = [
+        "Thank you for taking the time to complete this recruitment audit assessment.",
+        "This report sets out a clear view of how your recruitment process is currently operating, based on the information provided and our assessment of your hiring activity.",
+        "It highlights where your process is working, where it is slowing down, and where inconsistency is likely affecting hiring outcomes. The aim is to give you a straightforward, evidence-based view of what needs attention and where improvements will have the most impact.",
+        "You should be able to use this report to guide internal discussion, challenge current ways of working, and prioritise changes that will improve both hiring speed and quality.",
+        "If you decide to act on the findings, we can support at different levels depending on what you need.",
+        "We can manage job advertising and pass through all applicants, support with advertising and screening to provide a qualified shortlist, or take full ownership of the recruitment process from end to end. This includes advertising, screening, coordinating with hiring managers, managing interviews, collecting feedback, and handling offers.",
+        "We can also design structured interview processes for specific roles, including tailored questions and scoring frameworks, to improve consistency and decision-making.",
+        "If it would be useful to talk through the report or the next steps, I would be happy to do that with you directly.",
+    ]
+    for paragraph in paragraphs:
+        story.append(Paragraph(paragraph, styles["Body"]))
+
+    story.append(Spacer(1, 5 * mm))
+    story.append(Paragraph(MANAGING_DIRECTOR_NAME, styles["BodyTight"]))
+    story.append(Paragraph(MANAGING_DIRECTOR_TITLE, styles["BodyTight"]))
+    story.append(Paragraph(BRAND_NAME, styles["Body"]))
+    story.append(PageBreak())
 
 
-def _add_overall_score_section(document: Document, data: dict, report: dict, chart_path: Path) -> None:
-    _add_heading(document, "Overall score", level=1)
+def _add_executive_overview(story: list, styles: StyleSheet1, data: dict, report: dict, benchmark_summary: dict) -> None:
+    story.append(Paragraph("Executive overview", styles["Heading1"]))
+    story.append(Paragraph(report["executive_overview"], styles["Body"]))
 
+
+def _add_overall_score(story: list, styles: StyleSheet1, data: dict, report: dict, overall_chart: Path) -> None:
+    story.append(Paragraph("Overall score", styles["Heading1"]))
     score = int(data["total_score"])
     percentage = round((score / 120) * 100)
     rating = _rating_for_score(score)
+    rows = [
+        ["Total score", f"{score}/120"],
+        ["Percentage", f"{percentage}%"],
+        ["Rating band", rating],
+    ]
+    table = Table(rows, colWidths=[44 * mm, 110 * mm], hAlign="LEFT")
+    table.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 0), (-1, -1), PDF_FONT),
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
+                ("TEXTCOLOR", (0, 0), (-1, -1), TEXT_COLOR),
+                ("GRID", (0, 0), (-1, -1), 0.35, RULE_COLOR),
+                ("BACKGROUND", (0, 0), (0, -1), TABLE_SHADE),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+    story.append(table)
+    story.append(Spacer(1, 4 * mm))
+    if overall_chart.exists():
+        story.append(Image(str(overall_chart), width=CHART_WIDTH, height=CHART_WIDTH * 0.23))
+        story.append(Spacer(1, 2 * mm))
+    story.append(Paragraph(report["overall_recruitment_score"], styles["Body"]))
 
-    table = document.add_table(rows=2, cols=4)
-    table.autofit = True
-    labels = ["Total score", "Percentage", "Rating", "Key roles"]
-    values = [f"{score}/120", f"{percentage}%", rating, data["key_roles_hired"]]
-    for index, label in enumerate(labels):
-        _shade_cell(table.cell(0, index), "EDEDED")
-        _set_cell(table.cell(0, index), label, bold=True)
-        _set_cell(table.cell(1, index), values[index])
 
-    document.add_paragraph("")
-    if chart_path.exists():
-        document.add_picture(str(chart_path), width=Inches(5.4))
-    _add_paragraph(document, report["overall_recruitment_score"], after=8)
+def _add_key_insights(story: list, styles: StyleSheet1, data: dict, report: dict, benchmark_summary: dict) -> None:
+    story.append(Paragraph("Key insights", styles["Heading1"]))
+    insight_rows = [[Paragraph(_clean_text(line), styles["BodyTight"])] for line in _build_key_insights(data, report, benchmark_summary)]
+    table = Table(insight_rows, colWidths=[170 * mm], hAlign="LEFT")
+    table.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 0), (-1, -1), PDF_FONT),
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
+                ("TEXTCOLOR", (0, 0), (-1, -1), TEXT_COLOR),
+                ("GRID", (0, 0), (-1, -1), 0.35, RULE_COLOR),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]
+        )
+    )
+    story.append(table)
 
 
-def _add_key_insights(document: Document, data: dict, report: dict, benchmark_summary: dict) -> None:
-    _add_heading(document, "Key insights", level=1)
-    for line in _build_key_insights(data, report, benchmark_summary):
-        _add_paragraph(document, line, after=2)
-    document.add_paragraph("")
-
-
-def _add_score_summary(document: Document, data: dict) -> None:
-    _add_heading(document, "Score summary", level=1)
-    table = document.add_table(rows=1, cols=3)
-    table.autofit = True
-    header = table.rows[0].cells
-    for index, label in enumerate(["Area", "Score", "Rating"]):
-        _shade_cell(header[index], "EDEDED")
-        _set_cell(header[index], label, bold=True)
-
+def _add_score_summary(story: list, styles: StyleSheet1, data: dict) -> None:
+    story.append(Paragraph("Score summary table", styles["Heading1"]))
+    rows = [["Section", "Score", "Position"]]
     for title, score in zip(SECTION_ORDER, data["section_scores"]):
-        row = table.add_row().cells
-        _set_cell(row[0], title)
-        _set_cell(row[1], f"{score}/10", bold=True)
-        _set_cell(row[2], _section_rating(score))
-    document.add_paragraph("")
+        rows.append([title, f"{score}/10", _section_rating(score)])
+    table = Table(rows, colWidths=[108 * mm, 24 * mm, 38 * mm], repeatRows=1, hAlign="LEFT")
+    table.setStyle(_table_style())
+    story.append(table)
 
 
-def _add_benchmark_snapshot(document: Document, benchmark_summary: dict) -> None:
+def _add_benchmark_snapshot(story: list, styles: StyleSheet1, benchmark_summary: dict) -> None:
     comparisons = benchmark_summary.get("comparisons", [])
     if not comparisons:
         return
-
-    _add_heading(document, "Benchmark snapshot", level=1)
-    table = document.add_table(rows=1, cols=4)
-    table.autofit = True
-    header = table.rows[0].cells
-    for idx, label in enumerate(["Metric", "Client", "Benchmark", "Comment"]):
-        _shade_cell(header[idx], "EDEDED")
-        _set_cell(header[idx], label, bold=True)
-
+    story.append(Paragraph("Benchmark snapshot", styles["Heading1"]))
+    rows = [["Metric", "Client", "Benchmark", "Position"]]
     for item in comparisons:
-        cells = table.add_row().cells
-        suffix = item["suffix"]
-        _set_cell(cells[0], item["label"])
-        _set_cell(cells[1], _format_metric_value(item["client_value"], suffix))
-        _set_cell(cells[2], _format_metric_value(item["benchmark_value"], suffix))
-        _shade_cell(cells[3], _status_fill(item["status"]))
-        _set_cell(cells[3], item["comment"])
-    document.add_paragraph("")
+        rows.append(
+            [
+                item["label"],
+                _format_metric_value(item["client_value"], item["suffix"]),
+                _format_metric_value(item["benchmark_value"], item["suffix"]),
+                item["comment"],
+            ]
+        )
+    table = Table(rows, colWidths=[50 * mm, 28 * mm, 30 * mm, 62 * mm], repeatRows=1, hAlign="LEFT")
+    table.setStyle(_table_style())
+    story.append(table)
 
 
-def _add_priority_matrix(document: Document, data: dict, report: dict) -> None:
-    _add_heading(document, "Priority matrix", level=1)
-    _add_paragraph(
-        document,
-        "These priorities focus on the areas with the weakest control, the clearest commercial drag and the strongest case for action.",
-        after=4,
-    )
-
-    priorities = _build_priority_matrix(data, report)
-    table = document.add_table(rows=1, cols=4)
-    table.autofit = True
-    header = table.rows[0].cells
-    for idx, label in enumerate(["Priority area", "Why it matters", "Action", "Timing"]):
-        _shade_cell(header[idx], "EDEDED")
-        _set_cell(header[idx], label, bold=True)
-
-    for item in priorities:
-        cells = table.add_row().cells
-        _set_cell(cells[0], item["title"])
-        _set_cell(cells[1], item["why"])
-        _set_cell(cells[2], item["action"])
-        _set_cell(cells[3], item["urgency"])
-    document.add_paragraph("")
+def _add_priority_matrix(story: list, styles: StyleSheet1, report: dict) -> None:
+    story.append(Paragraph("Priority matrix", styles["Heading1"]))
+    rows = [["Priority area", "Why it matters", "Action", "Timing"]]
+    for item in _build_priority_matrix(report):
+        rows.append([item["title"], item["why"], item["action"], item["urgency"]])
+    table = Table(rows, colWidths=[54 * mm, 60 * mm, 44 * mm, 22 * mm], repeatRows=1, hAlign="LEFT")
+    table.setStyle(_table_style())
+    story.append(table)
 
 
-def _add_chart_section(document: Document, chart_paths: list[Path]) -> None:
-    _add_heading(document, "Charts", level=1)
-    _add_paragraph(
-        document,
-        "The charts below support the score and benchmark findings. They are scaled for board-level review.",
-        after=6,
-    )
-    captions = [
-        "Section-by-section scoring profile.",
-        "Benchmark comparison for the most useful submitted metrics.",
-    ]
-    for chart_path, caption in zip(chart_paths, captions):
-        if chart_path.exists():
-            document.add_picture(str(chart_path), width=Inches(5.4))
-            _add_paragraph(document, caption, after=8)
-            document.add_paragraph("")
+def _add_charts_section(story: list, styles: StyleSheet1, section_chart: Path, benchmark_chart: Path) -> None:
+    story.append(Paragraph("Charts and visual analysis", styles["Heading1"]))
+    if section_chart.exists():
+        story.append(Image(str(section_chart), width=CHART_WIDTH, height=CHART_WIDTH * 0.72))
+        story.append(Paragraph("Section score profile across all twelve audit areas.", styles["Small"]))
+    if benchmark_chart.exists():
+        story.append(Spacer(1, 3 * mm))
+        story.append(Image(str(benchmark_chart), width=CHART_WIDTH, height=CHART_WIDTH * 0.55))
+        story.append(Paragraph("Benchmark comparison for the most useful submitted metrics.", styles["Small"]))
 
 
-def _add_detailed_findings(document: Document, data: dict, report: dict) -> None:
-    _add_heading(document, "Detailed findings", level=1)
+def _add_detailed_findings(story: list, styles: StyleSheet1, report: dict) -> None:
+    story.append(Paragraph("Detailed findings", styles["Heading1"]))
     for section in report["sections"]:
-        _add_heading(document, section["title"], level=2)
-        _add_metric_callout(document, f"Score: {section['score']}/10")
-        _add_heading(document, "Current state", level=3)
-        _add_paragraph(document, section["current_state"], after=3)
-        _add_heading(document, "Key risks", level=3)
-        _add_bullets(document, section["key_risks"])
-        _add_heading(document, "Commercial impact", level=3)
-        _add_paragraph(document, section["commercial_impact"], after=3)
-        _add_heading(document, "Actions", level=3)
-        _add_action_line(document, "Immediate", section["immediate_actions"])
-        _add_action_line(document, "Next phase", section["structural_improvements"])
-        document.add_paragraph("")
+        story.append(Paragraph(section["title"], styles["Heading2"]))
+        story.append(Paragraph(f"Score: {section['score']}/10", styles["Body"]))
+        story.append(Paragraph("Current state", styles["Heading3"]))
+        story.append(Paragraph(section["current_state"], styles["Body"]))
+        story.append(Paragraph("Key risks", styles["Heading3"]))
+        story.append(_bullet_list(section["key_risks"], styles))
+        story.append(Paragraph("Commercial impact", styles["Heading3"]))
+        story.append(Paragraph(section["commercial_impact"], styles["Body"]))
+        story.append(Paragraph("Immediate actions", styles["Heading3"]))
+        story.append(_bullet_list(section["immediate_actions"], styles))
+        story.append(Paragraph("Next phase actions", styles["Heading3"]))
+        story.append(_bullet_list(section["structural_improvements"], styles))
+        story.append(Spacer(1, 2 * mm))
 
 
-def _add_roadmap(document: Document, report: dict) -> None:
-    _add_heading(document, "Top 5 strengths", level=1)
-    _add_bullets(document, report["top_strengths"])
-    document.add_paragraph("")
-
-    _add_heading(document, "Top 5 problems", level=1)
-    _add_bullets(document, report["top_problems"])
-    document.add_paragraph("")
-
-    _add_heading(document, "30 day plan", level=1)
-    _add_bullets(document, report["day_30_plan"])
-    document.add_paragraph("")
-
-    _add_heading(document, "60 day plan", level=1)
-    _add_bullets(document, report["day_60_plan"])
-    document.add_paragraph("")
-
-    _add_heading(document, "90 day plan", level=1)
-    _add_bullets(document, report["day_90_plan"])
-    document.add_paragraph("")
+def _add_list_section(story: list, styles: StyleSheet1, title: str, items: list[str]) -> None:
+    story.append(Paragraph(title, styles["Heading1"]))
+    story.append(_bullet_list(items, styles))
 
 
-def _add_final_verdict(document: Document, report: dict) -> None:
-    _add_heading(document, "Final verdict", level=1)
-    _add_paragraph(document, report["final_verdict"], after=0)
+def _add_final_verdict(story: list, styles: StyleSheet1, report: dict) -> None:
+    story.append(Paragraph("Final verdict", styles["Heading1"]))
+    story.append(Paragraph(report["final_verdict"], styles["Body"]))
 
 
-def _add_heading(document: Document, title: str, level: int) -> None:
-    paragraph = document.add_paragraph()
-    paragraph.style = document.styles[f"Heading {min(level, 3)}"]
-    paragraph.paragraph_format.space_before = Pt(12 if level == 1 else 8 if level == 2 else 4)
-    paragraph.paragraph_format.space_after = Pt(3)
-    run = paragraph.add_run(title)
-    run.bold = True
-    run.font.name = "Aptos"
-    run.font.size = Pt(14 if level == 1 else 11.5 if level == 2 else 10)
-    run.font.color.rgb = TEXT
+def _bullet_list(items: list[str], styles: StyleSheet1) -> ListFlowable:
+    list_items = [
+        ListItem(Paragraph(_clean_text(item, max_sentences=1, max_words=18), styles["BodyTight"]), leftIndent=0)
+        for item in items
+        if _clean_text(item, max_sentences=1, max_words=18)
+    ]
+    return ListFlowable(
+        list_items,
+        bulletType="bullet",
+        bulletFontName=PDF_FONT,
+        bulletFontSize=9,
+        bulletOffsetY=1,
+        leftIndent=10,
+    )
 
 
-def _add_paragraph(document: Document, text: str, after: float = 3) -> None:
-    text = _clean_text(text)
-    if not text:
-        return
-    paragraph = document.add_paragraph()
-    paragraph.paragraph_format.space_after = Pt(after)
-    paragraph.paragraph_format.line_spacing = 1.15
-    run = paragraph.add_run(text.strip())
-    run.font.name = "Aptos"
-    run.font.size = Pt(10)
-    run.font.color.rgb = TEXT
+def _table_style() -> TableStyle:
+    return TableStyle(
+        [
+            ("FONTNAME", (0, 0), (-1, 0), PDF_FONT_BOLD),
+            ("FONTNAME", (0, 1), (-1, -1), PDF_FONT),
+            ("FONTSIZE", (0, 0), (-1, -1), 9.5),
+            ("TEXTCOLOR", (0, 0), (-1, -1), TEXT_COLOR),
+            ("GRID", (0, 0), (-1, -1), 0.35, RULE_COLOR),
+            ("BACKGROUND", (0, 0), (-1, 0), TABLE_SHADE),
+            ("LEFTPADDING", (0, 0), (-1, -1), 5),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ]
+    )
 
 
-def _add_bullets(document: Document, items: list[str]) -> None:
-    for item in _clean_list(items, max_items=len(items) if items else 0, max_words=18):
-        bullet = document.add_paragraph(style="List Bullet")
-        bullet.paragraph_format.space_before = Pt(0)
-        bullet.paragraph_format.space_after = Pt(1)
-        bullet.paragraph_format.left_indent = Inches(0.18)
-        run = bullet.add_run(item)
-        run.font.name = "Aptos"
-        run.font.size = Pt(10)
-        run.font.color.rgb = TEXT
-
-
-def _add_action_line(document: Document, label: str, items: list[str]) -> None:
-    paragraph = document.add_paragraph()
-    paragraph.paragraph_format.space_after = Pt(2)
-    paragraph.paragraph_format.line_spacing = 1.1
-    lead = paragraph.add_run(f"{label}: ")
-    lead.bold = True
-    lead.font.name = "Aptos"
-    lead.font.size = Pt(10)
-    lead.font.color.rgb = TEXT
-    body = paragraph.add_run("; ".join(_clean_list(items, max_items=2, max_words=18)))
-    body.font.name = "Aptos"
-    body.font.size = Pt(10)
-    body.font.color.rgb = TEXT
-
-
-def _add_metric_callout(document: Document, text: str) -> None:
-    paragraph = document.add_paragraph()
-    paragraph.paragraph_format.space_after = Pt(4)
-    run = paragraph.add_run(text)
-    run.bold = True
-    run.font.name = "Aptos"
-    run.font.size = Pt(10)
-    run.font.color.rgb = TEXT
-
-
-def _shade_cell(cell, fill: str) -> None:
-    tc_pr = cell._tc.get_or_add_tcPr()
-    shd = OxmlElement("w:shd")
-    shd.set(qn("w:fill"), fill)
-    tc_pr.append(shd)
-
-
-def _set_cell(
-    cell,
-    text: str,
-    bold: bool = False,
-    color: RGBColor = TEXT,
-    size: float = 10.0,
-    alignment=WD_ALIGN_PARAGRAPH.LEFT,
-) -> None:
-    cell.text = ""
-    paragraph = cell.paragraphs[0]
-    paragraph.alignment = alignment
-    paragraph.paragraph_format.space_after = Pt(0)
-    paragraph.paragraph_format.line_spacing = 1.05
-    run = paragraph.add_run(_clean_text(text))
-    run.bold = bold
-    run.font.name = "Aptos"
-    run.font.size = Pt(size)
-    run.font.color.rgb = TEXT
-    cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
-
-
-def _apply_chart_style(fig, ax) -> None:
-    fig.patch.set_facecolor("white")
-    ax.set_facecolor("white")
-    ax.tick_params(axis="x", colors="black", labelsize=8.5)
-    ax.tick_params(axis="y", colors="black", labelsize=8.5)
-    for spine in ax.spines.values():
-        spine.set_visible(False)
+def _draw_page(canvas, doc) -> None:
+    canvas.saveState()
+    canvas.setStrokeColor(RULE_COLOR)
+    canvas.line(doc.leftMargin, PAGE_HEIGHT - 10 * mm, PAGE_WIDTH - doc.rightMargin, PAGE_HEIGHT - 10 * mm)
+    if canvas.getPageNumber() > 2:
+        canvas.setFont(PDF_FONT, 8)
+        canvas.setFillColor(TEXT_COLOR)
+        canvas.drawRightString(PAGE_WIDTH - doc.rightMargin, 10 * mm, f"Page {canvas.getPageNumber() - 2}")
+    canvas.restoreState()
 
 
 def _output_dir() -> Path:
@@ -1220,7 +1199,6 @@ def _region_hint(location: str) -> str:
 def _pick_benchmark_row(benchmark: pd.DataFrame, data: dict) -> pd.Series:
     if benchmark.empty:
         return pd.Series(dtype=object)
-
     working = benchmark.copy()
     size_band = _size_band(str(data.get("headcount", "")))
     region = _region_hint(str(data.get("location", "")))
@@ -1234,7 +1212,6 @@ def _pick_benchmark_row(benchmark: pd.DataFrame, data: dict) -> pd.Series:
         regional = working[working["region"].astype(str) == "UK National"]
     if not regional.empty:
         working = regional
-
     return working.iloc[0]
 
 
@@ -1243,22 +1220,22 @@ def _metric_score(value: float | None, benchmark_value: float | None, higher_is_
         return 5.5
     ratio = value / benchmark_value
     if higher_is_better:
-        if ratio >= 1.2:
+        if ratio >= 1.20:
             return 8.8
         if ratio >= 1.05:
             return 7.8
         if ratio >= 0.95:
             return 6.8
-        if ratio >= 0.8:
+        if ratio >= 0.80:
             return 5.5
         return 4.0
-    if ratio <= 0.8:
+    if ratio <= 0.80:
         return 8.8
     if ratio <= 0.95:
         return 7.8
     if ratio <= 1.05:
         return 6.8
-    if ratio <= 1.2:
+    if ratio <= 1.20:
         return 5.5
     return 4.0
 
@@ -1307,10 +1284,10 @@ def _safe_float(value) -> float | None:
 
 def _short_label(title: str) -> str:
     mapping = {
-        "Recruitment strategy and workforce planning": "Strategy & planning",
-        "Performance metrics and funnel conversion": "Metrics & funnel",
+        "Recruitment strategy and workforce planning": "Strategy and planning",
+        "Performance metrics and funnel conversion": "Metrics and funnel",
         "Employer brand and market perception": "Employer brand",
-        "Job adverts and job specifications": "Job adverts & specs",
+        "Job adverts and job specifications": "Job adverts and specs",
         "Sourcing and advertising process": "Sourcing process",
         "Application handling and screening": "Screening",
         "Interview process quality": "Interviews",
@@ -1324,164 +1301,15 @@ def _short_label(title: str) -> str:
 
 
 def _rating_for_score(total_score: int) -> str:
-    if total_score >= 96:
-        return "High maturity"
-    if total_score >= 78:
-        return "Established with gaps"
-    if total_score >= 60:
+    if total_score >= 90:
+        return "High performing"
+    if total_score >= 70:
+        return "Strong but inconsistent"
+    if total_score >= 50:
         return "Functional but inconsistent"
-    return "Needs substantial improvement"
-
-
-def _score_rgb(score: int) -> RGBColor:
-    return TEXT
-
-
-def _score_fill(score: int) -> str:
-    if score >= 7:
-        return "D9D9D9"
-    if score >= 4:
-        return "EBEBEB"
-    return "F5F5F5"
-
-
-def _score_hex(score: int) -> str:
-    if score >= 7:
-        return "#3A3A3A"
-    if score >= 4:
-        return "#6A6A6A"
-    return "#9A9A9A"
-
-
-def _status_colors(status: str) -> tuple[RGBColor, str]:
-    return TEXT, _status_fill(status)
-
-
-def _fmt(value: float | None, suffix: str) -> str:
-    return "not provided" if value is None else _format_metric_value(value, suffix)
-
-
-def _build_priority_matrix(data: dict, report: dict) -> list[dict[str, str]]:
-    priorities = []
-    sections = sorted(report.get("sections", []), key=lambda item: item["score"])[:4]
-    for section in sections:
-        urgency = "Immediate" if section["score"] <= 4 else "Next 30 days" if section["score"] <= 6 else "Planned"
-        priorities.append(
-            {
-                "title": section["title"],
-                "urgency": urgency,
-                "impact": _section_rating(section["score"]),
-                "why": section["commercial_impact"],
-                "action": section["immediate_actions"][0],
-            }
-        )
-    return priorities
-
-
-def _clean_text(value, max_sentences: int | None = None, max_words: int | None = None) -> str:
-    if value is None:
-        return ""
-    if isinstance(value, list):
-        value = " ".join(str(item) for item in value)
-    text = str(value)
-    text = text.replace("\r", "\n")
-    text = re.sub(r"(?m)^\s*[*#>-]+\s*", "", text)
-    text = re.sub(r"(?m)^\s*\d+[.)]\s*", "", text)
-    text = text.replace("•", " ")
-    text = text.replace("–", "-").replace("—", "-")
-    text = re.sub(r"\s+", " ", text).strip()
-
-    replacements = {
-        "best-in-class": "strong",
-        "best in class": "strong",
-        "robust": "clear",
-        "hampered": "slowed",
-        "material": "clear",
-        "leverage": "use",
-        "seamless": "consistent",
-    }
-    for source, target in replacements.items():
-        text = re.sub(rf"\b{re.escape(source)}\b", target, text, flags=re.IGNORECASE)
-
-    text = re.sub(r"\s+([,.;:])", r"\1", text)
-    text = re.sub(r"([.?!]){2,}", r"\1", text)
-
-    if max_sentences is not None:
-        sentences = _split_sentences(text)
-        text = " ".join(sentences[:max_sentences])
-    if max_words is not None:
-        words = text.split()
-        if len(words) > max_words:
-            text = " ".join(words[:max_words]).rstrip(",;:")
-            if text and text[-1] not in ".!?":
-                text += "."
-    return text.strip()
-
-
-def _clean_list(items, max_items: int, max_words: int = 18) -> list[str]:
-    if items is None:
-        source_items = []
-    elif isinstance(items, list):
-        source_items = items
-    else:
-        source_items = [items]
-
-    cleaned = []
-    for item in source_items:
-        text = _clean_text(item, max_sentences=1, max_words=max_words)
-        if text:
-            cleaned.append(text)
-        if max_items and len(cleaned) >= max_items:
-            break
-    return cleaned
-
-
-def _compose_current_state(value, fallback_note: str) -> str:
-    sentences = []
-    for text in _clean_list(value, max_items=3, max_words=22):
-        sentences.extend(_split_sentences(text))
-    if fallback_note:
-        sentences.extend(_split_sentences(_clean_text(fallback_note, max_sentences=2, max_words=28)))
-
-    unique = []
-    seen = set()
-    for sentence in sentences:
-        key = sentence.lower()
-        if key not in seen:
-            unique.append(sentence)
-            seen.add(key)
-        if len(unique) == 3:
-            break
-    return " ".join(unique)
-
-
-def _split_sentences(text: str) -> list[str]:
-    text = text.strip()
-    if not text:
-        return []
-    parts = re.split(r"(?<=[.!?])\s+", text)
-    cleaned = [part.strip() for part in parts if part.strip()]
-    return cleaned or [text]
-
-
-def _build_key_insights(data: dict, report: dict, benchmark_summary: dict) -> list[str]:
-    strongest = max(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])
-    weakest = min(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])
-    comparisons = benchmark_summary.get("comparisons", [])
-    benchmark_line = "Benchmark comparison was limited by the data supplied."
-    for item in comparisons:
-        if item["status"] != "In line":
-            benchmark_line = f"{item['label']} is {item['comment'].lower()}."
-            break
-
-    first_problem = report["top_problems"][0] if report["top_problems"] else "Control is uneven across the hiring process."
-    first_action = report["day_30_plan"][0] if report["day_30_plan"] else "Tighten the weakest part of the process first."
-    return [
-        f"The strongest area is {strongest[0]} at {strongest[1]}/10.",
-        f"The weakest area is {weakest[0]} at {weakest[1]}/10.",
-        benchmark_line,
-        f"First priority: {first_action.rstrip('.')}.",
-    ]
+    if total_score >= 30:
+        return "Underperforming"
+    return "Broken"
 
 
 def _section_rating(score: int) -> str:
@@ -1494,13 +1322,86 @@ def _section_rating(score: int) -> str:
     return "Weak"
 
 
-def _status_fill(status: str) -> str:
-    lowered = status.lower()
-    if "ahead" in lowered:
-        return "E7E7E7"
-    if "behind" in lowered:
-        return "F1F1F1"
-    return "F7F7F7"
+def _score_hex(score: int) -> str:
+    if score >= 8:
+        return "#222222"
+    if score >= 6:
+        return "#555555"
+    if score >= 4:
+        return "#7A7A7A"
+    return "#A0A0A0"
+
+
+def _fmt(value: float | None, suffix: str) -> str:
+    return "not provided" if value is None else _format_metric_value(value, suffix)
+
+
+def _build_priority_matrix(report: dict) -> list[dict[str, str]]:
+    priorities = []
+    for section in sorted(report.get("sections", []), key=lambda item: item["score"])[:4]:
+        urgency = "Immediate" if section["score"] <= 4 else "Next 30 days" if section["score"] <= 6 else "Planned"
+        priorities.append(
+            {
+                "title": section["title"],
+                "urgency": urgency,
+                "why": section["commercial_impact"],
+                "action": section["immediate_actions"][0],
+            }
+        )
+    return priorities
+
+
+def _build_executive_overview(data: dict, report: dict, benchmark_summary: dict) -> str:
+    strongest = max(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])
+    weakest = min(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])
+    issue = report["top_problems"][0] if report["top_problems"] else "Control is uneven across the hiring process."
+    next_step = report["day_30_plan"][0] if report["day_30_plan"] else "Focus first on the weakest part of the recruitment process."
+    benchmark_line = ""
+    comparisons = benchmark_summary.get("comparisons", [])
+    if comparisons:
+        highlight = comparisons[0]
+        benchmark_line = f"Against the UK benchmark, {highlight['label'].lower()} is {highlight['comment'].lower()}."
+
+    sentences = [
+        f"The recruitment function currently sits in the {_rating_for_score(data['total_score']).lower()} range at {data['total_score']}/120.",
+        f"The strongest area is {strongest[0].lower()} at {strongest[1]}/10, while the weakest area is {weakest[0].lower()} at {weakest[1]}/10.",
+        _clean_text(issue, max_sentences=1, max_words=22),
+        benchmark_line,
+        f"The immediate next step is to {next_step.rstrip('.').lower()}.",
+    ]
+    text = " ".join(sentence for sentence in sentences if sentence)
+    return _clean_text(text, max_sentences=5, max_words=145)
+
+
+def _build_key_insights(data: dict, report: dict, benchmark_summary: dict) -> list[str]:
+    strongest = max(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])
+    weakest = min(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])
+    comparisons = benchmark_summary.get("comparisons", [])
+    benchmark_line = "Benchmark comparison was limited by the data supplied."
+    if comparisons:
+        item = comparisons[0]
+        benchmark_line = f"{item['label']} is {item['comment'].lower()}."
+    first_problem = report["top_problems"][0] if report["top_problems"] else "Process control is uneven."
+    first_action = report["day_30_plan"][0] if report["day_30_plan"] else "Tighten the weakest area first."
+    return [
+        f"Strongest area: {strongest[0]} at {strongest[1]}/10.",
+        f"Weakest area: {weakest[0]} at {weakest[1]}/10.",
+        benchmark_line,
+        f"Immediate priority: {first_action.rstrip('.')}.",
+    ]
+
+
+def _select_benchmark_comparisons(comparisons: list[dict]) -> list[dict]:
+    useful = [item for item in comparisons if item["status"] != "In line"]
+    if useful:
+        return useful[:3]
+    return comparisons[:2]
+
+
+def _select_benchmark_chart_items(items: list[tuple]) -> list[tuple]:
+    if len(items) <= 3:
+        return items
+    return items[:3]
 
 
 def _format_metric_value(value: float | None, suffix: str) -> str:
@@ -1515,3 +1416,131 @@ def _format_metric_value(value: float | None, suffix: str) -> str:
     if suffix == "%":
         return f"{number}%"
     return number
+
+
+def _ensure_list(value, min_items: int) -> list[str]:
+    if isinstance(value, list):
+        items = [str(item).strip() for item in value if str(item).strip()]
+    elif value:
+        items = [str(value).strip()]
+    else:
+        items = []
+    while len(items) < min_items:
+        items.append("This area needs clearer definition in the next review cycle.")
+    return items
+
+
+def _clean_text(value, max_sentences: int | None = None, max_words: int | None = None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, list):
+        value = " ".join(str(item) for item in value)
+    text = str(value).replace("\r", "\n")
+    text = re.sub(r"(?m)^\s*[*#>-]+\s*", "", text)
+    text = re.sub(r"(?m)^\s*\d+[.)]\s*", "", text)
+    text = text.replace("•", " ")
+    text = text.replace("–", "-").replace("—", "-")
+    text = re.sub(r"\s+", " ", text).strip()
+    replacements = {
+        "best-in-class": "strong",
+        "best in class": "strong",
+        "robust": "clear",
+        "hampered": "slowed",
+        "material": "clear",
+        "leverage": "use",
+        "seamless": "consistent",
+        "laid the groundwork": "created a base",
+        "it is important to note": "",
+        "overall this suggests": "",
+        "in today's market": "",
+    }
+    for source, target in replacements.items():
+        text = re.sub(rf"\b{re.escape(source)}\b", target, text, flags=re.IGNORECASE)
+    text = re.sub(r"\s+([,.;:])", r"\1", text)
+    text = re.sub(r"([.?!]){2,}", r"\1", text)
+    if max_sentences is not None:
+        text = " ".join(_split_sentences(text)[:max_sentences])
+    if max_words is not None:
+        words = text.split()
+        if len(words) > max_words:
+            text = " ".join(words[:max_words]).rstrip(",;:")
+            if text and text[-1] not in ".!?":
+                text += "."
+    return text.strip()
+
+
+def _clean_list(items, max_items: int, max_words: int = 16) -> list[str]:
+    if items is None:
+        source = []
+    elif isinstance(items, list):
+        source = items
+    else:
+        source = [items]
+    cleaned = []
+    for item in source:
+        text = _clean_text(item, max_sentences=1, max_words=max_words)
+        if text:
+            cleaned.append(text)
+        if len(cleaned) >= max_items:
+            break
+    return cleaned
+
+
+def _compose_paragraph(value, fallback: str | None, max_sentences: int, max_words: int) -> str:
+    fragments = []
+    if isinstance(value, list):
+        fragments.extend(value)
+    elif value:
+        fragments.append(value)
+    if fallback:
+        fragments.append(fallback)
+    sentences = []
+    seen = set()
+    for fragment in fragments:
+        for sentence in _split_sentences(_clean_text(fragment, max_sentences=2, max_words=max_words)):
+            key = sentence.lower()
+            if key not in seen:
+                sentences.append(sentence)
+                seen.add(key)
+            if len(sentences) >= max_sentences:
+                return _clean_text(" ".join(sentences), max_sentences=max_sentences, max_words=max_words)
+    return _clean_text(" ".join(sentences), max_sentences=max_sentences, max_words=max_words)
+
+
+def _split_sentences(text: str) -> list[str]:
+    text = text.strip()
+    if not text:
+        return []
+    parts = re.split(r"(?<=[.!?])\s+", text)
+    return [part.strip() for part in parts if part.strip()]
+
+
+def _fallback_strengths(data: dict) -> list[str]:
+    strongest = sorted(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1], reverse=True)[:5]
+    return [f"{title} is currently scoring {score}/10." for title, score in strongest]
+
+
+def _fallback_problems(data: dict, benchmark_summary: dict) -> list[str]:
+    weakest = sorted(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])[:4]
+    problems = [f"{title} is currently scoring {score}/10." for title, score in weakest]
+    for item in benchmark_summary.get("comparisons", []):
+        if item["status"] != "In line":
+            problems.append(f"{item['label']} is {item['comment'].lower()}.")
+            break
+    return problems[:5]
+
+
+def _fallback_actions(sections: list[dict], key: str) -> list[str]:
+    actions = []
+    for section in sorted(sections, key=lambda item: item["score"])[:3]:
+        actions.extend(section[key][:1])
+    return actions[:3]
+
+
+def _apply_chart_style(fig, ax) -> None:
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
+    ax.tick_params(axis="x", colors="black", labelsize=8)
+    ax.tick_params(axis="y", colors="black", labelsize=8)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
