@@ -255,17 +255,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   matrixGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
+    gap: 8,
     marginTop: 10,
   },
   matrixCell: {
-    width: "48%",
     borderWidth: 1,
     borderColor: "#e5e7eb",
     borderRadius: 12,
     padding: 12,
+    marginBottom: 8,
   },
   matrixTitle: {
     fontSize: 8.5,
@@ -381,17 +379,12 @@ function DetailSection({ section }: { section: SectionReport }) {
       </View>
 
       <View style={styles.listBlock}>
-        <Text style={styles.sectionMiniLabel}>Immediate Actions</Text>
-        {section.immediateActions.map((action) => (
+        <Text style={styles.sectionMiniLabel}>Actions</Text>
+        {section.actions.map((action) => (
           <Text key={action} style={styles.listItem}>
             • {action}
           </Text>
         ))}
-      </View>
-
-      <View>
-        <Text style={styles.sectionMiniLabel}>Consultant note</Text>
-        <Text>{section.consultantNote}</Text>
       </View>
     </View>
   );
@@ -517,14 +510,23 @@ export function AuditPdfDocument({ report }: { report: AuditReport }) {
                     <Text>{issue.title}</Text>
                   </View>
                 ))}
+                {report.strongestAreas.slice(2, 3).length === 0 ? (
+                  <View style={styles.matrixItem}>
+                    <Text>None beyond the immediate priorities</Text>
+                  </View>
+                ) : null}
               </View>
               <View style={[styles.matrixCell, { backgroundColor: "#f8fafc" }]}>
                 <Text style={[styles.matrixTitle, { color: "#475569" }]}>Watch closely</Text>
-                {watchAreas.map((issue) => (
+                {watchAreas.length ? watchAreas.map((issue) => (
                   <View key={issue.id} style={styles.matrixItem}>
                     <Text>{issue.title}</Text>
                   </View>
-                ))}
+                )) : (
+                  <View style={styles.matrixItem}>
+                    <Text>No additional watch items</Text>
+                  </View>
+                )}
               </View>
               <View style={[styles.matrixCell, { backgroundColor: "#f0fdf4" }]}>
                 <Text style={[styles.matrixTitle, { color: "#166534" }]}>Maintain</Text>

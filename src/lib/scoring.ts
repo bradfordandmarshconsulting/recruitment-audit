@@ -11,11 +11,10 @@ export type SectionReport = {
   currentState: string;
   keyRisks: string[];
   commercialImpact: string;
-  immediateActions: string[];
+  actions: string[];
   diagnosis: string;
   impact: string;
   recommendations: string[];
-  consultantNote: string;
   evidence: string[];
 };
 
@@ -412,21 +411,20 @@ function lowSignal(sectionId: string, answers: AuditAnswers): string[] {
 function diagnosisFor(section: AuditSection, score: number, answers: AuditAnswers): string {
   const lowPoints = lowSignal(section.id, answers);
   const lowPointText = lowPoints.length ? lowPoints.join(" and ").toLowerCase() : "process discipline";
-  const sectionLabel = section.title.toLowerCase();
   const verb = sectionVerb(section.title);
 
   if (score <= 39) {
     return cleanSentence(
-      `${section.title} ${verb} not being controlled tightly enough. The weakest points are ${lowPointText}, and that is creating avoidable delay, weak decisions and wasted effort.`,
+      `${section.title} ${verb} breaking down around ${lowPointText}. The process is not controlled tightly enough to deliver consistent hiring outcomes.`,
     );
   }
   if (score <= 70) {
     return cleanSentence(
-      `${section.title} ${verb} serviceable but inconsistent. The current setup shows clear slippage around ${lowPointText}, so ${sectionLabel} outcomes depend too heavily on individual effort.`,
+      `${section.title} ${verb} functional but uneven. Performance still depends too heavily on individual judgement around ${lowPointText}.`,
     );
   }
   return cleanSentence(
-    `${section.title} ${verb} operating with good control. The process is clear, but ${lowPointText} still need tightening to protect consistency as hiring volume changes.`,
+    `${section.title} ${verb} generally well controlled. The main weakness sits around ${lowPointText}, which still needs tighter discipline.`,
   );
 }
 
@@ -437,21 +435,21 @@ function keyRisksFor(section: AuditSection, score: number, answers: AuditAnswers
 
   if (score <= 39) {
     return [
-      `Weak control over ${weakestPoint} is slowing the process and increasing inconsistency.`,
-      `The current position is likely to damage shortlist quality, conversion and candidate confidence.`,
+      `${weakestPoint} is weak enough to slow the process and distort decision quality.`,
+      `The business is likely losing viable candidates before it reaches a confident hiring decision.`,
     ];
   }
 
   if (score <= 70) {
     return [
-      `${weakestPoint} is not consistent enough and is creating avoidable variance between roles or teams.`,
-      `If ${secondaryPoint} is not tightened, hiring quality and pace will remain uneven.`,
+      `${weakestPoint} is inconsistent and is creating avoidable variance between roles or teams.`,
+      `If ${secondaryPoint} is not tightened, pace and shortlist quality will remain uneven.`,
     ];
   }
 
   return [
-    `${weakestPoint} is the main area that still needs tighter discipline.`,
-    `Without that improvement, stronger parts of the process will end up carrying weaker ones.`,
+    `${weakestPoint} is still the main exposure in this part of the process.`,
+    `If it drifts, stronger parts of the hiring model will end up absorbing the problem.`,
   ];
 }
 
@@ -459,16 +457,16 @@ function impactFor(section: AuditSection, score: number): string {
   const sectionTitle = section.title.toLowerCase();
   if (score <= 39) {
     return cleanSentence(
-      `This is increasing time to hire, reducing shortlist quality and creating avoidable candidate loss. In commercial terms, weak ${sectionTitle} performance is adding hidden cost to every live vacancy.`,
+      `This is extending time to hire, lowering shortlist quality and increasing candidate loss. Weak ${sectionTitle} performance is adding hidden cost to every live vacancy.`,
     );
   }
   if (score <= 70) {
     return cleanSentence(
-      `The current position is adding friction to the process and reducing conversion quality at key stages. That means more wasted interviews, slower decisions and less confidence in hiring outcomes.`,
+      `The current position is adding friction at key stages. That means more wasted interviews, slower decisions and less confidence in the eventual hire.`,
     );
   }
   return cleanSentence(
-    `The process is performing well enough to support growth, but sharper discipline here would still protect speed and candidate quality. The gain is lower waste and more predictable hiring performance.`,
+    `This part of the process is supporting hiring well, but tighter execution would still protect speed and candidate quality. The gain is lower waste and more predictable hiring performance.`,
   );
 }
 
@@ -551,16 +549,6 @@ function recommendationsFor(sectionId: string): string[] {
   }
 }
 
-function consultantNoteFor(section: AuditSection, score: number): string {
-  if (score <= 39) {
-    return `This area needs active correction, not minor process tuning. If it is left alone, it will continue to drag performance in the rest of the hiring model down with it.`;
-  }
-  if (score <= 70) {
-    return `The core process exists, but it is not controlled tightly enough to deliver consistent outcomes. Tightening a few operating rules here would improve pace quickly.`;
-  }
-  return `This is one of the more stable parts of the process. The priority is to preserve that discipline and stop weaker stages elsewhere from eroding it.`;
-}
-
 function scoreMeaning(score: number): string {
   if (score <= 39) {
     return "The hiring model is under strain. Too many outcomes depend on workarounds rather than a reliable process.";
@@ -586,11 +574,10 @@ function buildSectionReport(section: AuditSection, answers: AuditAnswers): Secti
     currentState: diagnosis,
     keyRisks: keyRisksFor(section, score, answers),
     commercialImpact: impact,
-    immediateActions: recommendations.slice(0, 2),
+    actions: recommendations.slice(0, 3),
     diagnosis,
     impact,
     recommendations,
-    consultantNote: consultantNoteFor(section, score),
     evidence: lowSignal(section.id, answers),
   };
 }
@@ -598,15 +585,16 @@ function buildSectionReport(section: AuditSection, answers: AuditAnswers): Secti
 function executiveSummary(overallScore: number, sections: SectionReport[], companyName: string): string {
   const strongest = [...sections].sort((a, b) => b.score - a.score)[0];
   const weakest = [...sections].sort((a, b) => a.score - b.score)[0];
+  const weakestEvidence = weakest.evidence[0] ?? weakest.title.toLowerCase();
   const tone =
     overallScore <= 39
-      ? "The recruitment process is currently losing pace, control and candidate quality."
+      ? "Your recruitment process is under real strain."
       : overallScore <= 70
-        ? "The recruitment process can deliver, but it is not consistent enough to do so predictably."
-        : "The recruitment process is performing well overall, with a small number of areas still limiting efficiency.";
+        ? "Your recruitment process is functional but inconsistent."
+        : "Your recruitment process is performing well overall, but a few weak points are still limiting efficiency.";
 
   return cleanSentence(
-    `${companyName} shows an overall score of ${overallScore}/100. ${tone} The strongest area is ${strongest.title.toLowerCase()}, while the weakest area is ${weakest.title.toLowerCase()}. The main commercial issue is avoidable delay and uneven conversion caused by inconsistent operating discipline. The immediate priority is to tighten the weakest stages first so hiring speed and candidate quality improve together.`,
+    `${tone} ${companyName} scores ${overallScore}/100 overall. The clearest breakdown sits in ${weakest.title.toLowerCase()}, particularly around ${weakestEvidence}, while ${strongest.title.toLowerCase()} is holding up best. The immediate priority is to tighten the weakest stages first so time to hire and candidate quality improve together.`,
   );
 }
 
@@ -630,6 +618,6 @@ export function buildAuditReport(submission: AuditSubmission): AuditReport {
     priorityActions,
     sections,
     recommendedNextStep:
-      "The findings point to a clear operating improvement plan rather than a bigger hiring problem. Bradford & Marsh Consulting can help redesign the weak points, tighten manager discipline and put a cleaner delivery model in place without adding unnecessary process.",
+      "The findings point to a clear operating improvement plan rather than a bigger hiring problem. Bradford & Marsh Consulting can tighten the weak stages, improve manager discipline and put a cleaner delivery model in place without adding unnecessary process.",
   };
 }

@@ -245,20 +245,15 @@ function SectionReportCard({ section }: { section: AuditReport["sections"][numbe
         </div>
 
         <div className="rounded-[1.25rem] bg-slate-50 p-5">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Immediate Actions</div>
+          <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Actions</div>
           <div className="space-y-2">
-            {section.immediateActions.map((action) => (
+            {section.actions.map((action) => (
               <div key={action} className="rounded-2xl bg-white px-4 py-3 text-sm leading-6 text-slate-700">
                 {action}
               </div>
             ))}
           </div>
         </div>
-      </div>
-
-      <div className="mt-5 rounded-[1.25rem] border border-slate-200 px-5 py-4">
-        <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Consultant Note</div>
-        <p className="text-sm leading-7 text-slate-700">{section.consultantNote}</p>
       </div>
     </article>
   );
