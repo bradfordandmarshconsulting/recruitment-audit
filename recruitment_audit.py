@@ -83,6 +83,14 @@ BRAND_NAME = "Bradford & Marsh Consulting"
 BRAND_STRAPLINE = "Recruitment advisory and operating model diagnostics"
 REPORT_TITLE = "Recruitment Operating Model Audit"
 CONFIDENTIAL_LABEL = "Confidential client report"
+LETTERHEAD_TITLE = "BRADFORD & MARSH"
+LETTERHEAD_SUBTITLE = "CONSULTING"
+LETTERHEAD_COMPANY_NO = "Company Registration No. 17059554"
+LETTERHEAD_REGISTERED_ADDRESS = (
+    "Registered Company Address: Riverside Mill, Mountbatten Way, Congleton, Cheshire, CW12 1DY"
+)
+LETTERHEAD_PHONE = "T. 01260 544934"
+LETTERHEAD_WEBSITE = "www.bradfordandmarsh.co.uk"
 
 PRIMARY_HEX = "182647"
 SECONDARY_HEX = "4F627A"
@@ -508,6 +516,11 @@ def _build_user_prompt(data: dict, benchmark_summary: dict) -> str:
     return f"""
 Company profile
 - Company: {data['company_name']}
+- Contact name: {data['contact_name']}
+- Job title: {data['job_title']}
+- Phone number: {data['phone_number']}
+- Email address: {data['email_address']}
+- Office address: {data['office_address']}
 - Sector: {data['sector']}
 - Location: {data['location']}
 - Headcount: {data['headcount']}
@@ -735,36 +748,13 @@ def _set_document_defaults(document: Document) -> None:
 
 
 def _add_cover_page(document: Document, data: dict) -> None:
-    masthead = document.add_table(rows=1, cols=2)
-    masthead.autofit = True
-    left = masthead.cell(0, 0)
-    right = masthead.cell(0, 1)
-    _shade_cell(left, PRIMARY_HEX)
-    _shade_cell(right, LIGHT_BG)
-    _set_cell(left, f"{BRAND_NAME}\n{BRAND_STRAPLINE}", bold=True, color=WHITE, size=11.5)
-    _set_cell(
-        right,
-        f"{CONFIDENTIAL_LABEL}\nPrepared on {datetime.now().strftime('%d %B %Y')}",
-        bold=True,
-        color=PRIMARY,
-        size=10.5,
-    )
-
-    mark = document.add_paragraph()
-    mark.paragraph_format.space_before = Pt(36)
-    mark.paragraph_format.space_after = Pt(6)
-    mark_run = mark.add_run("B&M")
-    mark_run.bold = True
-    mark_run.font.name = "Aptos"
-    mark_run.font.size = Pt(28)
-    mark_run.font.color.rgb = ACCENT
-
     p = document.add_paragraph()
+    p.paragraph_format.space_before = Pt(96)
     p.paragraph_format.space_after = Pt(4)
     run = p.add_run(REPORT_TITLE)
     run.bold = True
     run.font.name = "Aptos"
-    run.font.size = Pt(24)
+    run.font.size = Pt(22)
     run.font.color.rgb = PRIMARY
 
     p2 = document.add_paragraph()
@@ -793,6 +783,21 @@ def _add_cover_page(document: Document, data: dict) -> None:
         _shade_cell(table.cell(i, 0), LIGHT_BG)
         _set_cell(table.cell(i, 0), label, bold=True, color=PRIMARY)
         _set_cell(table.cell(i, 1), value, size=10.3)
+
+    document.add_paragraph("")
+    contact_table = document.add_table(rows=5, cols=2)
+    contact_table.autofit = True
+    contact_rows = [
+        ("Contact name", data["contact_name"]),
+        ("Job title", data["job_title"]),
+        ("Phone number", data["phone_number"]),
+        ("Email address", data["email_address"]),
+        ("Office address", data["office_address"]),
+    ]
+    for i, (label, value) in enumerate(contact_rows):
+        _shade_cell(contact_table.cell(i, 0), SOFT_BG)
+        _set_cell(contact_table.cell(i, 0), label, bold=True, color=SECONDARY)
+        _set_cell(contact_table.cell(i, 1), value, size=10.1)
 
     document.add_paragraph("")
     _add_paragraph(
@@ -1108,7 +1113,6 @@ def _set_cell(
 
 
 def _apply_brand_headers_and_footers(document: Document, data: dict) -> None:
-    generated_on = datetime.now().strftime("%d %B %Y")
     for section in document.sections:
         section.header.is_linked_to_previous = False
         section.footer.is_linked_to_previous = False
@@ -1120,44 +1124,52 @@ def _apply_brand_headers_and_footers(document: Document, data: dict) -> None:
         header = section.header.paragraphs[0]
         header.text = ""
         header.paragraph_format.space_after = Pt(0)
-        header.alignment = WD_ALIGN_PARAGRAPH.LEFT
-        header_run = header.add_run(f"{BRAND_NAME}  |  {REPORT_TITLE}")
-        header_run.bold = True
-        header_run.font.name = "Aptos"
-        header_run.font.size = Pt(8.6)
-        header_run.font.color.rgb = SECONDARY
+        header.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        title_run = header.add_run(LETTERHEAD_TITLE)
+        title_run.bold = True
+        title_run.font.name = "Times New Roman"
+        title_run.font.size = Pt(14)
+        title_run.font.color.rgb = SECONDARY
+
+        sub_header = section.header.add_paragraph()
+        sub_header.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        sub_header.paragraph_format.space_before = Pt(0)
+        sub_header.paragraph_format.space_after = Pt(0)
+        sub_run = sub_header.add_run(LETTERHEAD_SUBTITLE)
+        sub_run.bold = False
+        sub_run.font.name = "Aptos"
+        sub_run.font.size = Pt(6.8)
+        sub_run.font.color.rgb = MUTED
+
+        rule = section.header.add_paragraph()
+        rule.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        rule.paragraph_format.space_before = Pt(0)
+        rule.paragraph_format.space_after = Pt(0)
+        rule_run = rule.add_run("______________________________")
+        rule_run.font.name = "Aptos"
+        rule_run.font.size = Pt(7)
+        rule_run.font.color.rgb = MUTED
 
         footer = section.footer.paragraphs[0]
         footer.text = ""
         footer.paragraph_format.space_after = Pt(0)
-        footer.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        footer_run = footer.add_run(
-            f"{CONFIDENTIAL_LABEL}  |  {data['company_name']}  |  {generated_on}  |  Page "
+        footer_table = section.footer.add_table(rows=1, cols=1, width=Inches(6.8))
+        footer_table.autofit = True
+        footer_cell = footer_table.cell(0, 0)
+        _shade_cell(footer_cell, "B8B8B8")
+        footer_text = (
+            f"{LETTERHEAD_COMPANY_NO}\n"
+            f"{LETTERHEAD_REGISTERED_ADDRESS}\n"
+            f"{LETTERHEAD_PHONE}\n"
+            f"{LETTERHEAD_WEBSITE}"
         )
-        footer_run.font.name = "Aptos"
-        footer_run.font.size = Pt(8.2)
-        footer_run.font.color.rgb = MUTED
-        _append_page_number(footer)
-
-
-def _append_page_number(paragraph) -> None:
-    begin = OxmlElement("w:fldChar")
-    begin.set(qn("w:fldCharType"), "begin")
-
-    instr = OxmlElement("w:instrText")
-    instr.set(qn("xml:space"), "preserve")
-    instr.text = " PAGE "
-
-    end = OxmlElement("w:fldChar")
-    end.set(qn("w:fldCharType"), "end")
-
-    run = paragraph.add_run()
-    run._r.append(begin)
-    run._r.append(instr)
-    run._r.append(end)
-    run.font.name = "Aptos"
-    run.font.size = Pt(8.2)
-    run.font.color.rgb = MUTED
+        _set_cell(
+            footer_cell,
+            footer_text,
+            color=WHITE,
+            size=6.8,
+            alignment=WD_ALIGN_PARAGRAPH.CENTER,
+        )
 
 
 def _output_dir() -> Path:

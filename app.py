@@ -162,7 +162,7 @@ def render_page(title: str, body: str) -> str:
             }}
             .brand {{ display: flex; flex-direction: column; gap: 4px; }}
             .brand-overline {{ font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }}
-            .brand-name {{ font-size: 24px; font-weight: 700; letter-spacing: -0.03em; font-family: var(--font-display); }}
+            .brand-name {{ font-size: 20px; font-weight: 700; letter-spacing: -0.02em; font-family: var(--font-display); }}
             .brand-sub {{ color: var(--muted); font-size: 14px; max-width: 56ch; }}
             .trust-pill {{
                 border: 1px solid rgba(20, 32, 51, 0.08);
@@ -203,8 +203,8 @@ def render_page(title: str, body: str) -> str:
                 background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.08);
                 font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
             }}
-            .hero h1 {{ margin: 0 0 14px; font-size: clamp(34px, 5vw, 58px); line-height: 0.98; letter-spacing: -0.05em; max-width: 12ch; font-family: var(--font-display); font-weight: 700; }}
-            .hero p {{ margin: 0; max-width: 68ch; color: rgba(255,255,255,0.80); font-size: 16px; line-height: 1.8; }}
+            .hero h1 {{ margin: 0 0 14px; font-size: clamp(28px, 4vw, 42px); line-height: 1.05; letter-spacing: -0.04em; max-width: 15ch; font-family: var(--font-display); font-weight: 700; }}
+            .hero p {{ margin: 0; max-width: 68ch; color: rgba(255,255,255,0.80); font-size: 15px; line-height: 1.8; }}
             .hero-metrics {{ display: grid; gap: 14px; align-content: start; }}
             .hero-card {{
                 background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.10);
@@ -377,7 +377,7 @@ def render_page(title: str, body: str) -> str:
                 .button-row {{ width: 100%; }}
                 .button {{ width: 100%; }}
                 .hero {{ padding: 26px; }}
-                .hero h1 {{ font-size: 36px; max-width: none; }}
+                .hero h1 {{ font-size: 32px; max-width: none; }}
                 .shell {{ padding-top: 20px; }}
                 .brand-lockup {{ align-items: flex-start; }}
             }}
@@ -435,6 +435,7 @@ def render_page(title: str, body: str) -> str:
                 const summaryLocation = document.getElementById("summaryLocation");
                 const summaryHiring = document.getElementById("summaryHiring");
                 const summaryRoles = document.getElementById("summaryRoles");
+                const summaryContact = document.getElementById("summaryContact");
                 const yesNoFields = Array.from(document.querySelectorAll(".yes-no-field select"));
                 let isSubmitting = false;
                 let currentStep = 1;
@@ -475,6 +476,11 @@ def render_page(title: str, body: str) -> str:
                         summaryHiring.textContent = volume ? volume + " hires / year" : "Pending";
                     }}
                     if (summaryRoles) summaryRoles.textContent = getVal("key_roles_hired");
+                    if (summaryContact) {{
+                        const name = getVal("contact_name", "");
+                        const title = getVal("job_title", "");
+                        summaryContact.textContent = name && title ? name + " · " + title : name || title || "Pending";
+                    }}
 
                     const current = completionForStep(currentStep);
                     if (stageReadiness) {{
@@ -511,7 +517,6 @@ def render_page(title: str, body: str) -> str:
                         stage.classList.toggle("active", Number(stage.getAttribute("data-step")) === currentStep);
                     }});
                     updateProgress();
-                    window.scrollTo({{ top: 0, behavior: "smooth" }});
                 }}
 
                 function validateStep(step) {{
@@ -797,6 +802,26 @@ def form():
                         </div>
 
                         <div class="field">
+                            <label for="contact_name">Contact name</label>
+                            <input id="contact_name" name="contact_name" data-summary-target required>
+                        </div>
+
+                        <div class="field">
+                            <label for="job_title">Job title</label>
+                            <input id="job_title" name="job_title" data-summary-target required>
+                        </div>
+
+                        <div class="field">
+                            <label for="phone_number">Phone number</label>
+                            <input id="phone_number" name="phone_number" type="tel" data-summary-target required>
+                        </div>
+
+                        <div class="field">
+                            <label for="email_address">Email address</label>
+                            <input id="email_address" name="email_address" type="email" data-summary-target required>
+                        </div>
+
+                        <div class="field">
                             <label for="sector">Sector</label>
                             <select id="sector" name="sector" data-summary-target required>
                                 <option value="">Select…</option>
@@ -828,6 +853,11 @@ def form():
                         <div class="field full">
                             <label for="key_roles_hired">Key roles hired</label>
                             <input id="key_roles_hired" name="key_roles_hired" data-summary-target required>
+                        </div>
+
+                        <div class="field full">
+                            <label for="office_address">Office address</label>
+                            <textarea id="office_address" name="office_address" rows="3" data-summary-target required></textarea>
                         </div>
                     </div>
 
@@ -975,6 +1005,7 @@ def form():
 
                 <div class="summary-list">
                     <div class="summary-item"><div class="summary-label">Company</div><div class="summary-value" id="summaryCompany">Pending</div></div>
+                    <div class="summary-item"><div class="summary-label">Contact</div><div class="summary-value" id="summaryContact">Pending</div></div>
                     <div class="summary-item"><div class="summary-label">Sector</div><div class="summary-value" id="summarySector">Pending</div></div>
                     <div class="summary-item"><div class="summary-label">Location</div><div class="summary-value" id="summaryLocation">Pending</div></div>
                     <div class="summary-item"><div class="summary-label">Hiring demand</div><div class="summary-value" id="summaryHiring">Pending</div></div>
@@ -1021,6 +1052,11 @@ def generate():
 
         data = {
             "company_name": request.form.get("company_name", "").strip(),
+            "contact_name": request.form.get("contact_name", "").strip(),
+            "job_title": request.form.get("job_title", "").strip(),
+            "phone_number": request.form.get("phone_number", "").strip(),
+            "email_address": request.form.get("email_address", "").strip(),
+            "office_address": request.form.get("office_address", "").strip(),
             "sector": request.form.get("sector", "").strip(),
             "location": request.form.get("location", "").strip(),
             "headcount": request.form.get("headcount", "").strip(),
