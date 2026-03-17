@@ -1,124 +1,225 @@
 import React from "react";
-import {
-  Document,
-  Page,
-  StyleSheet,
-  Text,
-  View,
-} from "@react-pdf/renderer";
+import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
-import type { AuditReport, ScoreStatus, SectionReport } from "@/lib/scoring";
+import type {
+  AuditReport,
+  BenchmarkRow,
+  MethodologyRow,
+  PriorityMatrixEntry,
+  ScoreStatus,
+  SectionReport,
+} from "@/lib/scoring";
+
+const BRAND_NAVY = "#1f2a40";
+const BRAND_GOLD = "#b5935a";
+const BRAND_CHARCOAL = "#1c2430";
+const BRAND_GREY = "#6b7280";
+const BRAND_LINE = "#d8dce3";
+const BRAND_PANEL = "#f7f5f1";
 
 const styles = StyleSheet.create({
-  page: {
-    paddingTop: 44,
-    paddingBottom: 44,
-    paddingHorizontal: 44,
-    backgroundColor: "#ffffff",
-    color: "#111827",
-    fontSize: 10.5,
-    fontFamily: "Helvetica",
-    lineHeight: 1.5,
-  },
   coverPage: {
-    paddingTop: 64,
-    paddingBottom: 56,
-    paddingHorizontal: 52,
+    paddingTop: 58,
+    paddingBottom: 52,
+    paddingHorizontal: 56,
     backgroundColor: "#ffffff",
-    color: "#111827",
+    color: BRAND_CHARCOAL,
     fontFamily: "Helvetica",
+  },
+  page: {
+    paddingTop: 72,
+    paddingBottom: 54,
+    paddingHorizontal: 48,
+    backgroundColor: "#ffffff",
+    color: BRAND_CHARCOAL,
+    fontSize: 10,
+    fontFamily: "Helvetica",
+    lineHeight: 1.55,
+  },
+  header: {
+    position: "absolute",
+    top: 24,
+    left: 48,
+    right: 48,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: BRAND_LINE,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  headerBrand: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
+    color: BRAND_NAVY,
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+  },
+  headerMeta: {
+    fontSize: 8.5,
+    color: BRAND_GREY,
+  },
+  footer: {
+    position: "absolute",
+    left: 48,
+    right: 48,
+    bottom: 20,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: BRAND_LINE,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    fontSize: 8.5,
+    color: BRAND_GREY,
   },
   coverBrand: {
-    fontSize: 14,
-    letterSpacing: 1.2,
+    fontSize: 13,
+    fontFamily: "Helvetica-Bold",
+    color: BRAND_NAVY,
     textTransform: "uppercase",
-    marginBottom: 12,
+    letterSpacing: 1.4,
+    marginBottom: 16,
   },
   coverRule: {
     width: 120,
     height: 2,
-    backgroundColor: "#d1d5db",
+    backgroundColor: BRAND_GOLD,
     marginBottom: 30,
   },
-  coverTitle: {
-    fontSize: 26,
-    lineHeight: 1.2,
+  coverMonogram: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    borderWidth: 1,
+    borderColor: BRAND_GOLD,
+    color: BRAND_NAVY,
+    textAlign: "center",
     fontFamily: "Helvetica-Bold",
-    marginBottom: 18,
+    fontSize: 20,
+    lineHeight: 2.55,
+    marginBottom: 24,
+  },
+  coverTitle: {
+    fontSize: 27,
+    lineHeight: 1.18,
+    fontFamily: "Helvetica-Bold",
+    color: BRAND_NAVY,
+    marginBottom: 12,
+  },
+  coverSubTitle: {
+    fontSize: 12,
+    lineHeight: 1.7,
+    color: BRAND_GREY,
+    marginBottom: 30,
+    maxWidth: "90%",
   },
   coverMetaBlock: {
-    marginTop: 28,
-    gap: 10,
+    marginTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: BRAND_LINE,
   },
   coverMetaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    paddingTop: 10,
+    paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-    paddingBottom: 8,
+    borderBottomColor: BRAND_LINE,
   },
   coverMetaLabel: {
-    color: "#6b7280",
-    width: "36%",
+    width: "35%",
+    color: BRAND_GREY,
+    fontSize: 10,
   },
   coverMetaValue: {
     width: "62%",
     textAlign: "right",
+    fontSize: 10,
     fontFamily: "Helvetica-Bold",
+    color: BRAND_CHARCOAL,
   },
   coverFooter: {
     position: "absolute",
-    left: 52,
-    right: 52,
-    bottom: 42,
+    left: 56,
+    right: 56,
+    bottom: 26,
+    paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
-    paddingTop: 14,
-    color: "#6b7280",
-    fontSize: 9,
+    borderTopColor: BRAND_LINE,
     flexDirection: "row",
     justifyContent: "space-between",
+    fontSize: 8.5,
+    color: BRAND_GREY,
   },
-  sectionTitle: {
+  letterBlock: {
+    marginTop: 18,
+  },
+  letterSignature: {
+    marginTop: 20,
+  },
+  h1: {
+    fontSize: 24,
     fontFamily: "Helvetica-Bold",
+    color: BRAND_NAVY,
+    marginBottom: 10,
+  },
+  h2: {
     fontSize: 18,
+    fontFamily: "Helvetica-Bold",
+    color: BRAND_NAVY,
     marginBottom: 10,
   },
-  bodyText: {
+  h3: {
+    fontSize: 13,
+    fontFamily: "Helvetica-Bold",
+    color: BRAND_NAVY,
+    marginBottom: 6,
+  },
+  body: {
+    fontSize: 10,
+    lineHeight: 1.6,
     marginBottom: 10,
+    color: BRAND_CHARCOAL,
   },
-  mutedText: {
-    color: "#6b7280",
+  muted: {
+    color: BRAND_GREY,
   },
-  scoreHero: {
+  heroPanel: {
     borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: 12,
+    borderColor: BRAND_LINE,
+    backgroundColor: BRAND_PANEL,
+    borderRadius: 14,
     padding: 18,
     marginBottom: 18,
   },
-  scoreRow: {
+  heroTop: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     marginBottom: 12,
   },
   scoreValue: {
+    fontSize: 38,
     fontFamily: "Helvetica-Bold",
-    fontSize: 28,
   },
-  statusPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+  scoreLabel: {
     fontSize: 9,
+    textTransform: "uppercase",
+    color: BRAND_GREY,
+    marginBottom: 4,
+    letterSpacing: 1.1,
+  },
+  pill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    fontSize: 8.5,
     fontFamily: "Helvetica-Bold",
     textTransform: "uppercase",
+    alignSelf: "flex-start",
   },
   progressTrack: {
     height: 8,
     borderRadius: 999,
-    backgroundColor: "#eef2f7",
+    backgroundColor: "#e6e9ef",
     overflow: "hidden",
     marginBottom: 10,
   },
@@ -126,176 +227,206 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 999,
   },
-  label: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 10,
-    marginBottom: 4,
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  card: {
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: 12,
-    padding: 14,
-    backgroundColor: "#ffffff",
-  },
-  scoreCard: {
-    width: "48%",
-  },
-  scoreCardTitle: {
-    fontFamily: "Helvetica-Bold",
-    marginBottom: 4,
-  },
-  scoreCardValue: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 20,
-    marginBottom: 6,
-  },
-  issueBlock: {
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: 12,
-    padding: 12,
-    backgroundColor: "#f8fafc",
-    marginBottom: 10,
-  },
-  sectionBlock: {
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 14,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 10,
-  },
-  sectionName: {
-    width: "72%",
-  },
-  sectionNameText: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 14,
-    marginBottom: 3,
-  },
-  sectionStrapline: {
-    color: "#6b7280",
-    fontSize: 9.5,
-  },
-  sectionScoreBox: {
-    width: 78,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-  },
-  sectionScoreValue: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 18,
-  },
-  sectionMiniLabel: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 9,
-    marginBottom: 4,
-  },
-  listBlock: {
-    marginBottom: 10,
-  },
-  listItem: {
-    marginBottom: 6,
-  },
-  finalNote: {
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 8,
-  },
   statGrid: {
     flexDirection: "row",
-    gap: 10,
-    marginTop: 10,
+    marginTop: 8,
     marginBottom: 18,
   },
   statCard: {
     flex: 1,
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: BRAND_LINE,
     borderRadius: 12,
+    backgroundColor: "#ffffff",
     padding: 12,
-    backgroundColor: "#f9fafb",
+    marginRight: 10,
+  },
+  statCardLast: {
+    marginRight: 0,
   },
   statLabel: {
     fontSize: 8.5,
-    color: "#6b7280",
-    textTransform: "uppercase",
-    marginBottom: 5,
     fontFamily: "Helvetica-Bold",
+    textTransform: "uppercase",
+    color: BRAND_GREY,
+    marginBottom: 5,
+    letterSpacing: 0.9,
   },
   statValue: {
     fontSize: 12,
     fontFamily: "Helvetica-Bold",
+    color: BRAND_NAVY,
     marginBottom: 4,
   },
-  metricGrid: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 10,
-    marginBottom: 18,
-  },
-  metricColumn: {
-    flex: 1,
-  },
-  matrixGrid: {
-    gap: 8,
-    marginTop: 10,
-  },
-  matrixCell: {
+  insightCard: {
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: BRAND_LINE,
     borderRadius: 12,
+    backgroundColor: "#ffffff",
     padding: 12,
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  matrixTitle: {
+  table: {
+    borderWidth: 1,
+    borderColor: BRAND_LINE,
+    borderRadius: 12,
+    overflow: "hidden",
+    marginBottom: 16,
+  },
+  tableHeader: {
+    flexDirection: "row",
+    backgroundColor: BRAND_NAVY,
+    paddingTop: 8,
+    paddingBottom: 8,
+    paddingHorizontal: 10,
+  },
+  tableHeaderText: {
     fontSize: 8.5,
     fontFamily: "Helvetica-Bold",
+    color: "#ffffff",
     textTransform: "uppercase",
-    marginBottom: 6,
+    letterSpacing: 0.8,
   },
-  matrixItem: {
-    borderRadius: 10,
-    backgroundColor: "#ffffff",
-    paddingVertical: 8,
+  tableRow: {
+    flexDirection: "row",
+    paddingTop: 9,
+    paddingBottom: 9,
     paddingHorizontal: 10,
-    marginTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: BRAND_LINE,
   },
-  scoreRowCard: {
-    width: "48%",
+  tableRowAlt: {
+    backgroundColor: "#fafafb",
+  },
+  cellText: {
+    fontSize: 9,
+    color: BRAND_CHARCOAL,
+    lineHeight: 1.45,
+  },
+  cellStrong: {
+    fontFamily: "Helvetica-Bold",
+  },
+  matrixCard: {
     borderWidth: 1,
-    borderColor: "#e5e7eb",
+    borderColor: BRAND_LINE,
     borderRadius: 12,
     padding: 12,
+    marginBottom: 10,
+  },
+  chartPanel: {
+    borderWidth: 1,
+    borderColor: BRAND_LINE,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    backgroundColor: "#ffffff",
+  },
+  chartRow: {
     marginBottom: 8,
   },
-  scoreBarTrack: {
-    height: 6,
-    borderRadius: 999,
-    backgroundColor: "#e5e7eb",
-    overflow: "hidden",
-    marginTop: 8,
+  chartLabelRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4,
   },
-  scoreBarFill: {
-    height: 6,
+  chartLabel: {
+    fontSize: 8.5,
+    color: BRAND_CHARCOAL,
+    width: "62%",
+  },
+  chartValue: {
+    fontSize: 8.5,
+    fontFamily: "Helvetica-Bold",
+    color: BRAND_CHARCOAL,
+  },
+  chartTrack: {
+    height: 7,
     borderRadius: 999,
+    backgroundColor: "#e6e9ef",
+    overflow: "hidden",
+  },
+  chartFill: {
+    height: 7,
+    borderRadius: 999,
+  },
+  findingsBlock: {
+    borderWidth: 1,
+    borderColor: BRAND_LINE,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+    backgroundColor: "#ffffff",
+  },
+  findingsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  findingsTitleWrap: {
+    width: "72%",
+  },
+  findingsTitle: {
+    fontSize: 14,
+    fontFamily: "Helvetica-Bold",
+    color: BRAND_NAVY,
+    marginBottom: 4,
+  },
+  findingsStrapline: {
+    fontSize: 8.8,
+    color: BRAND_GREY,
+  },
+  findingsBadge: {
+    width: 82,
+    paddingVertical: 9,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  findingsBadgeScore: {
+    fontSize: 18,
+    fontFamily: "Helvetica-Bold",
+  },
+  findingsBadgeLabel: {
+    fontSize: 8.5,
+    marginTop: 2,
+  },
+  findingsDiagnosis: {
+    fontSize: 10.5,
+    fontFamily: "Helvetica-Bold",
+    color: BRAND_NAVY,
+    marginBottom: 8,
+  },
+  findingsPanel: {
+    borderWidth: 1,
+    borderColor: BRAND_LINE,
+    borderRadius: 10,
+    backgroundColor: BRAND_PANEL,
+    padding: 10,
+    marginBottom: 8,
+  },
+  listItem: {
+    fontSize: 9.5,
+    lineHeight: 1.5,
+    marginBottom: 4,
+  },
+  roadmapGrid: {
+    flexDirection: "row",
+    marginBottom: 16,
+  },
+  roadmapColumn: {
+    flex: 1,
+    marginRight: 10,
+  },
+  roadmapColumnLast: {
+    marginRight: 0,
+  },
+  verdictPanel: {
+    borderWidth: 1,
+    borderColor: BRAND_GOLD,
+    backgroundColor: "#fbf8f2",
+    borderRadius: 14,
+    padding: 16,
+    marginTop: 8,
   },
 });
 
@@ -304,9 +435,9 @@ function statusColours(status: ScoreStatus) {
     return { text: "#166534", background: "#dcfce7", line: "#4ade80" };
   }
   if (status === "amber") {
-    return { text: "#92400e", background: "#fef3c7", line: "#f59e0b" };
+    return { text: "#9a6700", background: "#fef3c7", line: "#f59e0b" };
   }
-  return { text: "#991b1b", background: "#fee2e2", line: "#f87171" };
+  return { text: "#991b1b", background: "#fee2e2", line: "#ef4444" };
 }
 
 function statusLabel(status: ScoreStatus) {
@@ -327,45 +458,193 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function ScoreOverviewRow({ section }: { section: SectionReport }) {
-  const colours = statusColours(section.status);
-
+function PageChrome() {
   return (
-    <View style={styles.scoreRowCard}>
-      <View style={styles.scoreRow}>
-        <Text style={styles.scoreCardTitle}>{section.title}</Text>
-        <Text style={[styles.label, { color: colours.text }]}>{section.score}/100</Text>
+    <>
+      <View fixed style={styles.header}>
+        <Text style={styles.headerBrand}>Bradford & Marsh Consulting</Text>
+        <Text style={styles.headerMeta}>Recruitment Operating Model Audit</Text>
       </View>
-      <View style={styles.scoreBarTrack}>
-        <View style={[styles.scoreBarFill, { width: `${section.score}%`, backgroundColor: colours.line }]} />
+      <View fixed style={styles.footer}>
+        <Text>Confidential client report</Text>
+        <Text render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
       </View>
+    </>
+  );
+}
+
+function ScorePill({ score, status }: { score: number; status: ScoreStatus }) {
+  const colours = statusColours(status);
+  return (
+    <View style={[styles.pill, { backgroundColor: colours.background }]}>
+      <Text style={{ color: colours.text }}>{score}/100</Text>
     </View>
   );
 }
 
-function DetailSection({ section }: { section: SectionReport }) {
+function ScoreSummaryTable({ rows }: { rows: AuditReport["scoreSummary"] }) {
+  return (
+    <View style={styles.table}>
+      <View style={styles.tableHeader}>
+        <Text style={[styles.tableHeaderText, { width: "70%" }]}>Area</Text>
+        <Text style={[styles.tableHeaderText, { width: "30%", textAlign: "right" }]}>Score</Text>
+      </View>
+      {rows.map((row, index) => {
+        const colours = statusColours(row.status);
+        return (
+          <View key={row.title} style={[styles.tableRow, index % 2 === 1 ? styles.tableRowAlt : {}]}>
+            <Text style={[styles.cellText, { width: "70%" }]}>{row.title}</Text>
+            <Text style={[styles.cellText, styles.cellStrong, { width: "30%", textAlign: "right", color: colours.text }]}>
+              {row.score}/100
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function MethodologyTable({ rows }: { rows: MethodologyRow[] }) {
+  return (
+    <View style={styles.table}>
+      <View style={styles.tableHeader}>
+        <Text style={[styles.tableHeaderText, { width: "20%" }]}>Band</Text>
+        <Text style={[styles.tableHeaderText, { width: "24%" }]}>Interpretation</Text>
+        <Text style={[styles.tableHeaderText, { width: "56%" }]}>Typical implication</Text>
+      </View>
+      {rows.map((row, index) => (
+        <View key={row.band} style={[styles.tableRow, index % 2 === 1 ? styles.tableRowAlt : {}]}>
+          <Text style={[styles.cellText, styles.cellStrong, { width: "20%" }]}>{row.band}</Text>
+          <Text style={[styles.cellText, { width: "24%" }]}>{row.interpretation}</Text>
+          <Text style={[styles.cellText, { width: "56%" }]}>{row.implication}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function BenchmarkTable({ rows }: { rows: BenchmarkRow[] }) {
+  return (
+    <View style={styles.table}>
+      <View style={styles.tableHeader}>
+        <Text style={[styles.tableHeaderText, { width: "28%" }]}>Metric</Text>
+        <Text style={[styles.tableHeaderText, { width: "18%" }]}>Client</Text>
+        <Text style={[styles.tableHeaderText, { width: "18%" }]}>Target</Text>
+        <Text style={[styles.tableHeaderText, { width: "36%" }]}>Comment</Text>
+      </View>
+      {rows.map((row, index) => {
+        const colours = statusColours(row.status);
+        return (
+          <View key={row.metric} style={[styles.tableRow, index % 2 === 1 ? styles.tableRowAlt : {}]}>
+            <Text style={[styles.cellText, styles.cellStrong, { width: "28%" }]}>{row.metric}</Text>
+            <Text style={[styles.cellText, { width: "18%", color: colours.text }]}>{row.client}</Text>
+            <Text style={[styles.cellText, { width: "18%" }]}>{row.target}</Text>
+            <Text style={[styles.cellText, { width: "36%" }]}>{row.comment}</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function PriorityMatrix({ rows }: { rows: PriorityMatrixEntry[] }) {
+  return (
+    <View>
+      {rows.map((row) => {
+        const colours = statusColours(row.status);
+        return (
+          <View key={row.priorityArea} style={[styles.matrixCard, { backgroundColor: colours.background }]}>
+            <Text style={[styles.h3, { marginBottom: 4 }]}>{row.priorityArea}</Text>
+            <Text style={[styles.body, { marginBottom: 6 }]}>
+              {row.urgency} priority. {row.impact} impact.
+            </Text>
+            <Text style={[styles.body, { marginBottom: 6 }]}>{row.whyItMatters}</Text>
+            <Text style={[styles.body, styles.muted]}>First move: {row.firstMove}</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function SectionScoreChart({ sections }: { sections: SectionReport[] }) {
+  return (
+    <View style={styles.chartPanel}>
+      <Text style={styles.h3}>Section score profile</Text>
+      {sections.map((section) => {
+        const colours = statusColours(section.status);
+        return (
+          <View key={section.id} style={styles.chartRow}>
+            <View style={styles.chartLabelRow}>
+              <Text style={styles.chartLabel}>{section.title}</Text>
+              <Text style={styles.chartValue}>{section.score}/100</Text>
+            </View>
+            <View style={styles.chartTrack}>
+              <View style={[styles.chartFill, { width: `${section.score}%`, backgroundColor: colours.line }]} />
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function BandDistributionChart({ sections }: { sections: SectionReport[] }) {
+  const distribution = [
+    { label: "Green sections", value: sections.filter((section) => section.status === "green").length, total: sections.length, status: "green" as ScoreStatus },
+    { label: "Amber sections", value: sections.filter((section) => section.status === "amber").length, total: sections.length, status: "amber" as ScoreStatus },
+    { label: "Red sections", value: sections.filter((section) => section.status === "red").length, total: sections.length, status: "red" as ScoreStatus },
+  ];
+
+  return (
+    <View style={styles.chartPanel}>
+      <Text style={styles.h3}>Score distribution</Text>
+      {distribution.map((item) => {
+        const colours = statusColours(item.status);
+        const width = item.total ? `${(item.value / item.total) * 100}%` : "0%";
+        return (
+          <View key={item.label} style={styles.chartRow}>
+            <View style={styles.chartLabelRow}>
+              <Text style={styles.chartLabel}>{item.label}</Text>
+              <Text style={styles.chartValue}>
+                {item.value} of {item.total}
+              </Text>
+            </View>
+            <View style={styles.chartTrack}>
+              <View style={[styles.chartFill, { width, backgroundColor: colours.line }]} />
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function FindingsCard({ section }: { section: SectionReport }) {
   const colours = statusColours(section.status);
 
   return (
-    <View style={styles.sectionBlock} wrap={false}>
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionName}>
-          <Text style={styles.sectionNameText}>{section.title}</Text>
-          <Text style={styles.sectionStrapline}>{section.strapline}</Text>
+    <View style={styles.findingsBlock} wrap={false}>
+      <View style={styles.findingsHeader}>
+        <View style={styles.findingsTitleWrap}>
+          <Text style={styles.findingsTitle}>{section.title}</Text>
+          <Text style={styles.findingsStrapline}>{section.strapline}</Text>
         </View>
-        <View style={[styles.sectionScoreBox, { backgroundColor: colours.background }]}>
-          <Text style={[styles.sectionScoreValue, { color: colours.text }]}>{section.score}</Text>
-          <Text>{statusLabel(section.status)}</Text>
+        <View style={[styles.findingsBadge, { backgroundColor: colours.background }]}>
+          <Text style={[styles.findingsBadgeScore, { color: colours.text }]}>{section.score}</Text>
+          <Text style={[styles.findingsBadgeLabel, { color: colours.text }]}>{statusLabel(section.status)}</Text>
         </View>
       </View>
 
-      <View style={styles.listBlock}>
-        <Text style={styles.sectionMiniLabel}>Current State</Text>
-        <Text>{section.currentState}</Text>
+      <Text style={styles.findingsDiagnosis}>{section.headlineDiagnosis}</Text>
+
+      <View style={styles.findingsPanel}>
+        <Text style={styles.h3}>Current State</Text>
+        <Text style={styles.body}>{section.currentState}</Text>
       </View>
 
-      <View style={styles.listBlock}>
-        <Text style={styles.sectionMiniLabel}>Key Risks</Text>
+      <View style={styles.findingsPanel}>
+        <Text style={styles.h3}>Key Risks</Text>
         {section.keyRisks.map((risk) => (
           <Text key={risk} style={styles.listItem}>
             • {risk}
@@ -373,16 +652,25 @@ function DetailSection({ section }: { section: SectionReport }) {
         ))}
       </View>
 
-      <View style={styles.listBlock}>
-        <Text style={styles.sectionMiniLabel}>Commercial Impact</Text>
-        <Text>{section.commercialImpact}</Text>
+      <View style={styles.findingsPanel}>
+        <Text style={styles.h3}>Commercial Impact</Text>
+        <Text style={styles.body}>{section.commercialImpact}</Text>
       </View>
 
-      <View style={styles.listBlock}>
-        <Text style={styles.sectionMiniLabel}>Actions</Text>
-        {section.actions.map((action) => (
+      <View style={styles.findingsPanel}>
+        <Text style={styles.h3}>Immediate Actions</Text>
+        {section.immediateActions.map((action) => (
           <Text key={action} style={styles.listItem}>
             • {action}
+          </Text>
+        ))}
+      </View>
+
+      <View style={styles.findingsPanel}>
+        <Text style={styles.h3}>Structural Improvements</Text>
+        {section.structuralImprovements.map((item) => (
+          <Text key={item} style={styles.listItem}>
+            • {item}
           </Text>
         ))}
       </View>
@@ -390,20 +678,27 @@ function DetailSection({ section }: { section: SectionReport }) {
   );
 }
 
+function chunkSections<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
+
 export function AuditPdfDocument({ report }: { report: AuditReport }) {
   const overallColours = statusColours(report.overallStatus);
-  const strongestArea = report.strongestAreas[0];
-  const weakestArea = report.topIssues[0];
-  const watchAreas = report.sections.filter((section) => section.score > 70 && section.score < 85).slice(0, 2);
+  const findingsPages = chunkSections(report.sections, 3);
 
   return (
     <Document title={`${report.profile.companyName} Recruitment Audit`}>
       <Page size="A4" style={styles.coverPage}>
         <Text style={styles.coverBrand}>Bradford & Marsh Consulting</Text>
         <View style={styles.coverRule} />
-        <Text style={styles.coverTitle}>Recruitment Audit</Text>
-        <Text style={styles.bodyText}>
-          A structured assessment of how the hiring process is operating today, where it is losing pace, and what should change first.
+        <Text style={styles.coverMonogram}>B&amp;M</Text>
+        <Text style={styles.coverTitle}>Recruitment Operating Model Audit</Text>
+        <Text style={styles.coverSubTitle}>
+          A structured review of how the recruitment process is operating today, where delivery is drifting, and what leadership should correct first.
         </Text>
 
         <View style={styles.coverMetaBlock}>
@@ -414,6 +709,10 @@ export function AuditPdfDocument({ report }: { report: AuditReport }) {
           <View style={styles.coverMetaRow}>
             <Text style={styles.coverMetaLabel}>Prepared for</Text>
             <Text style={styles.coverMetaValue}>{report.profile.contactName}</Text>
+          </View>
+          <View style={styles.coverMetaRow}>
+            <Text style={styles.coverMetaLabel}>Role</Text>
+            <Text style={styles.coverMetaValue}>{report.profile.contactRole}</Text>
           </View>
           <View style={styles.coverMetaRow}>
             <Text style={styles.coverMetaLabel}>Sector</Text>
@@ -431,144 +730,177 @@ export function AuditPdfDocument({ report }: { report: AuditReport }) {
 
         <View style={styles.coverFooter}>
           <Text>Confidential</Text>
-          <Text>Recruitment process review</Text>
+          <Text>Prepared by Bradford & Marsh Consulting</Text>
         </View>
       </Page>
 
       <Page size="A4" style={styles.page}>
-        <Text style={styles.sectionTitle}>Executive summary</Text>
-        <Text style={styles.bodyText}>{report.executiveSummary}</Text>
+        <PageChrome />
+        <Text style={styles.h1}>Introductory letter</Text>
+        <View style={styles.letterBlock}>
+          <Text style={styles.body}>Michael Marsh</Text>
+          <Text style={[styles.body, styles.muted]}>Managing Director</Text>
+          <Text style={[styles.body, styles.muted]}>Bradford &amp; Marsh Consulting</Text>
+        </View>
+        <View style={styles.letterBlock}>
+          <Text style={styles.body}>{report.letter.salutation}</Text>
+          {report.letter.paragraphs.map((paragraph) => (
+            <Text key={paragraph} style={styles.body}>
+              {paragraph}
+            </Text>
+          ))}
+        </View>
+        <View style={styles.letterSignature}>
+          <Text style={styles.body}>{report.letter.signatureName}</Text>
+          <Text style={[styles.body, styles.muted]}>{report.letter.signatureTitle}</Text>
+        </View>
+      </Page>
 
-        <View style={styles.scoreHero}>
-          <View style={styles.scoreRow}>
+      <Page size="A4" style={styles.page}>
+        <PageChrome />
+        <Text style={styles.h1}>Executive overview</Text>
+        <Text style={styles.body}>{report.executiveSummary}</Text>
+
+        <View style={styles.heroPanel}>
+          <View style={styles.heroTop}>
             <View>
-              <Text style={styles.label}>Overall score</Text>
+              <Text style={styles.scoreLabel}>Overall score</Text>
               <Text style={[styles.scoreValue, { color: overallColours.text }]}>{report.overallScore}/100</Text>
             </View>
-            <Text style={[styles.statusPill, { color: overallColours.text, backgroundColor: overallColours.background }]}>
-              {statusLabel(report.overallStatus)}
-            </Text>
+            <View>
+              <Text style={styles.scoreLabel}>Rating band</Text>
+              <View style={[styles.pill, { backgroundColor: overallColours.background }]}>
+                <Text style={{ color: overallColours.text }}>{report.ratingBand}</Text>
+              </View>
+            </View>
           </View>
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, { width: `${report.overallScore}%`, backgroundColor: overallColours.line }]} />
           </View>
-          <Text>{report.scoreMeaning}</Text>
+          <Text style={styles.body}>{report.scoreMeaning}</Text>
         </View>
 
         <View style={styles.statGrid}>
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>Strongest area</Text>
-            <Text style={styles.statValue}>{strongestArea.title}</Text>
-            <Text>{strongestArea.score}/100</Text>
+            <Text style={styles.statValue}>{report.strongestArea.title}</Text>
+            <ScorePill score={report.strongestArea.score} status={report.strongestArea.status} />
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>Weakest area</Text>
-            <Text style={styles.statValue}>{weakestArea.title}</Text>
-            <Text>{weakestArea.score}/100</Text>
+            <Text style={styles.statValue}>{report.weakestArea.title}</Text>
+            <ScorePill score={report.weakestArea.score} status={report.weakestArea.status} />
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Audit scope</Text>
-            <Text style={styles.statValue}>{report.sections.length} sections</Text>
-            <Text>End-to-end recruitment process review</Text>
+          <View style={[styles.statCard, styles.statCardLast]}>
+            <Text style={styles.statLabel}>Primary diagnosis</Text>
+            <Text style={styles.body}>{report.primaryDiagnosis}</Text>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Top issues holding hiring back</Text>
-        {report.topIssues.map((issue) => (
-          <View key={issue.id} style={styles.issueBlock}>
-            <Text style={[styles.label, { color: statusColours(issue.status).text }]}>
-              {issue.title} ({issue.score}/100)
-            </Text>
-            <Text>{issue.currentState}</Text>
+        <Text style={styles.h2}>Key insight panel</Text>
+        {report.topIssues.slice(0, 3).map((issue) => (
+          <View key={issue.id} style={styles.insightCard}>
+            <View style={styles.heroTop}>
+              <Text style={styles.h3}>{issue.title}</Text>
+              <ScorePill score={issue.score} status={issue.status} />
+            </View>
+            <Text style={styles.body}>{issue.headlineDiagnosis}</Text>
           </View>
         ))}
+      </Page>
 
-        <View style={styles.metricGrid}>
-          <View style={styles.metricColumn}>
-            <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Priority actions</Text>
-            {report.priorityActions.map((action) => (
-              <Text key={action} style={styles.listItem}>
-                • {action}
-              </Text>
+      <Page size="A4" style={styles.page}>
+        <PageChrome />
+        <Text style={styles.h1}>Score summary</Text>
+        <ScoreSummaryTable rows={report.scoreSummary} />
+
+        <Text style={styles.h2}>Scoring methodology</Text>
+        <Text style={styles.body}>
+          The audit scores each operating area out of 100 using the submitted process inputs and current-state hiring data. Higher scores indicate more repeatable control, better delivery discipline and lower operating risk.
+        </Text>
+        <MethodologyTable rows={report.scoringMethodology} />
+
+        <Text style={styles.h2}>Benchmark snapshot</Text>
+        <BenchmarkTable rows={report.benchmarkSnapshot} />
+      </Page>
+
+      <Page size="A4" style={styles.page}>
+        <PageChrome />
+        <Text style={styles.h1}>Priority matrix</Text>
+        <Text style={styles.body}>
+          The areas below are the most commercially important improvement points based on the lowest scores and the likely effect on hiring pace, decision quality and candidate conversion.
+        </Text>
+        <PriorityMatrix rows={report.priorityMatrix} />
+
+        <Text style={styles.h2}>Charts and visual analysis</Text>
+        <SectionScoreChart sections={report.sections} />
+        <BandDistributionChart sections={report.sections} />
+        {report.visualAnalysisNotes.map((note) => (
+          <Text key={note} style={styles.body}>
+            {note}
+          </Text>
+        ))}
+      </Page>
+
+      {findingsPages.map((pageSections, index) => (
+        <Page key={`findings-${index}`} size="A4" style={styles.page}>
+          <PageChrome />
+          <Text style={styles.h1}>{index === 0 ? "Detailed findings" : "Detailed findings continued"}</Text>
+          {pageSections.map((section) => (
+            <FindingsCard key={section.id} section={section} />
+          ))}
+        </Page>
+      ))}
+
+      <Page size="A4" style={styles.page}>
+        <PageChrome />
+        <Text style={styles.h1}>Priorities and roadmap</Text>
+
+        <View style={styles.roadmapGrid}>
+          <View style={styles.roadmapColumn}>
+            <Text style={styles.h2}>Top 5 strengths</Text>
+            {report.topStrengths.map((item) => (
+              <View key={item} style={styles.insightCard}>
+                <Text style={styles.body}>{item}</Text>
+              </View>
             ))}
           </View>
-          <View style={styles.metricColumn}>
-            <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Priority matrix</Text>
-            <View style={styles.matrixGrid}>
-              <View style={[styles.matrixCell, { backgroundColor: "#fef2f2" }]}>
-                <Text style={[styles.matrixTitle, { color: "#991b1b" }]}>Immediate attention</Text>
-                {report.topIssues.slice(0, 2).map((issue) => (
-                  <View key={issue.id} style={styles.matrixItem}>
-                    <Text>{issue.title}</Text>
-                  </View>
-                ))}
+          <View style={[styles.roadmapColumn, styles.roadmapColumnLast]}>
+            <Text style={styles.h2}>Top 5 problems</Text>
+            {report.topProblems.map((item) => (
+              <View key={item} style={styles.insightCard}>
+                <Text style={styles.body}>{item}</Text>
               </View>
-              <View style={[styles.matrixCell, { backgroundColor: "#fffbeb" }]}>
-                <Text style={[styles.matrixTitle, { color: "#92400e" }]}>Tighten next</Text>
-                {report.topIssues.slice(2, 3).map((issue) => (
-                  <View key={issue.id} style={styles.matrixItem}>
-                    <Text>{issue.title}</Text>
-                  </View>
-                ))}
-                {report.strongestAreas.slice(2, 3).length === 0 ? (
-                  <View style={styles.matrixItem}>
-                    <Text>None beyond the immediate priorities</Text>
-                  </View>
-                ) : null}
-              </View>
-              <View style={[styles.matrixCell, { backgroundColor: "#f8fafc" }]}>
-                <Text style={[styles.matrixTitle, { color: "#475569" }]}>Watch closely</Text>
-                {watchAreas.length ? watchAreas.map((issue) => (
-                  <View key={issue.id} style={styles.matrixItem}>
-                    <Text>{issue.title}</Text>
-                  </View>
-                )) : (
-                  <View style={styles.matrixItem}>
-                    <Text>No additional watch items</Text>
-                  </View>
-                )}
-              </View>
-              <View style={[styles.matrixCell, { backgroundColor: "#f0fdf4" }]}>
-                <Text style={[styles.matrixTitle, { color: "#166534" }]}>Maintain</Text>
-                {report.strongestAreas.slice(0, 2).map((issue) => (
-                  <View key={issue.id} style={styles.matrixItem}>
-                    <Text>{issue.title}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
+            ))}
           </View>
         </View>
 
-        <Text style={[styles.sectionTitle, { marginTop: 18 }]}>Score overview</Text>
-        <View style={styles.grid}>
-          {report.sections.map((section) => (
-            <ScoreOverviewRow key={section.id} section={section} />
-          ))}
-        </View>
-      </Page>
-
-      <Page size="A4" style={styles.page}>
-        <Text style={styles.sectionTitle}>Detailed findings</Text>
-        <Text style={[styles.bodyText, styles.mutedText]}>
-          Each section score reflects the current operating position and the level of control visible in the process.
-        </Text>
-
-        {report.sections.slice(0, 5).map((section) => (
-          <DetailSection key={section.id} section={section} />
-        ))}
-      </Page>
-
-      <Page size="A4" style={styles.page}>
-        {report.sections.slice(5).map((section) => (
-          <DetailSection key={section.id} section={section} />
+        <Text style={styles.h2}>30 day plan</Text>
+        {report.day30Plan.map((item) => (
+          <Text key={item} style={styles.listItem}>
+            • {item}
+          </Text>
         ))}
 
-        <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Recruitment audit summary</Text>
-        <View style={styles.finalNote}>
-          <Text style={styles.bodyText}>{report.scoreMeaning}</Text>
-          <Text style={styles.label}>Recommended next step</Text>
-          <Text>{report.recommendedNextStep}</Text>
+        <Text style={[styles.h2, { marginTop: 8 }]}>60 day plan</Text>
+        {report.day60Plan.map((item) => (
+          <Text key={item} style={styles.listItem}>
+            • {item}
+          </Text>
+        ))}
+
+        <Text style={[styles.h2, { marginTop: 8 }]}>90 day plan</Text>
+        {report.day90Plan.map((item) => (
+          <Text key={item} style={styles.listItem}>
+            • {item}
+          </Text>
+        ))}
+
+        <Text style={[styles.h2, { marginTop: 12 }]}>Final verdict</Text>
+        <View style={styles.verdictPanel}>
+          <Text style={styles.body}>{report.finalVerdict}</Text>
+          <Text style={[styles.h3, { marginTop: 6 }]}>Recommended next step</Text>
+          <Text style={styles.body}>{report.recommendedNextStep}</Text>
         </View>
       </Page>
     </Document>
