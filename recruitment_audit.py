@@ -789,6 +789,7 @@ def save_pdf_report(
     _add_list_section(story, styles, "30 day plan", report["day_30_plan"])
     _add_list_section(story, styles, "60 day plan", report["day_60_plan"])
     _add_list_section(story, styles, "90 day plan", report["day_90_plan"])
+    _add_recommended_intervention_section(story, styles, report)
     _add_final_verdict(story, styles, report)
 
     doc.build(story, onFirstPage=_draw_page, onLaterPages=_draw_page)
@@ -844,6 +845,7 @@ def _clean_report(report: dict, data: dict, benchmark_summary: dict) -> dict:
         "day_60_plan": _clean_list(report.get("day_60_plan"), max_items=5, max_words=16),
         "day_90_plan": _clean_list(report.get("day_90_plan"), max_items=5, max_words=16),
         "core_constraint": "",
+        "recommended_intervention": {},
         "sections": [],
     }
 
@@ -879,6 +881,7 @@ def _clean_report(report: dict, data: dict, benchmark_summary: dict) -> dict:
 
     cleaned["executive_overview"] = _build_executive_overview(data, cleaned, benchmark_summary)
     cleaned["core_constraint"] = _build_core_constraint(data, cleaned, benchmark_summary)
+    cleaned["recommended_intervention"] = _build_recommended_intervention(data, cleaned, benchmark_summary)
     return cleaned
 
 
@@ -1422,6 +1425,64 @@ def _add_list_section(story: list, styles: StyleSheet1, title: str, items: list[
     story.append(_bullet_list(items, styles))
 
 
+def _add_recommended_intervention_section(story: list, styles: StyleSheet1, report: dict) -> None:
+    recommendation = report["recommended_intervention"]
+    story.append(Paragraph("Recommended Intervention Level", styles["Heading1"]))
+    story.append(Paragraph(recommendation["summary"], styles["Body"]))
+    story.append(Spacer(1, 2 * mm))
+    story.append(Paragraph("Recommended Support Level", styles["Heading2"]))
+
+    support_box = Table(
+        [
+            [Paragraph(recommendation["support_level"], styles["Heading2"])],
+            [Paragraph(recommendation["focus"], styles["BodyTight"])],
+            [Paragraph(recommendation["pricing"], styles["Body"])],
+            [Paragraph(recommendation["why_now"], styles["Small"])],
+        ],
+        colWidths=[170 * mm],
+        hAlign="LEFT",
+    )
+    support_box.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), BRAND_PANEL_WARM),
+                ("BOX", (0, 0), (-1, -1), 0.5, RULE_COLOR),
+                ("LEFTPADDING", (0, 0), (-1, -1), 12),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+                ("TOPPADDING", (0, 0), (-1, -1), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+            ]
+        )
+    )
+    story.append(support_box)
+    story.append(Spacer(1, 2.5 * mm))
+    for paragraph in recommendation["rationale"]:
+        story.append(Paragraph(paragraph, styles["Body"]))
+    if recommendation["escalation"]:
+        escalation_box = Table(
+            [
+                [Paragraph("Escalation point", styles["SectionLabel"])],
+                [Paragraph(recommendation["escalation"], styles["Body"])],
+            ],
+            colWidths=[170 * mm],
+            hAlign="LEFT",
+        )
+        escalation_box.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, -1), BRAND_PANEL_ALT),
+                    ("BOX", (0, 0), (-1, -1), 0.5, RULE_COLOR),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 12),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+                    ("TOPPADDING", (0, 0), (-1, -1), 10),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+                ]
+            )
+        )
+        story.append(Spacer(1, 2 * mm))
+        story.append(escalation_box)
+
+
 def _add_final_verdict(story: list, styles: StyleSheet1, report: dict) -> None:
     story.append(Paragraph("Final verdict", styles["Heading1"]))
     for paragraph in _build_final_verdict_paragraphs(report):
@@ -1927,6 +1988,29 @@ SECTION_DIAGNOSTIC_MAP = {
     },
 }
 
+SERVICE_RECOMMENDATIONS = {
+    "Advertising": {
+        "title": "Advertising",
+        "focus": "Fix Your Top of Funnel",
+        "pricing": "£100 + VAT per advertised role",
+    },
+    "Advertising + Sourcing": {
+        "title": "Advertising + Sourcing",
+        "focus": "Fix Your Pipeline and Filtering Problem",
+        "pricing": "£250 + VAT per advertised role",
+    },
+    "Advertising + Sourcing + Screening": {
+        "title": "Advertising + Sourcing + Screening",
+        "focus": "Fix Your Filtering Problem",
+        "pricing": "£750 to £1000 + VAT per role",
+    },
+    "Full Recruitment": {
+        "title": "Full Recruitment",
+        "focus": "Fix the Whole System",
+        "pricing": "10% to 20% of annual salary + VAT per advertised job",
+    },
+}
+
 
 def _section_context(title: str) -> dict:
     return SECTION_DIAGNOSTIC_MAP[title]
@@ -2211,6 +2295,89 @@ def _build_core_constraint(data: dict, report: dict, benchmark_summary: dict) ->
     )
 
 
+def _build_recommended_intervention(data: dict, report: dict, benchmark_summary: dict) -> dict:
+    scores = {section["title"]: section["score"] for section in report["sections"]}
+    low_titles = [title for title, score in scores.items() if score <= 4]
+    top_funnel_titles = {
+        "Employer brand and market perception",
+        "Job adverts and job specifications",
+        "Sourcing and advertising process",
+    }
+    filtering_titles = {
+        "Application handling and screening",
+        "Interview process quality",
+        "Decision making and offer process",
+        "Candidate experience",
+    }
+    coordination_titles = {
+        "Recruitment strategy and workforce planning",
+        "Performance metrics and funnel conversion",
+        "Process ownership and accountability",
+        "Onboarding and early retention",
+        "Staff turnover risks",
+    }
+    top_funnel_issues = sum(1 for title in low_titles if title in top_funnel_titles)
+    filtering_issues = sum(1 for title in low_titles if title in filtering_titles)
+    coordination_issues = sum(1 for title in low_titles if title in coordination_titles)
+
+    applications = data["metrics"].get("applications_per_role")
+    candidates = data["metrics"].get("candidates_reaching_interview")
+    overall_score = data["total_score"]
+
+    if overall_score <= 55 or len(low_titles) >= 5 or (top_funnel_issues and filtering_issues and coordination_issues):
+        service_key = "Full Recruitment"
+        summary = "Your current recruitment process is producing inconsistent outcomes across attraction, filtering, decision-making and ownership. This is not a single-point issue. It is a process issue."
+        rationale = [
+            "Several parts of the hiring cycle are breaking down at the same time. Candidate flow is not strong enough, filtering is uneven, and decision control is too fragmented to keep the process moving cleanly.",
+            "Full Recruitment is the right level of intervention because it does more than add candidate volume. It gives the business one managed process covering role definition, market positioning, advertising, screening, shortlisting, interview coordination, feedback handling and offer management.",
+            "The result is a more controlled hiring system. Leadership sees fewer delays, hiring managers spend less time in rework, and the business gets a repeatable process rather than a series of disconnected fixes.",
+        ]
+        escalation = ""
+    elif filtering_issues >= 2 or scores.get("Application handling and screening", 10) <= 5 or scores.get("Interview process quality", 10) <= 5 or scores.get("Decision making and offer process", 10) <= 5:
+        service_key = "Advertising + Sourcing + Screening"
+        summary = "Your hiring process is attracting activity, but too much of it becomes internal drag. The pressure sits in filtering, shortlist quality and front-end control rather than in advertising alone."
+        rationale = [
+            "Advertising alone will not fix this. The breakdown sits further down the process, where unsuitable candidates are still reaching the client and too much internal time is being spent reviewing weak CVs.",
+            "Advertising + Sourcing + Screening is the right fit because it puts control around the front end of hiring. Candidates are advertised for, sourced proactively, reviewed, qualified and filtered before they reach the business.",
+            "The client should expect a cleaner shortlist, less internal noise and faster movement from role launch to interview decision.",
+        ]
+        escalation = "If control still does not improve after this level of intervention, the next step would be a fully managed recruitment process."
+    elif top_funnel_issues >= 2 or (applications is not None and applications < 20) or (candidates is not None and candidates <= 3):
+        service_key = "Advertising + Sourcing"
+        summary = "The main weakness is pipeline strength and candidate relevance. The business is too exposed to whatever inbound applicants happen to apply."
+        rationale = [
+            "This is not only a visibility problem. It is also a pipeline quality problem. Candidate flow is not being built deliberately enough to give the business a dependable shortlist.",
+            "Advertising + Sourcing is the right response because it combines stronger market positioning with proactive outreach to candidates who are a fit but are not applying on their own.",
+            "The client should expect a stronger shortlist, less reliance on chance and better candidate quality earlier in the process.",
+        ]
+        escalation = "If shortlist quality still remains uneven after this intervention, the next step would be adding front-end screening control."
+    else:
+        service_key = "Advertising"
+        summary = "The main issue sits at the top of funnel. Candidate visibility and role positioning need tightening more than the rest of the process does."
+        rationale = [
+            "You do not have a whole-system problem. The clearest issue is that roles are not being positioned strongly enough in market, which is limiting the quality and volume of applicant flow.",
+            "Advertising is the right level of intervention because it fixes how the role is presented and where it is placed, without adding process support the business does not currently need.",
+            "The client should expect a stronger top of funnel and more relevant applicants, while keeping all downstream decision-making in house.",
+        ]
+        escalation = "If applicant flow improves but shortlist quality does not, the next step would be adding sourcing support."
+
+    service = SERVICE_RECOMMENDATIONS[service_key]
+    weakest_areas = ", ".join(low_titles[:3]).lower() if low_titles else "the weakest parts of the hiring process"
+    return {
+        "summary": _clean_text(summary, max_sentences=3, max_words=52),
+        "support_level": service["title"],
+        "focus": service["focus"],
+        "pricing": service["pricing"],
+        "rationale": [_clean_text(paragraph, max_sentences=3, max_words=70) for paragraph in rationale],
+        "escalation": _clean_text(escalation, max_sentences=2, max_words=38),
+        "why_now": _clean_text(
+            f"This recommendation is shaped by the audit results, especially {weakest_areas}. It is the most direct level of support for the current severity of the hiring problem.",
+            max_sentences=2,
+            max_words=40,
+        ),
+    }
+
+
 def _build_executive_overview(data: dict, report: dict, benchmark_summary: dict) -> str:
     strongest = max(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])
     weakest = min(zip(SECTION_ORDER, data["section_scores"]), key=lambda item: item[1])
@@ -2252,17 +2419,19 @@ def _build_key_insights(data: dict, report: dict, benchmark_summary: dict) -> li
 
 def _build_final_verdict_paragraphs(report: dict) -> list[str]:
     sections = report.get("sections", [])
+    recommendation = report.get("recommended_intervention", {})
     if not sections:
         return [
             "The recruitment operating model can support current hiring activity, but it is not yet controlled closely enough to give leadership a dependable result.",
             "The main risk is uneven execution across the hiring process, which is likely creating delay, wasted effort and weaker decision quality.",
-            "The next step is to tighten ownership, simplify control points and manage the process against a smaller set of hard measures so hiring becomes more predictable.",
+            "The clearest route to improvement is the level of support set out in this report. If useful, Bradford & Marsh can walk through the findings and show how that intervention would work in practice.",
         ]
 
     strongest = max(sections, key=lambda section: section["score"])
     weakest = min(sections, key=lambda section: section["score"])
     total_score = sum(section["score"] for section in sections)
     rating = _rating_for_score(total_score).lower()
+    support_level = recommendation.get("support_level", "the recommended level of support")
     return [
         _clean_text(
             f"The recruitment operating model is {rating} at {total_score}/120. {strongest['title']} is providing the strongest foundation, but that is being diluted by weaker control in {weakest['title'].lower()}.",
@@ -2275,7 +2444,7 @@ def _build_final_verdict_paragraphs(report: dict) -> list[str]:
             max_words=40,
         ),
         _clean_text(
-            f"The next step is to tighten the weakest operating controls, assign clearer accountability and manage performance more closely. That matters because stronger discipline in those areas will improve pace, raise decision quality and give the business a more dependable hiring model.",
+            f"The fastest route to improvement is the {support_level.lower()} intervention set out above. If helpful, Bradford & Marsh can talk through the findings directly and show what that support would look like inside the business.",
             max_sentences=2,
             max_words=42,
         ),
