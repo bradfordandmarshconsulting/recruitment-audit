@@ -369,14 +369,7 @@ def build_benchmark_summary(metrics: dict, benchmark: pd.DataFrame, sector: str,
             continue
         delta = client_value - benchmark_value
         tolerance = max(1.0, abs(benchmark_value) * 0.03)
-        if abs(delta) <= tolerance:
-            status = "In line"
-            comment = "In line with benchmark"
-        else:
-            above = delta > 0
-            status = "Above" if above else "Below"
-            direction = "above benchmark" if above else "below benchmark"
-            comment = f"{_format_metric_value(abs(delta), suffix)} {direction}"
+        status, comment = _format_benchmark_comment(label, client_value, benchmark_value, suffix, higher_is_better, tolerance)
         comparisons.append(
             {
                 "label": label,
@@ -399,6 +392,32 @@ def build_benchmark_summary(metrics: dict, benchmark: pd.DataFrame, sector: str,
         "comparisons": selected,
         "summary_text": summary_text or "No useful benchmark comparisons were available.",
     }
+
+
+def _format_benchmark_comment(
+    label: str,
+    client_value: float,
+    benchmark_value: float,
+    suffix: str,
+    higher_is_better: bool,
+    tolerance: float,
+) -> tuple[str, str]:
+    delta = client_value - benchmark_value
+    abs_delta = abs(delta)
+    if abs_delta <= tolerance:
+        return "In line", "In line with benchmark"
+
+    if label == "Time to hire":
+        return ("Below" if delta < 0 else "Above", f"{_format_metric_value(abs_delta, suffix)} {'faster' if delta < 0 else 'slower'} than benchmark")
+    if label == "Applications per role":
+        return ("Above" if delta > 0 else "Below", f"{_format_metric_value(abs_delta, suffix)} {'more' if delta > 0 else 'fewer'} applications per role than benchmark")
+    if label == "First-year attrition":
+        return ("Below" if delta < 0 else "Above", f"{_format_metric_value(abs_delta, suffix)} {'lower' if delta < 0 else 'higher'} than benchmark")
+
+    above = delta > 0
+    status = "Above" if above else "Below"
+    direction = "above benchmark" if above else "below benchmark"
+    return status, f"{_format_metric_value(abs_delta, suffix)} {direction}"
 
 
 def auto_score_sections(data: dict, benchmark: pd.DataFrame) -> tuple[list[int], list[str]]:
@@ -678,76 +697,82 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         plt.close(fig)
         return path
 
-    fig, axes = plt.subplots(len(items), 1, figsize=(6.5, 1.3 + len(items) * 1.02))
+    fig, axes = plt.subplots(len(items), 1, figsize=(6.7, 1.3 + len(items) * 1.18))
     if len(items) == 1:
         axes = [axes]
 
     for ax, (label, client_value, benchmark_value, suffix, higher_is_better) in zip(axes, items):
         _apply_chart_style(fig, ax)
-        lower = min(client_value, benchmark_value, 0)
-        upper = max(client_value, benchmark_value, 1)
-        spread = max(upper - lower, upper * 0.2, 1)
-        x_min = max(0, lower - spread * 0.2)
-        x_max = upper + spread * 0.2
-        ahead = client_value >= benchmark_value if higher_is_better else client_value <= benchmark_value
+        ax.set_axis_off()
+        tolerance = max(1.0, abs(benchmark_value) * 0.03)
+        delta_text = _format_benchmark_comment(label, client_value, benchmark_value, suffix, higher_is_better, tolerance)[1]
+        visual_delta, delta_colour, direction_text = _benchmark_visual_delta(label, client_value, benchmark_value, higher_is_better, tolerance)
+        delta_span = max(abs(visual_delta), tolerance * 1.6, 1.0)
 
-        ax.set_xlim(x_min, x_max)
-        ax.set_ylim(-0.55, 0.55)
-        ax.hlines(0, x_min, x_max, color="#D7DCE4", linewidth=1.2)
-        ax.scatter([benchmark_value], [0], s=58, color="#B5935A", edgecolors="white", linewidths=0.7, zorder=3)
-        ax.scatter([client_value], [0], s=68, color="#1F2A40", edgecolors="white", linewidths=0.7, marker="D", zorder=4)
-        ax.set_yticks([])
-        ax.xaxis.set_major_locator(MaxNLocator(4))
-        ax.tick_params(axis="x", labelsize=7.8, colors="#5F6876")
-        ax.grid(axis="x", alpha=0.08, linestyle="--", color="#D7DCE4")
-        ax.set_title(label, fontsize=10.1, fontweight="bold", color="#1F2A40", pad=4)
-
-        client_offset = 9 if client_value >= benchmark_value else -11
-        client_va = "bottom" if client_value >= benchmark_value else "top"
-        benchmark_offset = -11 if client_value >= benchmark_value else 9
-        benchmark_va = "top" if client_value >= benchmark_value else "bottom"
-
-        ax.annotate(
-            f"Client {_format_metric_value(client_value, suffix)}",
-            xy=(client_value, 0),
-            xytext=(0, client_offset),
-            textcoords="offset points",
-            ha="center",
-            va=client_va,
-            fontsize=7.8,
-            color="#1F2A40",
-            fontweight="bold",
-        )
-        ax.annotate(
-            f"Benchmark {_format_metric_value(benchmark_value, suffix)}",
-            xy=(benchmark_value, 0),
-            xytext=(0, benchmark_offset),
-            textcoords="offset points",
-            ha="center",
-            va=benchmark_va,
-            fontsize=7.7,
-            color="#6B7280",
-        )
-        delta = abs(client_value - benchmark_value)
-        direction = "Ahead of benchmark" if ahead else "Behind benchmark"
+        ax.text(0.00, 0.78, label, transform=ax.transAxes, fontsize=9.9, fontweight="bold", color="#1F2A40")
         ax.text(
-            0.0,
-            0.03,
-            f"{direction} by {_format_metric_value(delta, suffix)}",
+            0.00,
+            0.42,
+            f"Client {_format_metric_value(client_value, suffix)}    Benchmark {_format_metric_value(benchmark_value, suffix)}",
             transform=ax.transAxes,
-            fontsize=7.8,
-            color="#1F2A40",
-            fontweight="bold",
+            fontsize=8.4,
+            color="#4B5563",
         )
-        for spine in ax.spines.values():
+        ax.text(0.83, 0.62, delta_text, transform=ax.transAxes, fontsize=8.7, color=delta_colour, fontweight="bold", ha="left")
+        ax.text(0.83, 0.30, direction_text, transform=ax.transAxes, fontsize=7.7, color="#6B7280", ha="left")
+
+        inset = ax.inset_axes([0.46, 0.22, 0.30, 0.52])
+        inset.set_xlim(-delta_span * 1.15, delta_span * 1.15)
+        inset.set_ylim(-0.5, 0.5)
+        inset.axvline(0, color="#CBD5E1", linewidth=1.0)
+        inset.barh([0], [visual_delta], left=0, color=delta_colour, height=0.34)
+        inset.set_xticks([])
+        inset.set_yticks([])
+        inset.set_facecolor("white")
+        for spine in inset.spines.values():
             spine.set_visible(False)
+        left_label, right_label = _benchmark_axis_labels(label, higher_is_better)
+        inset.text(0.02, -0.58, left_label, transform=inset.transAxes, fontsize=7.0, color="#94A3B8")
+        inset.text(0.79, -0.58, right_label, transform=inset.transAxes, fontsize=7.0, color="#94A3B8")
 
     fig.suptitle("Benchmark comparison", fontsize=12, fontweight="bold", color="#1F2A40", y=0.985)
     fig.text(0.10, 0.948, company_name, fontsize=8.8, color="#5F6876")
-    fig.tight_layout(rect=(0, 0, 1, 0.93), h_pad=0.9)
+    fig.tight_layout(rect=(0, 0.01, 1, 0.93), h_pad=0.95)
     fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     return path
+
+
+def _benchmark_visual_delta(
+    label: str,
+    client_value: float,
+    benchmark_value: float,
+    higher_is_better: bool,
+    tolerance: float,
+) -> tuple[float, str, str]:
+    delta = client_value - benchmark_value
+    if abs(delta) <= tolerance:
+        return 0.0, "#B5935A", "Broadly in line with benchmark"
+    if label == "Applications per role":
+        colour = "#B5935A"
+        direction = "Higher volume than benchmark" if delta > 0 else "Lower volume than benchmark"
+        return delta, colour, direction
+    if higher_is_better:
+        is_better = delta > 0
+    else:
+        is_better = delta < 0
+    visual_delta = abs(delta) if is_better else -abs(delta)
+    colour = "#15803D" if is_better else "#B91C1C"
+    direction = "Ahead of benchmark" if is_better else "Behind benchmark"
+    return visual_delta, colour, direction
+
+
+def _benchmark_axis_labels(label: str, higher_is_better: bool) -> tuple[str, str]:
+    if label == "Applications per role":
+        return "lower", "higher"
+    if higher_is_better:
+        return "behind", "ahead"
+    return "slower", "faster"
 
 
 def save_pdf_report(
@@ -1430,6 +1455,8 @@ def _add_recommended_intervention_section(story: list, styles: StyleSheet1, repo
     story.append(Paragraph("Recommended Intervention Level", styles["Heading1"]))
     story.append(Paragraph(recommendation["summary"], styles["Body"]))
     story.append(Spacer(1, 2 * mm))
+    story.append(Paragraph(recommendation["cause_effect"], styles["Body"]))
+    story.append(Spacer(1, 2 * mm))
     story.append(Paragraph("Recommended Support Level", styles["Heading2"]))
 
     support_box = Table(
@@ -2011,6 +2038,21 @@ SERVICE_RECOMMENDATIONS = {
     },
 }
 
+INTERVENTION_THEME_LABELS = {
+    "Employer brand and market perception": "market positioning",
+    "Job adverts and job specifications": "role positioning",
+    "Sourcing and advertising process": "candidate attraction",
+    "Application handling and screening": "screening control",
+    "Interview process quality": "interview discipline",
+    "Decision making and offer process": "decision speed",
+    "Recruitment strategy and workforce planning": "hiring planning",
+    "Performance metrics and funnel conversion": "funnel visibility",
+    "Onboarding and early retention": "early retention",
+    "Staff turnover risks": "first-year retention",
+    "Candidate experience": "candidate communication",
+    "Process ownership and accountability": "process ownership",
+}
+
 
 def _section_context(title: str) -> dict:
     return SECTION_DIAGNOSTIC_MAP[title]
@@ -2323,52 +2365,99 @@ def _build_recommended_intervention(data: dict, report: dict, benchmark_summary:
     applications = data["metrics"].get("applications_per_role")
     candidates = data["metrics"].get("candidates_reaching_interview")
     overall_score = data["total_score"]
+    weakest_titles = [section["title"] for section in sorted(report["sections"], key=lambda section: section["score"])[:3]]
+    time_comparison = _find_comparison(benchmark_summary, "Time to hire")
+    applications_comparison = _find_comparison(benchmark_summary, "Applications per role")
+    attrition_comparison = _find_comparison(benchmark_summary, "First-year attrition")
+    offer_comparison = _find_comparison(benchmark_summary, "Offer acceptance")
 
     if overall_score <= 55 or len(low_titles) >= 5 or (top_funnel_issues and filtering_issues and coordination_issues):
         service_key = "Full Recruitment"
-        summary = "Your current recruitment process is producing inconsistent outcomes across attraction, filtering, decision-making and ownership. This is not a single-point issue. It is a process issue."
-        rationale = [
-            "Several parts of the hiring cycle are breaking down at the same time. Candidate flow is not strong enough, filtering is uneven, and decision control is too fragmented to keep the process moving cleanly.",
-            "Full Recruitment is the right level of intervention because it does more than add candidate volume. It gives the business one managed process covering role definition, market positioning, advertising, screening, shortlisting, interview coordination, feedback handling and offer management.",
-            "The result is a more controlled hiring system. Leadership sees fewer delays, hiring managers spend less time in rework, and the business gets a repeatable process rather than a series of disconnected fixes.",
+        summary = _clean_text(
+            f"The audit shows a broad operating problem rather than one isolated weakness. {weakest_titles[0]} and {weakest_titles[1].lower()} are both scoring poorly, while {time_comparison['label'].lower()} is {time_comparison['comment'].lower()}." if time_comparison else
+            f"The audit shows a broad operating problem rather than one isolated weakness. {weakest_titles[0]} and {weakest_titles[1].lower()} are both scoring poorly, and weak control is spread across attraction, filtering and ownership.",
+            max_sentences=3,
+            max_words=72,
+        )
+        cause_effect = _clean_text(
+            f"These issues are compounding each other. Weak planning and attraction quality are feeding unstable shortlists into the process, while slow decisions and fragmented ownership are extending vacancy time. {attrition_comparison['label']} is {attrition_comparison['comment'].lower()}, which means the business is also reopening demand instead of reducing it." if attrition_comparison else
+            "These issues are compounding each other. Weak planning and attraction quality are feeding unstable shortlists into the process, while slow decisions and fragmented ownership are extending vacancy time and increasing management rework.",
+            max_sentences=4,
+            max_words=78,
+        )
+        justification = [
+            "Full Recruitment is the right intervention because the breakdown is not confined to one stage. The business needs one controlled process covering role definition, market positioning, advertising, screening, shortlisting, interview coordination, feedback handling and offer management.",
+            "A lighter option would improve one part of the process while leaving the rest of the drag in place. More advertising on its own would not fix weak filtering. Better screening on its own would not fix role definition, ownership or decision delay.",
+            "The expected result is a more stable hiring system: shorter vacancy periods, less internal rework, clearer accountability and a higher-quality route from vacancy approval to accepted offer.",
         ]
         escalation = ""
     elif filtering_issues >= 2 or scores.get("Application handling and screening", 10) <= 5 or scores.get("Interview process quality", 10) <= 5 or scores.get("Decision making and offer process", 10) <= 5:
         service_key = "Advertising + Sourcing + Screening"
-        summary = "Your hiring process is attracting activity, but too much of it becomes internal drag. The pressure sits in filtering, shortlist quality and front-end control rather than in advertising alone."
-        rationale = [
-            "Advertising alone will not fix this. The breakdown sits further down the process, where unsuitable candidates are still reaching the client and too much internal time is being spent reviewing weak CVs.",
-            "Advertising + Sourcing + Screening is the right fit because it puts control around the front end of hiring. Candidates are advertised for, sourced proactively, reviewed, qualified and filtered before they reach the business.",
-            "The client should expect a cleaner shortlist, less internal noise and faster movement from role launch to interview decision.",
+        summary = _clean_text(
+            f"The audit does not point to a simple attraction problem. {weakest_titles[0]} and {weakest_titles[1].lower()} are weak, while applications per role are {applications_comparison['comment'].lower()}." if applications_comparison else
+            f"The audit does not point to a simple attraction problem. {weakest_titles[0]} and {weakest_titles[1].lower()} are weak, and too much unsuitable activity is still moving into internal review.",
+            max_sentences=3,
+            max_words=72,
+        )
+        cause_effect = _clean_text(
+            f"The issue is what happens after candidates enter the process. Weak screening control and inconsistent interview handling are creating internal drag, slowing feedback and reducing shortlist quality. {offer_comparison['label']} is {offer_comparison['comment'].lower()}, which shows that poor front-end control is feeding through into final outcomes." if offer_comparison else
+            "The issue is what happens after candidates enter the process. Weak screening control and inconsistent interview handling are creating internal drag, slowing feedback and reducing shortlist quality.",
+            max_sentences=4,
+            max_words=78,
+        )
+        justification = [
+            "Advertising + Sourcing + Screening is the right level because the business needs stronger front-end control, not just more candidate volume. Candidates should be advertised for, sourced proactively, reviewed, qualified and filtered before the client sees them.",
+            "Advertising alone would raise activity without removing the noise already visible in screening and shortlisting. Advertising + Sourcing would improve pipeline quality, but it would still leave internal teams carrying too much filtering effort.",
+            "The expected result is a cleaner shortlist, less CV review time, faster movement into interview and a more disciplined route to hiring decision.",
         ]
         escalation = "If control still does not improve after this level of intervention, the next step would be a fully managed recruitment process."
     elif top_funnel_issues >= 2 or (applications is not None and applications < 20) or (candidates is not None and candidates <= 3):
         service_key = "Advertising + Sourcing"
-        summary = "The main weakness is pipeline strength and candidate relevance. The business is too exposed to whatever inbound applicants happen to apply."
-        rationale = [
-            "This is not only a visibility problem. It is also a pipeline quality problem. Candidate flow is not being built deliberately enough to give the business a dependable shortlist.",
-            "Advertising + Sourcing is the right response because it combines stronger market positioning with proactive outreach to candidates who are a fit but are not applying on their own.",
-            "The client should expect a stronger shortlist, less reliance on chance and better candidate quality earlier in the process.",
+        summary = _clean_text(
+            f"The main weakness sits in pipeline strength and candidate relevance. {weakest_titles[0]} and {weakest_titles[1].lower()} are underperforming, and {applications_comparison['label'].lower()} is {applications_comparison['comment'].lower()}." if applications_comparison else
+            f"The main weakness sits in pipeline strength and candidate relevance. {weakest_titles[0]} and {weakest_titles[1].lower()} are underperforming, and the business is too dependent on inbound response.",
+            max_sentences=3,
+            max_words=72,
+        )
+        cause_effect = _clean_text(
+            "Relying on inbound applicants alone means shortlist quality depends too heavily on chance. When the front end is weak, vacancies stay open longer, hiring managers review too few relevant candidates and decisions are made from a narrow pool.",
+            max_sentences=4,
+            max_words=74,
+        )
+        justification = [
+            "Advertising + Sourcing is the right fit because the process needs a stronger and more deliberate candidate pipeline. It combines better market positioning with proactive outreach to candidates who are a fit but are not applying on their own.",
+            "Advertising alone would improve visibility, but it would still leave the business waiting on inbound response to solve a pipeline problem. The gap here is not just attention. It is coverage of the market.",
+            "The expected result is a stronger shortlist, less reliance on chance and a faster route from role launch to interview-ready candidates.",
         ]
         escalation = "If shortlist quality still remains uneven after this intervention, the next step would be adding front-end screening control."
     else:
         service_key = "Advertising"
-        summary = "The main issue sits at the top of funnel. Candidate visibility and role positioning need tightening more than the rest of the process does."
-        rationale = [
-            "You do not have a whole-system problem. The clearest issue is that roles are not being positioned strongly enough in market, which is limiting the quality and volume of applicant flow.",
-            "Advertising is the right level of intervention because it fixes how the role is presented and where it is placed, without adding process support the business does not currently need.",
-            "The client should expect a stronger top of funnel and more relevant applicants, while keeping all downstream decision-making in house.",
+        summary = _clean_text(
+            f"The audit points to a top-of-funnel problem more than a wider process failure. {weakest_titles[0]} and {weakest_titles[1].lower()} are weaker than the rest of the model, while downstream control is comparatively more settled.",
+            max_sentences=3,
+            max_words=68,
+        )
+        cause_effect = _clean_text(
+            "When roles are not positioned properly in market, the process starts with weak or inconsistent applicant flow. That limits shortlist quality before screening and interview controls have a proper chance to work.",
+            max_sentences=3,
+            max_words=60,
+        )
+        justification = [
+            "Advertising is the right level of intervention because the business needs stronger market positioning and better applicant input rather than heavier process support. The main gap sits in how roles are presented and where they are placed.",
+            "A broader intervention would add cost before the core issue is fixed. There is not enough evidence here to justify taking over screening or the full recruitment cycle.",
+            "The expected result is a stronger top of funnel, more relevant inbound applicants and a better starting point for the existing internal process.",
         ]
         escalation = "If applicant flow improves but shortlist quality does not, the next step would be adding sourcing support."
 
     service = SERVICE_RECOMMENDATIONS[service_key]
     weakest_areas = ", ".join(low_titles[:3]).lower() if low_titles else "the weakest parts of the hiring process"
     return {
-        "summary": _clean_text(summary, max_sentences=3, max_words=52),
+        "summary": summary,
+        "cause_effect": cause_effect,
         "support_level": service["title"],
         "focus": service["focus"],
         "pricing": service["pricing"],
-        "rationale": [_clean_text(paragraph, max_sentences=3, max_words=70) for paragraph in rationale],
+        "rationale": [_clean_text(paragraph, max_sentences=4, max_words=82) for paragraph in justification],
         "escalation": _clean_text(escalation, max_sentences=2, max_words=38),
         "why_now": _clean_text(
             f"This recommendation is shaped by the audit results, especially {weakest_areas}. It is the most direct level of support for the current severity of the hiring problem.",
