@@ -714,30 +714,30 @@ def create_section_score_chart(company_name: str, section_scores: list[int], ben
     path = _output_dir() / f"{_slug(company_name)}_section_scores.png"
     labels = SECTION_ORDER
     positions = list(range(len(labels)))
-    colours = [_score_hex(score) for score in section_scores]
+    colours = [_section_chart_score_hex(score) for score in section_scores]
     sector_average = _sector_average_section_score(benchmark, sector)
 
-    fig, ax = plt.subplots(figsize=(7.2, 5.4))
+    fig, ax = plt.subplots(figsize=(8.1, 6.4))
     _apply_chart_style(fig, ax)
-    ax.barh(positions, section_scores, color=colours, edgecolor="none", height=0.64)
+    ax.barh(positions, section_scores, color=colours, edgecolor="none", height=0.74)
     ax.set_xlim(0, 10)
     ax.set_xticks(range(0, 11, 2))
     ax.tick_params(axis="x", labelsize=9)
     ax.set_yticks(positions, labels)
     ax.invert_yaxis()
     ax.grid(axis="x", alpha=0.10, linestyle="--", color="#D7DCE4")
-    ax.tick_params(axis="y", labelsize=9)
+    ax.tick_params(axis="y", labelsize=9, pad=12)
     ax.set_xlabel("Score out of 10", color="#1F2A40", fontsize=9.2, labelpad=6)
     for pos, score in enumerate(section_scores):
-        ax.text(min(score + 0.16, 9.78), pos, f"{score}/10", va="center", ha="left", fontsize=8.8, color="#1F2A40", fontweight="bold")
+        ax.text(min(score + 0.18, 9.85), pos, f"{score}/10", va="center", ha="left", fontsize=9.0, color="#1F2A40", fontweight="bold")
     if sector_average is not None:
-        ax.axvline(sector_average, color="#1A2E4A", linewidth=1.6, linestyle="--")
+        ax.axvline(sector_average, color="#C4CAD4", linewidth=1.4, linestyle=(0, (4, 4)))
     fig.text(0.11, 0.95, company_name, fontsize=8.8, color="#5F6876")
     fig.text(0.11, 0.915, "Section Scores", fontsize=12, fontweight="bold", color="#1F2A40", ha="left")
     if sector_average is not None:
         fig.text(0.97, 0.915, "Sector average", fontsize=9, color="#999999", ha="right")
     fig.tight_layout(rect=(0, 0.01, 1, 0.90))
-    fig.subplots_adjust(left=0.37, right=0.97)
+    fig.subplots_adjust(left=0.44, right=0.96)
     fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     return path
@@ -764,7 +764,7 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         plt.close(fig)
         return path
 
-    fig, axes = plt.subplots(len(items), 1, figsize=(6.8, 2.2 + len(items) * 2.05))
+    fig, axes = plt.subplots(len(items), 1, figsize=(7.2, 2.0 + len(items) * 2.2))
     if len(items) == 1:
         axes = [axes]
 
@@ -773,32 +773,35 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         ax.set_axis_off()
         tolerance = max(1.0, abs(benchmark_value) * 0.03)
         delta_text = _format_benchmark_comment(label, client_value, benchmark_value, suffix, higher_is_better, tolerance)[1]
-        visual_delta, delta_colour, direction_text = _benchmark_visual_delta(label, client_value, benchmark_value, higher_is_better, tolerance)
-        delta_span = max(abs(visual_delta), tolerance * 1.6, 1.0)
+        _, delta_colour, direction_text = _benchmark_visual_delta(label, client_value, benchmark_value, higher_is_better, tolerance)
+        scale_max = max(client_value, benchmark_value, 1.0) * 1.35
 
         ax.text(0.00, 0.95, label, transform=ax.transAxes, fontsize=10.4, fontweight="bold", color="#1F2A40")
         ax.text(0.00, 0.78, f"Client: {_format_metric_value(client_value, suffix)}", transform=ax.transAxes, fontsize=9.3, color="#4B5563")
         ax.text(0.00, 0.64, f"Benchmark: {_format_metric_value(benchmark_value, suffix)}", transform=ax.transAxes, fontsize=9.3, color="#4B5563")
-
-        inset = ax.inset_axes([0.00, 0.28, 0.68, 0.18])
-        inset.set_xlim(-delta_span * 1.15, delta_span * 1.15)
+        inset = ax.inset_axes([0.00, 0.24, 0.82, 0.20])
+        inset.set_xlim(0, scale_max)
         inset.set_ylim(-0.5, 0.5)
-        inset.axvline(0, color="#CBD5E1", linewidth=1.0)
-        inset.barh([0], [visual_delta], left=0, color=delta_colour, height=0.54)
+        inset.hlines(0, 0, scale_max, color="#D8DCE3", linewidth=6, zorder=1)
+        inset.axvline(benchmark_value, color="#1A2E4A", linewidth=2.0, zorder=3)
+        if label == "Applications per role":
+            inset.scatter([client_value], [0], color=delta_colour, s=55, zorder=4)
+        else:
+            inset.barh([0], [client_value], left=0, color=delta_colour, height=0.56, zorder=2)
         inset.set_xticks([])
         inset.set_yticks([])
         inset.set_facecolor("white")
         for spine in inset.spines.values():
             spine.set_visible(False)
         left_label, right_label = _benchmark_axis_labels(label, higher_is_better)
-        inset.text(0.00, -0.95, left_label, transform=inset.transAxes, fontsize=10.0, color="#666666")
-        inset.text(0.74, -0.95, right_label, transform=inset.transAxes, fontsize=10.0, color="#666666")
-        ax.text(0.00, 0.08, delta_text, transform=ax.transAxes, fontsize=13.2, color=delta_colour, fontweight="bold", ha="left")
-        ax.text(0.74, 0.30, direction_text, transform=ax.transAxes, fontsize=10.0, color="#666666", ha="left")
+        inset.text(0.00, -0.92, left_label, transform=inset.transAxes, fontsize=10.0, color="#666666")
+        inset.text(0.83, -0.92, right_label, transform=inset.transAxes, fontsize=10.0, color="#666666", ha="right")
+        ax.text(0.00, 0.06, delta_text, transform=ax.transAxes, fontsize=13.2, color=delta_colour, fontweight="bold", ha="left")
+        ax.text(0.84, 0.28, direction_text, transform=ax.transAxes, fontsize=9.4, color="#666666", ha="left")
 
     fig.suptitle("Benchmark comparison", fontsize=12, fontweight="bold", color="#1F2A40", y=0.985)
     fig.text(0.10, 0.948, company_name, fontsize=8.8, color="#5F6876")
-    fig.tight_layout(rect=(0, 0.01, 1, 0.93), h_pad=2.0)
+    fig.tight_layout(rect=(0, 0.01, 1, 0.93), h_pad=2.5)
     fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     return path
@@ -1477,21 +1480,27 @@ def _add_priority_matrix(story: list, styles: StyleSheet1, report: dict) -> None
             cell_body.append(Paragraph(row["action"], styles["Small"]))
         if not item["items"]:
             cell_body.append(Paragraph("No additional areas currently sit in this quadrant.", styles["Small"]))
-        cell = Table([[entry] for entry in cell_body], colWidths=[80 * mm])
+        cell = Table([[entry] for entry in cell_body], colWidths=[80 * mm], rowHeights=None)
         cell.setStyle(
             TableStyle(
                 [
                     ("BACKGROUND", (0, 0), (-1, -1), item["background"]),
                     ("BOX", (0, 0), (-1, -1), 0.45, RULE_COLOR),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 8),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-                    ("TOPPADDING", (0, 0), (-1, -1), 5),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+                    ("TOPPADDING", (0, 0), (-1, -1), 8),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ]
             )
         )
         cells.append(cell)
-    matrix = Table([[cells[0], cells[1]], [cells[2], cells[3]]], colWidths=[84 * mm, 84 * mm], hAlign="LEFT")
+    matrix = Table(
+        [[cells[0], cells[1]], [cells[2], cells[3]]],
+        colWidths=[84 * mm, 84 * mm],
+        rowHeights=[62 * mm, 62 * mm],
+        hAlign="LEFT",
+    )
     matrix.setStyle(
         TableStyle(
             [
@@ -1509,15 +1518,15 @@ def _add_priority_matrix(story: list, styles: StyleSheet1, report: dict) -> None
 
 def _add_charts_section(story: list, styles: StyleSheet1, section_chart: Path, benchmark_chart: Path) -> None:
     story.append(PageBreak())
-    story.append(Spacer(1, -5 * mm))
+    story.append(Spacer(1, -3 * mm))
     story.append(Paragraph("Charts and visual analysis", styles["Heading1"]))
     if section_chart.exists():
-        story.append(Image(str(section_chart), width=CHART_WIDTH, height=CHART_WIDTH * 0.72))
-        story.append(Paragraph("Section score profile across all twelve audit areas.", styles["Small"]))
+        story.append(Paragraph("Section score profile", styles["Heading2"]))
+        story.append(Image(str(section_chart), width=CHART_WIDTH, height=CHART_WIDTH * 0.84))
     if benchmark_chart.exists():
-        story.append(Spacer(1, 1 * mm))
-        story.append(Image(str(benchmark_chart), width=CHART_WIDTH, height=CHART_WIDTH * 0.55))
-        story.append(Paragraph("Benchmark comparison for the most useful submitted metrics.", styles["Small"]))
+        story.append(Spacer(1, 7 * mm))
+        story.append(Paragraph("Benchmark comparison", styles["Heading2"]))
+        story.append(Image(str(benchmark_chart), width=CHART_WIDTH, height=CHART_WIDTH * 0.72))
 
 
 def _add_detailed_findings(story: list, styles: StyleSheet1, report: dict) -> None:
@@ -1947,6 +1956,14 @@ def _score_hex(score: int) -> str:
     if score >= 8:
         return "#3A7D44"
     if score >= 6:
+        return "#E8A838"
+    return "#D94F3D"
+
+
+def _section_chart_score_hex(score: int) -> str:
+    if score >= 7:
+        return "#3A7D44"
+    if score >= 5:
         return "#E8A838"
     return "#D94F3D"
 
