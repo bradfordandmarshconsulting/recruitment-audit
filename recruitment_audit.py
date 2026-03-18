@@ -156,6 +156,22 @@ Rules:
 - Keep structural improvements to 2 points.
 """.strip()
 
+FINAL_VERDICT_SYSTEM_PROMPT = """
+You are writing the final verdict for a Recruitment Operating Model Audit.
+
+Write in British English. Use exactly 4 complete sentences.
+
+Rules:
+- Sentence 1: state the overall score and rating band.
+- Sentence 2: identify the single most important thing that must change.
+- Sentence 3: state the commercial consequence if it is not addressed.
+- Sentence 4: invite a conversation with Bradford & Marsh and reference the recommended intervention level.
+- Never truncate or end mid-sentence.
+- Do not restate section scores beyond the overall score.
+- Do not summarise the executive overview.
+- Be direct, commercially sharp, and concise.
+""".strip()
+
 REPORT_SCHEMA = {
     "type": "object",
     "properties": {
@@ -520,7 +536,9 @@ def generate_report_json(client, data: dict, benchmark_summary: dict) -> dict:
     )
     report = json.loads(response.output_text)
     normalised = _normalise_report(report, data["section_scores"])
-    return _clean_report(normalised, data, benchmark_summary)
+    cleaned = _clean_report(normalised, data, benchmark_summary)
+    cleaned["final_verdict"] = generate_final_verdict(client, data, cleaned, benchmark_summary)
+    return cleaned
 
 
 def build_fallback_report(data: dict, benchmark_summary: dict) -> dict:
@@ -546,7 +564,46 @@ def build_fallback_report(data: dict, benchmark_summary: dict) -> dict:
         "day_90_plan": [],
         "sections": sections,
     }
-    return _clean_report(_normalise_report(report, data["section_scores"]), data, benchmark_summary)
+    cleaned = _clean_report(_normalise_report(report, data["section_scores"]), data, benchmark_summary)
+    cleaned["final_verdict"] = _build_default_final_verdict(data, cleaned)
+    return cleaned
+
+
+def generate_final_verdict(client, data: dict, report: dict, benchmark_summary: dict) -> str:
+    prompt = _build_final_verdict_prompt(data, report, benchmark_summary)
+    try:
+        response = client.responses.create(
+            model="gpt-4.1",
+            instructions=FINAL_VERDICT_SYSTEM_PROMPT,
+            input=prompt,
+            max_output_tokens=500,
+            temperature=0.3,
+        )
+        text = _clean_text(response.output_text, max_sentences=4)
+        sentences = _split_sentences(text)
+        if len(sentences) >= 4 and all(sentence.endswith((".", "!", "?")) for sentence in sentences[:4]):
+            return " ".join(sentences[:4])
+    except Exception:
+        pass
+    return _build_default_final_verdict(data, report)
+
+
+def _build_final_verdict_prompt(data: dict, report: dict, benchmark_summary: dict) -> str:
+    weakest = min(report["sections"], key=lambda section: section["score"])
+    recommendation = report.get("recommended_intervention", {})
+    comparison = _find_comparison(benchmark_summary, _section_context(weakest["title"])["metric_label"])
+    comparison_line = comparison["comment"] if comparison else "No benchmark comparison available for the weakest area"
+    return f"""
+Overall score: {data['total_score']}/120
+Rating band: {_rating_for_score(data['total_score'])}
+Weakest area: {weakest['title']} ({weakest['score']}/10)
+Weakest area headline: {weakest['headline']}
+Commercial impact: {weakest['commercial_impact']}
+Benchmark note: {comparison_line}
+Recommended intervention level: {recommendation.get('support_level', 'Not set')}
+
+Write the final verdict now using the required four-sentence structure.
+""".strip()
 
 
 def _build_user_prompt(data: dict, benchmark_summary: dict) -> str:
@@ -904,7 +961,7 @@ def _clean_report(report: dict, data: dict, benchmark_summary: dict) -> dict:
     cleaned = {
         "executive_overview": _clean_text(report.get("executive_overview"), max_sentences=5, max_words=140),
         "overall_recruitment_score": _clean_text(report.get("overall_recruitment_score"), max_sentences=2, max_words=40),
-        "final_verdict": _clean_text(report.get("final_verdict"), max_sentences=3, max_words=65),
+        "final_verdict": _clean_text(report.get("final_verdict"), max_sentences=4),
         "top_strengths": _clean_list(report.get("top_strengths"), max_items=5, max_words=16),
         "top_problems": _clean_list(report.get("top_problems"), max_items=5, max_words=16),
         "day_30_plan": _clean_list(report.get("day_30_plan"), max_items=5, max_words=16),
@@ -943,7 +1000,7 @@ def _clean_report(report: dict, data: dict, benchmark_summary: dict) -> dict:
     if not cleaned["overall_recruitment_score"]:
         cleaned["overall_recruitment_score"] = "The overall score points to a recruitment function that is workable, but not yet consistent enough in the areas that matter most."
     if not cleaned["final_verdict"]:
-        cleaned["final_verdict"] = "The recruitment function can support current hiring demand, but the weakest areas need tighter control if the business wants better pace, stronger decision quality and lower hiring risk."
+        cleaned["final_verdict"] = _build_default_final_verdict(data, cleaned)
 
     cleaned["executive_overview"] = _build_executive_overview(data, cleaned, benchmark_summary)
     cleaned["core_constraint"] = _build_core_constraint(data, cleaned, benchmark_summary)
@@ -1598,7 +1655,8 @@ def _add_recommended_intervention_section(story: list, styles: StyleSheet1, repo
 
 def _add_final_verdict(story: list, styles: StyleSheet1, report: dict) -> None:
     story.append(Paragraph("Final verdict", styles["Heading1"]))
-    for paragraph in _build_final_verdict_paragraphs(report):
+    final_verdict = report.get("final_verdict") or " ".join(_build_final_verdict_paragraphs(report))
+    for paragraph in _split_sentences(final_verdict)[:4]:
         story.append(Paragraph(paragraph, styles["Body"]))
 
 
@@ -2814,6 +2872,31 @@ def _build_final_verdict_paragraphs(report: dict) -> list[str]:
             max_words=24,
         ),
     ]
+
+
+def _build_default_final_verdict(data: dict, report: dict) -> str:
+    sections = report.get("sections", [])
+    recommendation = report.get("recommended_intervention", {})
+    if not sections:
+        return (
+            "The recruitment operating model is functional but inconsistent at 0/120. "
+            "The single most important change is to put one controlled operating standard around the weakest part of the hiring process. "
+            "If that is not addressed, the business will keep absorbing avoidable delay and management effort each time a role is opened. "
+            f"Bradford & Marsh can talk you through the {recommendation.get('support_level', 'recommended')} intervention and how it would work in practice."
+        )
+
+    weakest = min(sections, key=lambda section: section["score"])
+    total_score = data["total_score"]
+    rating = _rating_for_score(total_score)
+    support_level = recommendation.get("support_level", "recommended")
+    return " ".join(
+        [
+            f"The recruitment operating model is {rating.lower()} at {total_score}/120.",
+            f"The single most important change is to bring tighter control to {weakest['title'].lower()}.",
+            "If that is not addressed, the business will keep paying through slower hiring, avoidable process waste and weaker conversion at a critical point in the process.",
+            f"Bradford & Marsh can talk you through the {support_level.lower()} intervention and show how that support would work in practice.",
+        ]
+    )
 
 
 def _select_benchmark_comparisons(comparisons: list[dict]) -> list[dict]:
