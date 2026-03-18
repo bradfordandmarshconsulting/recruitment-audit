@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 import html
+import json
 import os
+import subprocess
 import traceback
+from datetime import datetime
+from pathlib import Path
 
 from flask import Flask, request, send_file
 from openai import OpenAI
 
 from recruitment_audit import (
+    SECTION_ORDER,
+    _rating_for_score,
     build_fallback_report,
     get_api_key,
     list_benchmark_sectors,
@@ -24,6 +30,13 @@ from recruitment_audit import (
 )
 
 app = Flask(__name__)
+BASE_DIR = Path(__file__).resolve().parent
+MAILER_SCRIPT = BASE_DIR / "send_audit_notification.mjs"
+NOTIFICATION_RECIPIENTS = [
+    "max@bradfordandmarsh.co.uk",
+    "will@bradfordandmarsh.co.uk",
+    "michael@bradfordandmarsh.co.uk",
+]
 
 FALLBACK_SECTORS = [
     "Accounting / Audit",
@@ -92,6 +105,69 @@ def get_sector_options() -> list[str]:
     except Exception:
         pass
     return FALLBACK_SECTORS
+
+
+def _notification_attachment_name(company_name: str, completed_at: datetime) -> str:
+    safe_company = "".join(char if char.isalnum() else "_" for char in company_name.strip()).strip("_") or "Company"
+    safe_company = "_".join(part for part in safe_company.split("_") if part)
+    return f"{safe_company}_Recruitment_Audit_{completed_at.strftime('%Y-%m-%d')}.pdf"
+
+
+def send_audit_notification(data: dict, report: dict, pdf_path: Path) -> None:
+    if not MAILER_SCRIPT.exists():
+        raise FileNotFoundError(f"Notification script not found at {MAILER_SCRIPT}")
+
+    weakest_index = min(range(len(SECTION_ORDER)), key=lambda index: data["section_scores"][index])
+    weakest_title = SECTION_ORDER[weakest_index]
+    weakest_score = data["section_scores"][weakest_index]
+    rating_band = _rating_for_score(data["total_score"])
+    recommendation = report.get("recommended_intervention", {})
+    completed_at = datetime.now()
+
+    payload = {
+        "smtp": {
+            "host": os.environ.get("AUDIT_NOTIFICATION_SMTP_HOST", "smtp.office365.com"),
+            "port": int(os.environ.get("AUDIT_NOTIFICATION_SMTP_PORT", "587")),
+            "secure": False,
+            "user": os.environ.get("AUDIT_NOTIFICATION_SMTP_USER", "audit@bradfordandmarsh.co.uk"),
+            "pass": os.environ.get("AUDIT_NOTIFICATION_SMTP_PASS", ""),
+        },
+        "from": os.environ.get("AUDIT_NOTIFICATION_FROM", "audit@bradfordandmarsh.co.uk"),
+        "to": NOTIFICATION_RECIPIENTS,
+        "subject": f"New Audit Completed — {data['company_name']} — {completed_at.strftime('%d %B %Y')}",
+        "text": "\n".join(
+            [
+                "New Recruitment Audit Completed",
+                "--------------------------------",
+                f"Company:        {data['company_name']}",
+                f"Sector:         {data['sector']}",
+                f"Location:       {data['location']}",
+                "",
+                f"Contact:        {data['contact_name']}",
+                f"Title:          {data['job_title']}",
+                f"Email:          {data['email_address']}",
+                f"Phone:          {data['phone_number']}",
+                "",
+                f"Overall score:  {data['total_score']}/120 — {rating_band}",
+                f"Weakest area:   {weakest_title} ({weakest_score}/10)",
+                f"Recommended:    {recommendation.get('support_level', 'Not set')} — {recommendation.get('pricing', 'Pricing not set')}",
+                "",
+                f"Completed:      {completed_at.strftime('%d %B %Y %H:%M')}",
+                "--------------------------------",
+            ]
+        ),
+        "attachmentPath": str(pdf_path),
+        "attachmentName": _notification_attachment_name(data["company_name"], completed_at),
+    }
+
+    subprocess.run(
+        ["node", str(MAILER_SCRIPT)],
+        input=json.dumps(payload),
+        text=True,
+        cwd=str(BASE_DIR),
+        check=True,
+        capture_output=True,
+    )
 
 
 
@@ -1233,6 +1309,10 @@ def generate():
             overall_chart=overall_chart,
             benchmark_chart=benchmark_chart,
         )
+        try:
+            send_audit_notification(data, report, pdf_path)
+        except Exception:
+            app.logger.exception("Audit notification email failed")
 
         download_name = f"{data['company_name'].strip().replace(' ', '_')}_recruitment_audit.pdf"
 
