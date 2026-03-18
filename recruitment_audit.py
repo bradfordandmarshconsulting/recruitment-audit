@@ -609,43 +609,36 @@ def create_overall_score_chart(company_name: str, total_score: int) -> Path:
     score = max(0, min(total_score, 120))
     percentage = round((score / 120) * 100)
     rating = _rating_for_score(score)
-    if score >= 90:
-        bar_colour = "#4ADE80"
-    elif score >= 70:
-        bar_colour = "#4ADE80"
-    elif score >= 50:
-        bar_colour = "#F59E0B"
-    elif score >= 30:
-        bar_colour = "#F59E0B"
-    else:
-        bar_colour = "#EF4444"
-
-    fig, ax = plt.subplots(figsize=(6.4, 1.55))
+    fig, ax = plt.subplots(figsize=(6.4, 1.85))
     _apply_chart_style(fig, ax)
-    ax.barh([0], [120], color="#E9EDF2", height=0.36)
-    ax.barh([0], [score], color=bar_colour, height=0.36)
+    ax.barh([0], [40], left=0, color="#FEE2E2", height=0.38)
+    ax.barh([0], [35], left=40, color="#FEF3C7", height=0.38)
+    ax.barh([0], [45], left=75, color="#DCFCE7", height=0.38)
     ax.set_xlim(0, 120)
-    ax.set_ylim(-0.45, 0.45)
+    ax.set_ylim(-0.55, 0.55)
     ax.set_yticks([])
-    ax.set_xticks(range(0, 121, 20))
-    ax.grid(axis="x", alpha=0.10, linestyle="--", color="#D7DCE4")
+    ax.set_xticks([0, 40, 75, 120])
+    ax.tick_params(axis="x", labelsize=9)
+    ax.grid(False)
     fig.text(0.08, 0.92, company_name, fontsize=8.8, color="#5F6876")
     fig.text(0.08, 0.80, "Overall score", fontsize=12, color="#1F2A40", fontweight="bold")
-    fig.text(0.92, 0.82, f"{score}/120 | {percentage}% | {rating}", fontsize=9.1, color="#1F2A40", fontweight="bold", ha="right")
+    fig.text(0.92, 0.82, f"Overall rating: {score}/120 — {rating}", fontsize=9.1, color="#1F2A40", fontweight="bold", ha="right")
+    ax.axvline(score, ymin=0.18, ymax=0.84, color="#1F2A40", linewidth=2.0)
     ax.annotate(
-        f"{score}/120 ({percentage}%)",
+        f"{score}/120",
         xy=(score, 0),
-        xytext=(0, 10),
+        xytext=(0, 14),
         textcoords="offset points",
         ha="center",
         va="bottom",
-        fontsize=8.3,
+        fontsize=9.0,
         color="#1F2A40",
         fontweight="bold",
+        bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="#CBD5E1", lw=0.8),
     )
     for spine in ax.spines.values():
         spine.set_visible(False)
-    fig.subplots_adjust(left=0.08, right=0.97, top=0.60, bottom=0.22)
+    fig.subplots_adjust(left=0.08, right=0.97, top=0.60, bottom=0.24)
     fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     return path
@@ -697,7 +690,7 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         plt.close(fig)
         return path
 
-    fig, axes = plt.subplots(len(items), 1, figsize=(6.7, 1.3 + len(items) * 1.18))
+    fig, axes = plt.subplots(len(items), 1, figsize=(6.8, 1.45 + len(items) * 1.32))
     if len(items) == 1:
         axes = [axes]
 
@@ -709,19 +702,19 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         visual_delta, delta_colour, direction_text = _benchmark_visual_delta(label, client_value, benchmark_value, higher_is_better, tolerance)
         delta_span = max(abs(visual_delta), tolerance * 1.6, 1.0)
 
-        ax.text(0.00, 0.78, label, transform=ax.transAxes, fontsize=9.9, fontweight="bold", color="#1F2A40")
+        ax.text(0.00, 0.78, label, transform=ax.transAxes, fontsize=10.2, fontweight="bold", color="#1F2A40")
         ax.text(
             0.00,
-            0.42,
+            0.34,
             f"Client {_format_metric_value(client_value, suffix)}    Benchmark {_format_metric_value(benchmark_value, suffix)}",
             transform=ax.transAxes,
-            fontsize=8.4,
+            fontsize=9.1,
             color="#4B5563",
         )
-        ax.text(0.83, 0.62, delta_text, transform=ax.transAxes, fontsize=8.7, color=delta_colour, fontweight="bold", ha="left")
-        ax.text(0.83, 0.30, direction_text, transform=ax.transAxes, fontsize=7.7, color="#6B7280", ha="left")
+        ax.text(0.72, 0.63, delta_text, transform=ax.transAxes, fontsize=11.4, color=delta_colour, fontweight="bold", ha="left")
+        ax.text(0.72, 0.29, direction_text, transform=ax.transAxes, fontsize=9.0, color="#6B7280", ha="left")
 
-        inset = ax.inset_axes([0.46, 0.22, 0.30, 0.52])
+        inset = ax.inset_axes([0.42, 0.20, 0.25, 0.56])
         inset.set_xlim(-delta_span * 1.15, delta_span * 1.15)
         inset.set_ylim(-0.5, 0.5)
         inset.axvline(0, color="#CBD5E1", linewidth=1.0)
@@ -732,8 +725,8 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         for spine in inset.spines.values():
             spine.set_visible(False)
         left_label, right_label = _benchmark_axis_labels(label, higher_is_better)
-        inset.text(0.02, -0.58, left_label, transform=inset.transAxes, fontsize=7.0, color="#94A3B8")
-        inset.text(0.79, -0.58, right_label, transform=inset.transAxes, fontsize=7.0, color="#94A3B8")
+        inset.text(0.00, -0.58, left_label, transform=inset.transAxes, fontsize=9.0, color="#94A3B8")
+        inset.text(0.66, -0.58, right_label, transform=inset.transAxes, fontsize=9.0, color="#94A3B8")
 
     fig.suptitle("Benchmark comparison", fontsize=12, fontweight="bold", color="#1F2A40", y=0.985)
     fig.text(0.10, 0.948, company_name, fontsize=8.8, color="#5F6876")
@@ -797,6 +790,8 @@ def save_pdf_report(
         title=REPORT_TITLE,
         author=BRAND_NAME,
     )
+    doc.audit_client_name = _clean_text(data["company_name"], max_sentences=1, max_words=8)
+    doc.audit_date = datetime.now().strftime("%d %B %Y")
 
     story = []
     _add_cover_page(story, styles, data)
@@ -809,8 +804,8 @@ def save_pdf_report(
     _add_priority_matrix(story, styles, report)
     _add_charts_section(story, styles, section_chart, benchmark_chart)
     _add_detailed_findings(story, styles, report)
-    _add_list_section(story, styles, "Top 5 strengths", report["top_strengths"])
-    _add_list_section(story, styles, "Top 5 problems", report["top_problems"])
+    _add_list_section(story, styles, "Key strengths", report["top_strengths"])
+    _add_list_section(story, styles, "Priority problems", report["top_problems"])
     _add_list_section(story, styles, "30 day plan", report["day_30_plan"])
     _add_list_section(story, styles, "60 day plan", report["day_60_plan"])
     _add_list_section(story, styles, "90 day plan", report["day_90_plan"])
@@ -987,7 +982,7 @@ def _build_pdf_styles() -> StyleSheet1:
             leading=14.5,
             alignment=TA_LEFT,
             textColor=BRAND_NAVY,
-            spaceBefore=8,
+            spaceBefore=24,
             spaceAfter=4,
         )
     )
@@ -1011,14 +1006,14 @@ def _build_pdf_styles() -> StyleSheet1:
             leading=14,
             alignment=TA_LEFT,
             textColor=TEXT_COLOR,
-            spaceAfter=5,
+            spaceAfter=16,
         )
     )
     styles.add(
         ParagraphStyle(
             name="BodyTight",
             parent=styles["Body"],
-            spaceAfter=2,
+            spaceAfter=4,
         )
     )
     styles.add(
@@ -1118,8 +1113,10 @@ def _status_label(score: int) -> str:
     if score >= 8:
         return "Strong"
     if score >= 6:
-        return "Needs attention"
-    return "Priority"
+        return "Sound with gaps"
+    if score >= 4:
+        return "Inconsistent"
+    return "Critical"
 
 
 def _section_card_table(title: str, body: list, background: colors.Color = colors.white) -> Table:
@@ -1174,10 +1171,19 @@ def _add_cover_page(story: list, styles: StyleSheet1, data: dict) -> None:
         )
     )
     story.append(meta_table)
-    story.append(Spacer(1, 5 * mm))
-    story.append(Paragraph(CONFIDENTIAL_LABEL, styles["CoverMeta"]))
     story.append(Spacer(1, 92 * mm))
     story.append(PageBreak())
+
+
+def _build_cover_letter_finding_sentence(data: dict) -> str:
+    weakest_index = min(range(len(SECTION_ORDER)), key=lambda index: data["section_scores"][index])
+    weakest_title = SECTION_ORDER[weakest_index]
+    score = data["section_scores"][weakest_index]
+    return _clean_text(
+        f"The clearest issue in this audit sits in {weakest_title.lower()}, which is currently scoring {score}/10 and needs leadership attention first.",
+        max_sentences=1,
+        max_words=22,
+    )
 
 
 def _add_md_letter(story: list, styles: StyleSheet1, data: dict) -> None:
@@ -1187,10 +1193,11 @@ def _add_md_letter(story: list, styles: StyleSheet1, data: dict) -> None:
         story.append(Spacer(1, 8 * mm))
     story.append(Paragraph(f"Dear {_clean_text(data['contact_name'])},", styles["Body"]))
 
+    finding_sentence = _build_cover_letter_finding_sentence(data)
     paragraphs = [
         "This report gives you a clear view of how the recruitment operating model is performing across planning, process control, delivery pace and decision quality. It reflects the information provided and tests how the current hiring process is working in practice rather than how it is intended to work on paper.",
         "The findings are designed to show where hiring performance is being protected, where it is drifting, and where weak control is likely increasing delay, process waste or avoidable hiring risk. That matters because small failures in recruitment execution quickly become a commercial problem when they affect speed, quality and management time.",
-        "Used properly, this report should help you challenge current assumptions, focus discussion on the parts of the process that need intervention first, and decide where tighter ownership or better operating discipline is required. It is intended to support leadership judgement, not sit as a passive summary.",
+        f"Used properly, this report should help you challenge current assumptions, focus discussion on the parts of the process that need intervention first, and decide where tighter ownership or better operating discipline is required. {finding_sentence}",
         "If you decide to act on the findings, Bradford & Marsh can support at the level that suits the business. That may mean improving advertising and screening, taking ownership of end-to-end delivery, or designing a more structured interview and decision process so hiring becomes faster, clearer and more consistent.",
         "If it would be useful to talk through the report or the next steps, I would be happy to do that with you directly.",
     ]
@@ -1316,11 +1323,14 @@ def _add_key_insights(story: list, styles: StyleSheet1, data: dict, report: dict
 
 def _add_score_summary(story: list, styles: StyleSheet1, data: dict) -> None:
     story.append(Paragraph("Score summary table", styles["Heading1"]))
-    rows = [["Section", "Score", "Position"]]
+    rows = [["", "Section", "Score", "Position"]]
     for title, score in zip(SECTION_ORDER, data["section_scores"]):
-        rows.append([title, f"{score}/10", _section_rating(score)])
-    table = Table(rows, colWidths=[108 * mm, 24 * mm, 38 * mm], repeatRows=1, hAlign="LEFT")
-    table.setStyle(_table_style())
+        rows.append([Paragraph(_score_indicator_markup(score), styles["BodyTight"]), title, f"{score}/10", _section_rating(score)])
+    table = Table(rows, colWidths=[10 * mm, 98 * mm, 24 * mm, 38 * mm], repeatRows=1, hAlign="LEFT")
+    style = _table_style()
+    style.add("ALIGN", (0, 1), (0, -1), "CENTER")
+    style.add("VALIGN", (0, 1), (0, -1), "MIDDLE")
+    table.setStyle(style)
     story.append(table)
 
 
@@ -1343,6 +1353,14 @@ def _add_benchmark_snapshot(story: list, styles: StyleSheet1, benchmark_summary:
     table.setStyle(_table_style())
     story.append(table)
     story.append(Spacer(1, 1.5 * mm))
+    story.append(
+        Paragraph(
+            "Benchmarks based on UK sector hiring data, Bradford & Marsh Consulting, 2025-2026. "
+            "Figures represent median performance across comparable businesses by sector and headcount.",
+            styles["Small"],
+        )
+    )
+    story.append(Spacer(1, 1.5 * mm))
 
 
 def _add_priority_matrix(story: list, styles: StyleSheet1, report: dict) -> None:
@@ -1362,7 +1380,7 @@ def _add_priority_matrix(story: list, styles: StyleSheet1, report: dict) -> None
         ]
         for row in item["items"]:
             cell_body.append(Paragraph(f"{row['title']}", styles["BodyTight"]))
-            cell_body.append(Paragraph(f"Action: {row['action']}", styles["Small"]))
+            cell_body.append(Paragraph(row["action"], styles["Small"]))
         if not item["items"]:
             cell_body.append(Paragraph("No additional areas currently sit in this quadrant.", styles["Small"]))
         cell = Table([[entry] for entry in cell_body], colWidths=[80 * mm])
@@ -1380,7 +1398,18 @@ def _add_priority_matrix(story: list, styles: StyleSheet1, report: dict) -> None
         )
         cells.append(cell)
     matrix = Table([[cells[0], cells[1]], [cells[2], cells[3]]], colWidths=[84 * mm, 84 * mm], hAlign="LEFT")
-    matrix.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 0)]))
+    matrix.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ("GRID", (0, 0), (-1, -1), 0.8, RULE_COLOR),
+            ]
+        )
+    )
     story.append(matrix)
 
 
@@ -1401,10 +1430,11 @@ def _add_detailed_findings(story: list, styles: StyleSheet1, report: dict) -> No
     story.append(PageBreak())
     story.append(Paragraph("Detailed findings", styles["Heading1"]))
     for section in report["sections"]:
+        story.append(Spacer(1, 7.5 * mm))
         score_bg, score_text = _score_colours(section["score"])
         badge = Table(
-            [[Paragraph(f"{section['score']}/10", styles["ScoreBadge"]), Paragraph(_status_label(section["score"]), styles["Small"])]],
-            colWidths=[18 * mm, 30 * mm],
+            [[Paragraph(f"{section['score']}/10 — {_status_label(section['score'])}", styles["ScoreBadge"])]],
+            colWidths=[48 * mm],
         )
         badge.setStyle(
             TableStyle(
@@ -1414,6 +1444,7 @@ def _add_detailed_findings(story: list, styles: StyleSheet1, report: dict) -> No
                     ("BOX", (0, 0), (-1, -1), 0.4, score_bg),
                     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                     ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("ROUNDEDCORNERS", [9, 9, 9, 9]),
                     ("LEFTPADDING", (0, 0), (-1, -1), 5),
                     ("RIGHTPADDING", (0, 0), (-1, -1), 5),
                     ("TOPPADDING", (0, 0), (-1, -1), 5),
@@ -1426,7 +1457,16 @@ def _add_detailed_findings(story: list, styles: StyleSheet1, report: dict) -> No
             colWidths=[122 * mm, 48 * mm],
             hAlign="LEFT",
         )
-        header.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0)]))
+        header.setStyle(
+            TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                    ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+                ]
+            )
+        )
 
         actions = list(dict.fromkeys(section["immediate_actions"] + section["structural_improvements"]))[:3]
         block = [
@@ -1555,18 +1595,31 @@ def _table_style() -> TableStyle:
 
 def _draw_page(canvas, doc) -> None:
     canvas.saveState()
-    canvas.setStrokeColor(RULE_COLOR)
-    canvas.line(doc.leftMargin, PAGE_HEIGHT - 10 * mm, PAGE_WIDTH - doc.rightMargin, PAGE_HEIGHT - 10 * mm)
-    canvas.setFont(PDF_FONT_BOLD, 8)
-    canvas.setFillColor(BRAND_NAVY)
-    canvas.drawString(doc.leftMargin, PAGE_HEIGHT - 8.2 * mm, BRAND_NAME)
-    if canvas.getPageNumber() > 2:
+    page_number = canvas.getPageNumber()
+    if page_number == 1:
+        band_height = 22 * mm
+        canvas.setFillColor(colors.HexColor("#1A2E4A"))
+        canvas.rect(0, 0, PAGE_WIDTH, band_height, fill=1, stroke=0)
+        canvas.setFillColor(colors.white)
+        canvas.setFont(PDF_FONT_BOLD, 10)
+        canvas.drawCentredString(PAGE_WIDTH / 2, 8.5 * mm, CONFIDENTIAL_LABEL)
+    elif page_number > 2:
+        canvas.setStrokeColor(RULE_COLOR)
+        canvas.line(doc.leftMargin, PAGE_HEIGHT - 10 * mm, PAGE_WIDTH - doc.rightMargin, PAGE_HEIGHT - 10 * mm)
+        canvas.setFont(PDF_FONT_BOLD, 8)
+        canvas.setFillColor(BRAND_NAVY)
+        canvas.drawString(doc.leftMargin, PAGE_HEIGHT - 8.2 * mm, BRAND_NAME)
+        client_name = getattr(doc, "audit_client_name", "")
+        audit_date = getattr(doc, "audit_date", "")
+        header_right = f"{client_name} — Recruitment Audit {audit_date}".strip()
+        canvas.setFont(PDF_FONT, 8)
+        canvas.drawRightString(PAGE_WIDTH - doc.rightMargin, PAGE_HEIGHT - 8.2 * mm, header_right)
         canvas.setStrokeColor(RULE_COLOR)
         canvas.line(doc.leftMargin, 11 * mm, PAGE_WIDTH - doc.rightMargin, 11 * mm)
         canvas.setFont(PDF_FONT, 8)
         canvas.setFillColor(SUBTLE_TEXT)
         canvas.drawString(doc.leftMargin, 7.6 * mm, "Confidential client report")
-        canvas.drawRightString(PAGE_WIDTH - doc.rightMargin, 7.6 * mm, f"Page {canvas.getPageNumber() - 2}")
+        canvas.drawRightString(PAGE_WIDTH - doc.rightMargin, 7.6 * mm, f"Page {page_number - 2}")
     canvas.restoreState()
 
 
@@ -1792,7 +1845,7 @@ def _section_rating(score: int) -> str:
         return "Sound with gaps"
     if score >= 4:
         return "Inconsistent"
-    return "Weak"
+    return "Critical"
 
 
 def _score_hex(score: int) -> str:
@@ -1803,6 +1856,11 @@ def _score_hex(score: int) -> str:
     if score >= 4:
         return "#EF4444"
     return "#EF4444"
+
+
+def _score_indicator_markup(score: int) -> str:
+    colour = _score_hex(score)
+    return f'<para align="center"><font color="{colour}">&#9679;</font></para>'
 
 
 def _fmt(value: float | None, suffix: str) -> str:
@@ -1827,9 +1885,15 @@ def _build_priority_matrix(report: dict) -> list[dict]:
     watch = [item for item in sections if 6 <= item["score"] <= 7 and item not in weakest][:2]
 
     def row(section: dict) -> dict:
+        context = _section_context(section["title"])
+        timeframe = context["timeframe"] if section["score"] <= 5 else context["next_timeframe"]
+        outcome = context["result"] if section["score"] <= 5 else context["next_result"]
         return {
             "title": section["title"],
-            "action": (section.get("immediate_actions") or ["Set one named owner and correct the process discipline."])[0],
+            "action": (
+                f"Owner: {context['owner']} | Timeframe: {timeframe}<br/>"
+                f"Outcome: {outcome}."
+            ),
         }
 
     buckets = [
@@ -2016,25 +2080,30 @@ SECTION_DIAGNOSTIC_MAP = {
 }
 
 SERVICE_RECOMMENDATIONS = {
-    "Advertising": {
-        "title": "Advertising",
-        "focus": "Fix Your Top of Funnel",
-        "pricing": "£100 + VAT per advertised role",
+    "Advisory Review": {
+        "title": "Advisory Review",
+        "focus": "Protect Current Performance",
+        "pricing": "Retained advisory arrangement",
     },
-    "Advertising + Sourcing": {
-        "title": "Advertising + Sourcing",
-        "focus": "Fix Your Pipeline and Filtering Problem",
-        "pricing": "£250 + VAT per advertised role",
+    "Advertising + Screening": {
+        "title": "Advertising + Screening",
+        "focus": "Fix the Filtering Problem",
+        "pricing": "£750 to £1,000 + VAT per role",
     },
     "Advertising + Sourcing + Screening": {
         "title": "Advertising + Sourcing + Screening",
-        "focus": "Fix Your Filtering Problem",
-        "pricing": "£750 to £1000 + VAT per role",
+        "focus": "Fix the Pipeline and Filtering Problem",
+        "pricing": "£1,000 to £1,500 + VAT per role",
     },
-    "Full Recruitment": {
-        "title": "Full Recruitment",
-        "focus": "Fix the Whole System",
-        "pricing": "10% to 20% of annual salary + VAT per advertised job",
+    "Fully Managed Recruitment": {
+        "title": "Fully Managed Recruitment",
+        "focus": "Take End-to-End Control",
+        "pricing": "Retained engagement",
+    },
+    "Emergency Recruitment Audit + Managed Process": {
+        "title": "Emergency Recruitment Audit + Managed Process",
+        "focus": "Immediate Stabilisation",
+        "pricing": "Pricing confirmed after direct conversation",
     },
 }
 
@@ -2138,48 +2207,58 @@ def _section_root_cause(title: str, data: dict) -> str:
     return "an ownership issue because no single person is controlling the recruitment model end to end"
 
 
-def _headline_templates(score: int) -> list[str]:
+def _section_opening_mode(title: str) -> str:
+    return ["metric", "consequence", "diagnosis", "benchmark"][SECTION_ORDER.index(title) % 4]
+
+
+def _score_band_lead(score: int) -> str:
     if score >= 8:
-        return [
-            "In the part of the process covering {location}, {title_lower} is comparatively settled: {support}, which reflects {root_cause}.",
-            "Across the stage covering {location}, {title_lower} is one of the stronger areas: {support}, supported by {root_cause}.",
-            "The clearest stability in the hiring model sits in the stage covering {location}: {support}, with {root_cause} giving this area a firmer base.",
-        ]
+        return "This is one of the stronger parts of the process."
     if score >= 6:
-        return [
-            "In the part of the process covering {location}, {title_lower} is serviceable but uneven: {support}, which points to {root_cause}.",
-            "Around the stage covering {location}, {title_lower} is producing mixed results: {support}, driven largely by {root_cause}.",
-            "{title} is not failing in the stage covering {location}, but {support} shows the effect of {root_cause}.",
-        ]
+        return "This area is working but not consistently."
     if score >= 4:
-        return [
-            "The pressure point sits in the stage covering {location}: {support}, and the underlying cause is {root_cause}.",
-            "In the stage covering {location}, {title_lower} is creating visible friction: {support}, which traces back to {root_cause}.",
-            "{title} is slowing the process in the stage covering {location}; {support} and the main cause is {root_cause}.",
-        ]
-    return [
-        "The main breakdown sits in the stage covering {location}: {support}, and the root cause is {root_cause}.",
-        "In the stage covering {location}, {title_lower} is now a serious constraint: {support}, driven by {root_cause}.",
-        "{title} is failing in the stage covering {location}; {support} and the business is dealing with {root_cause}.",
-    ]
+        return "This area is creating visible drag on the wider process."
+    return "This area represents a critical risk to hiring performance."
+
+
+def _benchmark_position_text(title: str, data: dict, benchmark_summary: dict) -> str:
+    context = _section_context(title)
+    comparison = _find_comparison(benchmark_summary, context["metric_label"])
+    if comparison:
+        return (
+            f"{context['metric_label']} is running at "
+            f"{_format_metric_value(comparison['client_value'], comparison['suffix'])} "
+            f"against a benchmark of {_format_metric_value(comparison['benchmark_value'], comparison['suffix'])}. "
+            f"The gap shows that {comparison['comment'].lower()}."
+        )
+    support = _section_supporting_evidence(title, data, benchmark_summary)
+    return f"{context['metric_label']} is the clearest signal in this section: {support}."
 
 
 def _build_section_headline(title: str, score: int, data: dict, benchmark_summary: dict) -> str:
-    context = _section_context(title)
+    opening_mode = _section_opening_mode(title)
     support = _section_supporting_evidence(title, data, benchmark_summary)
     root_cause = _section_root_cause(title, data)
-    templates = _headline_templates(score)
-    index = sum(ord(char) for char in title) % len(templates)
+    comparison_line = _benchmark_position_text(title, data, benchmark_summary)
+    band_lead = _score_band_lead(score)
+    if opening_mode == "metric":
+        text = f"{comparison_line} {band_lead} The root cause is {root_cause}."
+    elif opening_mode == "consequence":
+        text = f"{_build_section_commercial_impact(title, score, data, benchmark_summary)} {band_lead} The root cause sits in {root_cause}."
+    elif opening_mode == "diagnosis":
+        if score >= 8:
+            diagnosis_lead = "The defining feature in this area is consistency rather than volatility."
+        elif score >= 6:
+            diagnosis_lead = "The issue in this area is not basic failure; it is uneven execution."
+        else:
+            diagnosis_lead = "The weakness in this area is not volume; it is consistency."
+        text = f"{diagnosis_lead} {support.capitalize()}, and the root cause is {root_cause}. {band_lead}"
+    else:
+        text = f"{comparison_line} {band_lead} The underlying issue is {root_cause}."
     return _clean_text(
-        templates[index].format(
-            title=title,
-            title_lower=title.lower(),
-            location=context["location"],
-            support=support,
-            root_cause=root_cause,
-        ),
-        max_sentences=2,
-        max_words=56,
+        text,
+        max_sentences=3,
+        max_words=62,
     )
 
 
@@ -2194,7 +2273,7 @@ def _build_section_current_state(title: str, score: int, data: dict, benchmark_s
     text = " ".join(
         sentence
         for sentence in [
-            f"In the part of the process covering {context['location']}, the evidence shows that {support}.",
+            f"The evidence in {context['location']} shows that {support}.",
             f"The underlying issue is {root_cause}.",
             benchmark_line,
         ]
@@ -2209,12 +2288,28 @@ def _vacancy_day_exposure(data: dict) -> str:
     if annual_volume is None or time_to_hire is None:
         return "Vacancy cover is taking management time back out of the business."
     total_days = int(round(annual_volume * time_to_hire))
-    return f"At the current pace, the business is carrying roughly {total_days} vacancy days across the year."
+    average_days = int(round(time_to_hire))
+    return (
+        f"At current pace the business is carrying approximately {total_days} vacancy days per year "
+        f"({int(annual_volume)} hires × {average_days} days average time to hire = {total_days} total vacancy days)."
+    )
 
 
 def _build_section_commercial_impact(title: str, score: int, data: dict, benchmark_summary: dict) -> str:
     metrics = data["metrics"]
     annual_volume = _annual_hiring_volume(data)
+    if score >= 8:
+        return _clean_text(
+            f"This part of the process is not the main cost issue today. The commercial task is to protect performance at scale so vacancy days, management time and candidate quality do not drift as hiring volume changes.",
+            max_sentences=2,
+            max_words=39,
+        )
+    if score >= 6:
+        return _clean_text(
+            f"The gap here is manageable, but it is still adding avoidable time and management effort into the hiring cycle. If left alone, it will show up as slower decisions, weaker conversion or extra screening load on future roles.",
+            max_sentences=2,
+            max_words=40,
+        )
     if title == "Recruitment strategy and workforce planning":
         return _clean_text(
             f"{_vacancy_day_exposure(data)} That extends time to productivity on open roles and keeps senior managers in repeated approval discussions instead of revenue-producing work.",
@@ -2264,16 +2359,22 @@ def _build_section_commercial_impact(title: str, score: int, data: dict, benchma
             max_words=44,
         )
     if title == "Onboarding and early retention":
+        if score <= 3:
+            return _clean_text(
+                f"At {_metric_display(metrics.get('first_year_attrition'), '%')} first-year attrition, the business is carrying repeated replacement cost and lost ramp-up time within the first year. That creates direct rehire cost and keeps teams below the capacity they planned for.",
+                max_sentences=2,
+                max_words=40,
+            )
         return _clean_text(
-            f"At {_metric_display(metrics.get('first_year_attrition'), '%')} first-year attrition, replacement cost is returning quickly after each hire. The business is paying twice through repeat recruitment effort and lost ramp-up time.",
+            f"At {_metric_display(metrics.get('first_year_attrition'), '%')} first-year attrition, the business is still absorbing replacement cost and lost ramp-up time after the original hire. That keeps avoidable backfill pressure in the system and weakens return on hiring spend.",
             max_sentences=2,
-            max_words=38,
+            max_words=41,
         )
     if title == "Staff turnover risks":
         return _clean_text(
-            f"Early exits at {_metric_display(metrics.get('first_year_attrition'), '%')} create repeated backfill demand and lost productive time. That increases recruitment cost and keeps teams operating below required capacity.",
+            f"Early exits at {_metric_display(metrics.get('first_year_attrition'), '%')} are forcing the business back into the market for roles it has only recently filled. That repeats agency, advertising and management effort while delivery teams keep working short-handed.",
             max_sentences=2,
-            max_words=37,
+            max_words=40,
         )
     if title == "Candidate experience":
         return _clean_text(
@@ -2289,6 +2390,16 @@ def _build_section_commercial_impact(title: str, score: int, data: dict, benchma
 
 
 def _build_section_key_risks(title: str, score: int, data: dict, benchmark_summary: dict) -> list[str]:
+    if score >= 8:
+        return [
+            "The main task is to protect this standard as the business scales.",
+            f"Minor drift at { _section_context(title)['location'] } should be picked up early before it affects the wider process.",
+        ]
+    if score >= 6:
+        return [
+            f"The gap at { _section_context(title)['location'] } will keep creating uneven delivery if it is not addressed directly.",
+            "Without a tighter operating standard, results will continue to vary by role, manager or workload.",
+        ]
     if title == "Interview process quality":
         return [
             "Interview decisions depend too much on individual judgement rather than one scoring standard.",
@@ -2304,22 +2415,79 @@ def _build_section_key_risks(title: str, score: int, data: dict, benchmark_summa
             "Issues will continue to move slowly because no one owns the full hiring cycle.",
             "Performance drift will remain hidden until vacancies have already aged.",
         ]
+    if score <= 3:
+        return [
+            f"The breakdown at { _section_context(title)['location'] } is now affecting overall hiring performance, not just this stage.",
+            "If this is not escalated quickly, cost, delay and candidate loss will keep compounding across the process.",
+        ]
+    context = _section_context(title)
+    if title == "Recruitment strategy and workforce planning":
+        return [
+            "Role approvals and hiring priorities will keep moving inconsistently if workforce planning stays loosely owned.",
+            "Commercial hiring decisions will continue to arrive later than they should, which extends vacancy exposure on key roles.",
+        ]
+    if title == "Performance metrics and funnel conversion":
+        return [
+            "Reporting gaps will keep masking where the funnel is actually losing candidates and budget.",
+            "Corrective action will stay slow because the business will not see the problem stage quickly enough.",
+        ]
+    if title == "Employer brand and market perception":
+        return [
+            "Weak market positioning will keep attracting the wrong level of candidate attention for priority roles.",
+            "Advertising spend will remain less efficient because relevance, not reach, is the problem here.",
+        ]
+    if title == "Job adverts and job specifications":
+        return [
+            "Loose briefs will keep producing avoidable mismatch between what managers need and what the market sees.",
+            "Screening effort will stay inflated until role definition improves at the front end.",
+        ]
+    if title == "Sourcing and advertising process":
+        return [
+            "Channel mix will continue to produce uneven candidate quality if sourcing choices are not reset.",
+            "Budget will keep being spent on activity that does not move viable candidates to interview.",
+        ]
+    if title == "Application handling and screening":
+        return [
+            "Slow screening will keep leaving strong applicants waiting while weaker ones absorb review time.",
+            "Recruiters and managers will continue to spend time on avoidable CV noise until filtering is standardised.",
+        ]
+    if title == "Decision making and offer process":
+        return [
+            "Approval delay will keep opening the door for candidates to accept competing offers first.",
+            "Final-stage effort will continue to be wasted if decisions are not converted into offers quickly enough.",
+        ]
+    if title == "Candidate experience":
+        return [
+            "Inconsistent communication will keep increasing drop-off at exactly the point the process needs candidate commitment.",
+            "The business will continue to lose goodwill in the market if candidate updates depend on individual managers.",
+        ]
     return [
-        f"The weakness at { _section_context(title)['location'] } will continue to slow the wider hiring process.",
-        "Management time will keep being pulled into avoidable rework if the root cause is left unresolved.",
+        f"The issue in {context['location']} will keep disrupting delivery quality unless one operating standard is enforced.",
+        f"The commercial cost will continue to build in {context['location']} because the current process is generating avoidable rework and delay.",
     ]
 
 
 def _build_section_actions(title: str, score: int, data: dict) -> tuple[list[str], list[str]]:
     context = _section_context(title)
     owner = context["owner"]
+    if score >= 8:
+        first_label = second_label = "Maintain"
+    elif score >= 6:
+        first_label = "Refine"
+        second_label = "Tighten"
+    elif score >= 4:
+        first_label = "Fix"
+        second_label = "Stabilise"
+    else:
+        first_label = "Intervene immediately"
+        second_label = "Escalate"
     first = _clean_text(
-        f"{owner} - {context['timeframe']}: tighten control in the stage covering {context['location']}. Outcome: {context['result']}.",
+        f"{first_label}: {owner} - {context['timeframe']}. Focus on the stage covering {context['location']}. Outcome: {context['result']}.",
         max_sentences=2,
         max_words=40,
     )
     second = _clean_text(
-        f"{owner} - {context['next_timeframe']}: track the agreed change against one weekly measure. Outcome: {context['next_result']}.",
+        f"{second_label}: {owner} - {context['next_timeframe']}. Track the agreed change against one weekly measure. Outcome: {context['next_result']}.",
         max_sentences=2,
         max_words=40,
     )
@@ -2331,7 +2499,7 @@ def _build_core_constraint(data: dict, report: dict, benchmark_summary: dict) ->
     context = _section_context(weakest["title"])
     support = _section_supporting_evidence(weakest["title"], data, benchmark_summary)
     return _clean_text(
-        f"{weakest['title']} is the current core constraint. The bottleneck sits {context['location']}, where {support}. Because every downstream decision depends on this part of the process, weak control here slows the whole hiring system and reduces the quality of the outcome.",
+        f"{weakest['title']} is the current core constraint. The bottleneck sits at {context['location']}, where {support}. Because every downstream decision depends on this part of the process, weak control here slows the whole hiring system and reduces the quality of the outcome.",
         max_sentences=3,
         max_words=60,
     )
@@ -2339,118 +2507,112 @@ def _build_core_constraint(data: dict, report: dict, benchmark_summary: dict) ->
 
 def _build_recommended_intervention(data: dict, report: dict, benchmark_summary: dict) -> dict:
     scores = {section["title"]: section["score"] for section in report["sections"]}
-    low_titles = [title for title, score in scores.items() if score <= 4]
-    top_funnel_titles = {
-        "Employer brand and market perception",
-        "Job adverts and job specifications",
-        "Sourcing and advertising process",
-    }
-    filtering_titles = {
+    overall_score = data["total_score"]
+    weakest_titles = [section["title"] for section in sorted(report["sections"], key=lambda section: section["score"])[:3]]
+    time_comparison = _find_comparison(benchmark_summary, "Time to hire")
+    attrition_comparison = _find_comparison(benchmark_summary, "First-year attrition")
+    offer_comparison = _find_comparison(benchmark_summary, "Offer acceptance")
+    screening_titles = {
         "Application handling and screening",
         "Interview process quality",
         "Decision making and offer process",
         "Candidate experience",
     }
-    coordination_titles = {
-        "Recruitment strategy and workforce planning",
-        "Performance metrics and funnel conversion",
-        "Process ownership and accountability",
-        "Onboarding and early retention",
-        "Staff turnover risks",
+    pipeline_titles = {
+        "Employer brand and market perception",
+        "Job adverts and job specifications",
+        "Sourcing and advertising process",
     }
-    top_funnel_issues = sum(1 for title in low_titles if title in top_funnel_titles)
-    filtering_issues = sum(1 for title in low_titles if title in filtering_titles)
-    coordination_issues = sum(1 for title in low_titles if title in coordination_titles)
+    low_titles = [title for title, score in scores.items() if score <= 5]
+    weakest_areas = ", ".join(low_titles[:3]).lower() if low_titles else "the weakest parts of the hiring process"
 
-    applications = data["metrics"].get("applications_per_role")
-    candidates = data["metrics"].get("candidates_reaching_interview")
-    overall_score = data["total_score"]
-    weakest_titles = [section["title"] for section in sorted(report["sections"], key=lambda section: section["score"])[:3]]
-    time_comparison = _find_comparison(benchmark_summary, "Time to hire")
-    applications_comparison = _find_comparison(benchmark_summary, "Applications per role")
-    attrition_comparison = _find_comparison(benchmark_summary, "First-year attrition")
-    offer_comparison = _find_comparison(benchmark_summary, "Offer acceptance")
-
-    if overall_score <= 55 or len(low_titles) >= 5 or (top_funnel_issues and filtering_issues and coordination_issues):
-        service_key = "Full Recruitment"
+    if overall_score >= 90:
+        service_key = "Advisory Review"
         summary = _clean_text(
-            f"The audit shows a broad operating problem rather than one isolated weakness. {weakest_titles[0]} and {weakest_titles[1].lower()} are both scoring poorly, while {time_comparison['label'].lower()} is {time_comparison['comment'].lower()}." if time_comparison else
-            f"The audit shows a broad operating problem rather than one isolated weakness. {weakest_titles[0]} and {weakest_titles[1].lower()} are both scoring poorly, and weak control is spread across attraction, filtering and ownership.",
-            max_sentences=3,
-            max_words=72,
+            "The process is performing well. The current pattern is one of control and consistency rather than structural breakdown.",
+            max_sentences=2,
+            max_words=32,
         )
         cause_effect = _clean_text(
-            f"These issues are compounding each other. Weak planning and attraction quality are feeding unstable shortlists into the process, while slow decisions and fragmented ownership are extending vacancy time. {attrition_comparison['label']} is {attrition_comparison['comment'].lower()}, which means the business is also reopening demand instead of reducing it." if attrition_comparison else
-            "These issues are compounding each other. Weak planning and attraction quality are feeding unstable shortlists into the process, while slow decisions and fragmented ownership are extending vacancy time and increasing management rework.",
-            max_sentences=4,
-            max_words=78,
+            "The commercial risk is drift as hiring volume changes or leadership attention moves elsewhere. Without light oversight, stronger areas can soften gradually before the business notices the loss of pace or control.",
+            max_sentences=3,
+            max_words=42,
         )
         justification = [
-            "Full Recruitment is the right intervention because the breakdown is not confined to one stage. The business needs one controlled process covering role definition, market positioning, advertising, screening, shortlisting, interview coordination, feedback handling and offer management.",
-            "A lighter option would improve one part of the process while leaving the rest of the drag in place. More advertising on its own would not fix weak filtering. Better screening on its own would not fix role definition, ownership or decision delay.",
-            "The expected result is a more stable hiring system: shorter vacancy periods, less internal rework, clearer accountability and a higher-quality route from vacancy approval to accepted offer.",
+            "Advisory Review is the right level here because the process does not need operational takeover. It needs periodic senior review to protect the current standard, challenge emerging drift and keep leadership close to the right measures.",
+            "Bradford & Marsh can provide a light-touch review and quarterly check-in to protect current performance as the business grows. That gives the client external judgement without adding unnecessary process weight.",
         ]
-        escalation = ""
-    elif filtering_issues >= 2 or scores.get("Application handling and screening", 10) <= 5 or scores.get("Interview process quality", 10) <= 5 or scores.get("Decision making and offer process", 10) <= 5:
+        escalation = "If filtering discipline starts to weaken or decision quality becomes uneven, the next level would be Advertising + Screening to restore front-end control before the problem spreads."
+    elif overall_score >= 70:
+        service_key = "Advertising + Screening"
+        summary = _clean_text(
+            f"The overall process is sound, but the evidence points to inconsistent control once candidates enter review. {weakest_titles[0]} and {weakest_titles[1].lower()} are the clearest signs that candidate handling is not tight enough before work reaches the client team.",
+            max_sentences=3,
+            max_words=74,
+        )
+        cause_effect = _clean_text(
+            f"Candidates are being attracted, but filtering discipline is uneven. That creates avoidable review load internally, slows movement through interview, and reduces the quality of what reaches the business to decide on." + (f" {offer_comparison['label']} is {offer_comparison['comment'].lower()}." if offer_comparison else ""),
+            max_sentences=4,
+            max_words=76,
+        )
+        justification = [
+            "Advertising + Screening is the right intervention because this is a filtering problem rather than a full-system failure. Bradford & Marsh can improve applicant input and control the screening gate so the business sees fewer unsuitable candidates.",
+            "A lighter advisory arrangement would not remove the operational drag now visible in the front end of the process. The business needs tighter pre-submission control, not just periodic review.",
+        ]
+        escalation = "If pipeline quality also weakens or the business becomes too dependent on inbound response, the next level would be Advertising + Sourcing + Screening."
+    elif overall_score >= 50:
         service_key = "Advertising + Sourcing + Screening"
         summary = _clean_text(
-            f"The audit does not point to a simple attraction problem. {weakest_titles[0]} and {weakest_titles[1].lower()} are weak, while applications per role are {applications_comparison['comment'].lower()}." if applications_comparison else
-            f"The audit does not point to a simple attraction problem. {weakest_titles[0]} and {weakest_titles[1].lower()} are weak, and too much unsuitable activity is still moving into internal review.",
+            f"The audit shows that both the pipeline and the filtering stages need support. {weakest_titles[0]} and {weakest_titles[1].lower()} are underperforming, and the business is relying too heavily on its internal team to correct weak candidate flow later in the process.",
             max_sentences=3,
             max_words=72,
         )
         cause_effect = _clean_text(
-            f"The issue is what happens after candidates enter the process. Weak screening control and inconsistent interview handling are creating internal drag, slowing feedback and reducing shortlist quality. {offer_comparison['label']} is {offer_comparison['comment'].lower()}, which shows that poor front-end control is feeding through into final outcomes." if offer_comparison else
-            "The issue is what happens after candidates enter the process. Weak screening control and inconsistent interview handling are creating internal drag, slowing feedback and reducing shortlist quality.",
+            "Weak attraction and weak shortlisting are feeding each other. When the top of funnel is inconsistent and filtering is not controlled tightly enough, managers spend more time reviewing noise, vacancies stay open longer and shortlist quality becomes less predictable.",
             max_sentences=4,
             max_words=78,
         )
         justification = [
-            "Advertising + Sourcing + Screening is the right level because the business needs stronger front-end control, not just more candidate volume. Candidates should be advertised for, sourced proactively, reviewed, qualified and filtered before the client sees them.",
-            "Advertising alone would raise activity without removing the noise already visible in screening and shortlisting. Advertising + Sourcing would improve pipeline quality, but it would still leave internal teams carrying too much filtering effort.",
-            "The expected result is a cleaner shortlist, less CV review time, faster movement into interview and a more disciplined route to hiring decision.",
+            "Advertising + Sourcing + Screening is the right level because Bradford & Marsh needs to manage attraction, sourcing and shortlisting before the client sees any candidates. The problem is not isolated to one handoff; it sits across pipeline strength and front-end control.",
+            "Advertising + Screening alone would still leave the business too exposed to weak market coverage. The process needs stronger input as well as tighter filtering if quality is going to improve consistently.",
         ]
-        escalation = "If control still does not improve after this level of intervention, the next step would be a fully managed recruitment process."
-    elif top_funnel_issues >= 2 or (applications is not None and applications < 20) or (candidates is not None and candidates <= 3):
-        service_key = "Advertising + Sourcing"
+        escalation = "If coordination, ownership and decision control remain weak after this level of support, the next level would be Fully Managed Recruitment."
+    elif overall_score >= 30:
+        service_key = "Fully Managed Recruitment"
         summary = _clean_text(
-            f"The main weakness sits in pipeline strength and candidate relevance. {weakest_titles[0]} and {weakest_titles[1].lower()} are underperforming, and {applications_comparison['label'].lower()} is {applications_comparison['comment'].lower()}." if applications_comparison else
-            f"The main weakness sits in pipeline strength and candidate relevance. {weakest_titles[0]} and {weakest_titles[1].lower()} are underperforming, and the business is too dependent on inbound response.",
+            f"The audit shows a weak operating model rather than a contained issue. {weakest_titles[0]} and {weakest_titles[1].lower()} are both dragging the process down, and the business is not getting enough consistency from role launch through to decision.",
             max_sentences=3,
             max_words=72,
         )
         cause_effect = _clean_text(
-            "Relying on inbound applicants alone means shortlist quality depends too heavily on chance. When the front end is weak, vacancies stay open longer, hiring managers review too few relevant candidates and decisions are made from a narrow pool.",
+            "Problems across attraction, filtering and coordination are reinforcing each other. That means vacancies stay open, managers are pulled into corrective work, and the business cannot rely on the current process to convert demand into hires at a steady pace.",
             max_sentences=4,
             max_words=74,
         )
         justification = [
-            "Advertising + Sourcing is the right fit because the process needs a stronger and more deliberate candidate pipeline. It combines better market positioning with proactive outreach to candidates who are a fit but are not applying on their own.",
-            "Advertising alone would improve visibility, but it would still leave the business waiting on inbound response to solve a pipeline problem. The gap here is not just attention. It is coverage of the market.",
-            "The expected result is a stronger shortlist, less reliance on chance and a faster route from role launch to interview-ready candidates.",
+            "Fully Managed Recruitment is the right intervention because the business needs end-to-end ownership, not another partial fix. Bradford & Marsh takes control from role brief to offer so the process is run to one standard all the way through.",
+            "A narrower service would leave too much of the current inconsistency inside the business. The evidence points to a system that needs operating discipline across every major stage, not support at only one point in the flow.",
         ]
-        escalation = "If shortlist quality still remains uneven after this intervention, the next step would be adding front-end screening control."
+        escalation = "If the process deteriorates further or leadership needs immediate stabilisation across live vacancies, the next level would be an Emergency Recruitment Audit + Managed Process."
     else:
-        service_key = "Advertising"
+        service_key = "Emergency Recruitment Audit + Managed Process"
         summary = _clean_text(
-            f"The audit points to a top-of-funnel problem more than a wider process failure. {weakest_titles[0]} and {weakest_titles[1].lower()} are weaker than the rest of the model, while downstream control is comparatively more settled.",
+            f"The audit points to a critical operating failure rather than a contained hiring issue. {weakest_titles[0]} and {weakest_titles[1].lower()} are breaking down at the same time, and the business does not have enough internal control to correct the problem safely without direct intervention.",
             max_sentences=3,
             max_words=68,
         )
         cause_effect = _clean_text(
-            "When roles are not positioned properly in market, the process starts with weak or inconsistent applicant flow. That limits shortlist quality before screening and interview controls have a proper chance to work.",
-            max_sentences=3,
-            max_words=60,
+            "This level of weakness is now affecting the whole hiring system. Delays, weak filtering and fragmented decisions are compounding, which means each vacancy creates more pressure on the next one and the business is likely absorbing repeated commercial loss as roles stay unfilled or are refilled.",
+            max_sentences=4,
+            max_words=78,
         )
         justification = [
-            "Advertising is the right level of intervention because the business needs stronger market positioning and better applicant input rather than heavier process support. The main gap sits in how roles are presented and where they are placed.",
-            "A broader intervention would add cost before the core issue is fixed. There is not enough evidence here to justify taking over screening or the full recruitment cycle.",
-            "The expected result is a stronger top of funnel, more relevant inbound applicants and a better starting point for the existing internal process.",
+            "Emergency Recruitment Audit + Managed Process is the right response because immediate intervention is required before any standard engagement begins. Bradford & Marsh should review the failure points directly, reset the operating model and then manage the process closely while stability is restored.",
+            "At this level, quoting a standard service price is the wrong conversation. The priority is to get leadership into a direct discussion and agree what must be stabilised first.",
         ]
-        escalation = "If applicant flow improves but shortlist quality does not, the next step would be adding sourcing support."
+        escalation = "If the emergency intervention confirms that the process can be stabilised under one controlled delivery model, the next level would be Fully Managed Recruitment on a retained basis."
 
     service = SERVICE_RECOMMENDATIONS[service_key]
-    weakest_areas = ", ".join(low_titles[:3]).lower() if low_titles else "the weakest parts of the hiring process"
     return {
         "summary": summary,
         "cause_effect": cause_effect,
@@ -2511,31 +2673,37 @@ def _build_final_verdict_paragraphs(report: dict) -> list[str]:
     recommendation = report.get("recommended_intervention", {})
     if not sections:
         return [
-            "The recruitment operating model can support current hiring activity, but it is not yet controlled closely enough to give leadership a dependable result.",
-            "The main risk is uneven execution across the hiring process, which is likely creating delay, wasted effort and weaker decision quality.",
-            "The clearest route to improvement is the level of support set out in this report. If useful, Bradford & Marsh can walk through the findings and show how that intervention would work in practice.",
+            "The recruitment operating model is functional but inconsistent at 0/120.",
+            "The single most important change is to put one controlled operating standard around the weakest part of the hiring process.",
+            "If that does not happen, the business will keep absorbing avoidable delay and management effort each time a role is opened.",
+            "The recommended intervention set out above is the fastest route to stabilising results, and Bradford & Marsh can talk you through how that would work in practice.",
         ]
 
-    strongest = max(sections, key=lambda section: section["score"])
     weakest = min(sections, key=lambda section: section["score"])
     total_score = sum(section["score"] for section in sections)
     rating = _rating_for_score(total_score).lower()
     support_level = recommendation.get("support_level", "the recommended level of support")
+    weakest_title = weakest["title"].lower()
     return [
         _clean_text(
-            f"The recruitment operating model is {rating} at {total_score}/120. {strongest['title']} is providing the strongest foundation, but that is being diluted by weaker control in {weakest['title'].lower()}.",
-            max_sentences=2,
-            max_words=42,
+            f"The recruitment operating model is {rating} at {total_score}/120.",
+            max_sentences=1,
+            max_words=16,
         ),
         _clean_text(
-            f"The main business risk is weak control in {weakest['title'].lower()}. That is likely slowing hiring decisions, increasing avoidable process waste and making hiring outcomes less reliable than they should be.",
-            max_sentences=2,
-            max_words=40,
+            f"The single most important change is to bring tighter control to {weakest_title}.",
+            max_sentences=1,
+            max_words=18,
         ),
         _clean_text(
-            f"The fastest route to improvement is the {support_level.lower()} intervention set out above. If helpful, Bradford & Marsh can talk through the findings directly and show what that support would look like inside the business.",
-            max_sentences=2,
-            max_words=42,
+            f"If that is not addressed, the business will keep paying through slower hiring, avoidable process waste and weaker conversion at a critical point in the process.",
+            max_sentences=1,
+            max_words=22,
+        ),
+        _clean_text(
+            f"The clearest route forward is the {support_level.lower()} intervention set out above, and Bradford & Marsh can walk through how that support would work in practice.",
+            max_sentences=1,
+            max_words=24,
         ),
     ]
 
@@ -2730,7 +2898,7 @@ def _fallback_actions(sections: list[dict], key: str) -> list[str]:
 def _build_top_strengths(sections: list[dict]) -> list[str]:
     strengths = []
     for section in sorted(sections, key=lambda item: item["score"], reverse=True):
-        if section["score"] < 7:
+        if section["score"] < 6:
             continue
         strengths.append(
             _clean_text(
@@ -2741,20 +2909,13 @@ def _build_top_strengths(sections: list[dict]) -> list[str]:
         )
         if len(strengths) >= 5:
             break
-    return strengths or [
-        _clean_text(
-            f"{section['title']} is stronger than most other areas at {section['score']}/10.",
-            max_sentences=1,
-            max_words=16,
-        )
-        for section in sorted(sections, key=lambda item: item["score"], reverse=True)[:3]
-    ]
+    return strengths
 
 
 def _build_top_problems(sections: list[dict], benchmark_summary: dict) -> list[str]:
     problems = []
     for section in sorted(sections, key=lambda item: item["score"]):
-        if section["score"] > 6 and len(problems) >= 3:
+        if section["score"] > 5:
             continue
         problems.append(
             _clean_text(
@@ -2763,13 +2924,8 @@ def _build_top_problems(sections: list[dict], benchmark_summary: dict) -> list[s
                 max_words=16,
             )
         )
-        if len(problems) >= 4:
+        if len(problems) >= 5:
             break
-    for item in benchmark_summary.get("comparisons", []):
-        if item["status"] == "In line":
-            continue
-        problems.append(_clean_text(f"{item['label']} is {item['comment'].lower()}.", max_sentences=1, max_words=16))
-        break
     unique = []
     seen = set()
     for item in problems:
