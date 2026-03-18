@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+import base64
 import html
-import json
 import os
-import subprocess
 import traceback
 from datetime import datetime
 from pathlib import Path
 
 from flask import Flask, request, send_file
+import httpx
 from openai import OpenAI
 
 from recruitment_audit import (
@@ -30,8 +30,6 @@ from recruitment_audit import (
 )
 
 app = Flask(__name__)
-BASE_DIR = Path(__file__).resolve().parent
-MAILER_SCRIPT = BASE_DIR / "send_audit_notification.mjs"
 NOTIFICATION_RECIPIENTS = [
     "max@bradfordandmarsh.co.uk",
     "will@bradfordandmarsh.co.uk",
@@ -114,60 +112,87 @@ def _notification_attachment_name(company_name: str, completed_at: datetime) -> 
 
 
 def send_audit_notification(data: dict, report: dict, pdf_path: Path) -> None:
-    if not MAILER_SCRIPT.exists():
-        raise FileNotFoundError(f"Notification script not found at {MAILER_SCRIPT}")
-
     weakest_index = min(range(len(SECTION_ORDER)), key=lambda index: data["section_scores"][index])
     weakest_title = SECTION_ORDER[weakest_index]
     weakest_score = data["section_scores"][weakest_index]
     rating_band = _rating_for_score(data["total_score"])
     recommendation = report.get("recommended_intervention", {})
     completed_at = datetime.now()
+    tenant_id = os.environ.get("TENANT_ID", "").strip()
+    client_id = os.environ.get("CLIENT_ID", "").strip()
+    client_secret = os.environ.get("CLIENT_SECRET", "").strip()
+    sending_from = os.environ.get("SENDING_FROM", "").strip()
 
-    payload = {
-        "smtp": {
-            "host": os.environ.get("AUDIT_NOTIFICATION_SMTP_HOST", "smtp.office365.com"),
-            "port": int(os.environ.get("AUDIT_NOTIFICATION_SMTP_PORT", "587")),
-            "secure": False,
-            "user": os.environ.get("AUDIT_NOTIFICATION_SMTP_USER", "audit@bradfordandmarsh.co.uk"),
-            "pass": os.environ.get("AUDIT_NOTIFICATION_SMTP_PASS", ""),
-        },
-        "from": os.environ.get("AUDIT_NOTIFICATION_FROM", "audit@bradfordandmarsh.co.uk"),
-        "to": NOTIFICATION_RECIPIENTS,
-        "subject": f"New Audit Completed — {data['company_name']} — {completed_at.strftime('%d %B %Y')}",
-        "text": "\n".join(
-            [
-                "New Recruitment Audit Completed",
-                "--------------------------------",
-                f"Company:        {data['company_name']}",
-                f"Sector:         {data['sector']}",
-                f"Location:       {data['location']}",
-                "",
-                f"Contact:        {data['contact_name']}",
-                f"Title:          {data['job_title']}",
-                f"Email:          {data['email_address']}",
-                f"Phone:          {data['phone_number']}",
-                "",
-                f"Overall score:  {data['total_score']}/120 — {rating_band}",
-                f"Weakest area:   {weakest_title} ({weakest_score}/10)",
-                f"Recommended:    {recommendation.get('support_level', 'Not set')} — {recommendation.get('pricing', 'Pricing not set')}",
-                "",
-                f"Completed:      {completed_at.strftime('%d %B %Y %H:%M')}",
-                "--------------------------------",
-            ]
-        ),
-        "attachmentPath": str(pdf_path),
-        "attachmentName": _notification_attachment_name(data["company_name"], completed_at),
-    }
+    missing = [name for name, value in {
+        "TENANT_ID": tenant_id,
+        "CLIENT_ID": client_id,
+        "CLIENT_SECRET": client_secret,
+        "SENDING_FROM": sending_from,
+    }.items() if not value]
+    if missing:
+        raise ValueError(f"Missing Microsoft Graph email environment variables: {', '.join(missing)}")
 
-    subprocess.run(
-        ["node", str(MAILER_SCRIPT)],
-        input=json.dumps(payload),
-        text=True,
-        cwd=str(BASE_DIR),
-        check=True,
-        capture_output=True,
+    token_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
+    attachment_bytes = base64.b64encode(pdf_path.read_bytes()).decode("ascii")
+    text_body = "\n".join(
+        [
+            "New Recruitment Audit Completed",
+            "--------------------------------",
+            f"Company:        {data['company_name']}",
+            f"Sector:         {data['sector']}",
+            f"Location:       {data['location']}",
+            "",
+            f"Contact:        {data['contact_name']}",
+            f"Title:          {data['job_title']}",
+            f"Email:          {data['email_address']}",
+            f"Phone:          {data['phone_number']}",
+            "",
+            f"Overall score:  {data['total_score']}/120 — {rating_band}",
+            f"Weakest area:   {weakest_title} ({weakest_score}/10)",
+            f"Recommended:    {recommendation.get('support_level', 'Not set')} — {recommendation.get('pricing', 'Pricing not set')}",
+            "",
+            f"Completed:      {completed_at.strftime('%d %B %Y %H:%M')}",
+            "--------------------------------",
+        ]
     )
+
+    with httpx.Client(timeout=30.0) as client:
+        token_response = client.post(
+            token_url,
+            data={
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "scope": "https://graph.microsoft.com/.default",
+                "grant_type": "client_credentials",
+            },
+        )
+        token_response.raise_for_status()
+        access_token = token_response.json()["access_token"]
+
+        send_response = client.post(
+            f"https://graph.microsoft.com/v1.0/users/{sending_from}/sendMail",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={
+                "message": {
+                    "subject": f"New Audit Completed — {data['company_name']} — {completed_at.strftime('%d %B %Y')}",
+                    "body": {
+                        "contentType": "Text",
+                        "content": text_body,
+                    },
+                    "toRecipients": [{"emailAddress": {"address": address}} for address in NOTIFICATION_RECIPIENTS],
+                    "attachments": [
+                        {
+                            "@odata.type": "#microsoft.graph.fileAttachment",
+                            "name": _notification_attachment_name(data["company_name"], completed_at),
+                            "contentType": "application/pdf",
+                            "contentBytes": attachment_bytes,
+                        }
+                    ],
+                },
+                "saveToSentItems": True,
+            },
+        )
+        send_response.raise_for_status()
 
 
 

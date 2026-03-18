@@ -2,5 +2,5 @@ services:
   - type: web
     name: recruitment-audit
     runtime: python
-    buildCommand: pip install -r requirements.txt && npm install --omit=dev
+    buildCommand: pip install -r requirements.txt
     startCommand: gunicorn wsgi:application --bind 0.0.0.0:$PORT --workers 1 --timeout 180
