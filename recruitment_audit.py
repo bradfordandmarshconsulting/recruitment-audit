@@ -728,24 +728,15 @@ def create_section_score_chart(company_name: str, section_scores: list[int], ben
     ax.grid(axis="x", alpha=0.10, linestyle="--", color="#D7DCE4")
     ax.tick_params(axis="y", labelsize=9)
     ax.set_xlabel("Score out of 10", color="#1F2A40", fontsize=9.2, labelpad=6)
-    ax.set_title("Section scores", fontsize=12, fontweight="bold", color="#1F2A40", pad=10)
     for pos, score in enumerate(section_scores):
         ax.text(min(score + 0.16, 9.78), pos, f"{score}/10", va="center", ha="left", fontsize=8.8, color="#1F2A40", fontweight="bold")
     if sector_average is not None:
         ax.axvline(sector_average, color="#1A2E4A", linewidth=1.6, linestyle="--")
-        ax.text(
-            sector_average,
-            1.02,
-            "Sector average",
-            transform=ax.get_xaxis_transform(),
-            ha="center",
-            va="bottom",
-            fontsize=8.6,
-            color="#1A2E4A",
-            fontweight="bold",
-        )
     fig.text(0.11, 0.95, company_name, fontsize=8.8, color="#5F6876")
-    fig.tight_layout(rect=(0, 0.01, 1, 0.93))
+    fig.text(0.11, 0.915, "Section Scores", fontsize=12, fontweight="bold", color="#1F2A40", ha="left")
+    if sector_average is not None:
+        fig.text(0.97, 0.915, "Sector average", fontsize=9, color="#999999", ha="right")
+    fig.tight_layout(rect=(0, 0.01, 1, 0.90))
     fig.subplots_adjust(left=0.37, right=0.97)
     fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
     plt.close(fig)
@@ -773,7 +764,7 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         plt.close(fig)
         return path
 
-    fig, axes = plt.subplots(len(items), 1, figsize=(6.8, 1.7 + len(items) * 1.62))
+    fig, axes = plt.subplots(len(items), 1, figsize=(6.8, 2.2 + len(items) * 2.05))
     if len(items) == 1:
         axes = [axes]
 
@@ -785,11 +776,11 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         visual_delta, delta_colour, direction_text = _benchmark_visual_delta(label, client_value, benchmark_value, higher_is_better, tolerance)
         delta_span = max(abs(visual_delta), tolerance * 1.6, 1.0)
 
-        ax.text(0.00, 0.92, label, transform=ax.transAxes, fontsize=10.4, fontweight="bold", color="#1F2A40")
-        ax.text(0.00, 0.72, f"Client: {_format_metric_value(client_value, suffix)}", transform=ax.transAxes, fontsize=9.2, color="#4B5563")
-        ax.text(0.00, 0.56, f"Benchmark: {_format_metric_value(benchmark_value, suffix)}", transform=ax.transAxes, fontsize=9.2, color="#4B5563")
+        ax.text(0.00, 0.95, label, transform=ax.transAxes, fontsize=10.4, fontweight="bold", color="#1F2A40")
+        ax.text(0.00, 0.78, f"Client: {_format_metric_value(client_value, suffix)}", transform=ax.transAxes, fontsize=9.3, color="#4B5563")
+        ax.text(0.00, 0.64, f"Benchmark: {_format_metric_value(benchmark_value, suffix)}", transform=ax.transAxes, fontsize=9.3, color="#4B5563")
 
-        inset = ax.inset_axes([0.00, 0.22, 0.64, 0.22])
+        inset = ax.inset_axes([0.00, 0.28, 0.68, 0.18])
         inset.set_xlim(-delta_span * 1.15, delta_span * 1.15)
         inset.set_ylim(-0.5, 0.5)
         inset.axvline(0, color="#CBD5E1", linewidth=1.0)
@@ -800,14 +791,14 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         for spine in inset.spines.values():
             spine.set_visible(False)
         left_label, right_label = _benchmark_axis_labels(label, higher_is_better)
-        inset.text(0.00, -0.72, left_label, transform=inset.transAxes, fontsize=10.0, color="#666666")
-        inset.text(0.78, -0.72, right_label, transform=inset.transAxes, fontsize=10.0, color="#666666")
-        ax.text(0.00, 0.04, delta_text, transform=ax.transAxes, fontsize=13.2, color=delta_colour, fontweight="bold", ha="left")
-        ax.text(0.72, 0.22, direction_text, transform=ax.transAxes, fontsize=10.0, color="#666666", ha="left")
+        inset.text(0.00, -0.95, left_label, transform=inset.transAxes, fontsize=10.0, color="#666666")
+        inset.text(0.74, -0.95, right_label, transform=inset.transAxes, fontsize=10.0, color="#666666")
+        ax.text(0.00, 0.08, delta_text, transform=ax.transAxes, fontsize=13.2, color=delta_colour, fontweight="bold", ha="left")
+        ax.text(0.74, 0.30, direction_text, transform=ax.transAxes, fontsize=10.0, color="#666666", ha="left")
 
     fig.suptitle("Benchmark comparison", fontsize=12, fontweight="bold", color="#1F2A40", y=0.985)
     fig.text(0.10, 0.948, company_name, fontsize=8.8, color="#5F6876")
-    fig.tight_layout(rect=(0, 0.01, 1, 0.93), h_pad=1.45)
+    fig.tight_layout(rect=(0, 0.01, 1, 0.93), h_pad=2.0)
     fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     return path
@@ -2341,6 +2332,33 @@ def _benchmark_position_text(title: str, data: dict, benchmark_summary: dict) ->
     return f"{context['metric_label']} is the clearest signal in this section: {support}."
 
 
+def _build_consequence_opening(title: str, data: dict, benchmark_summary: dict) -> str:
+    metrics = data["metrics"]
+    if title == "Recruitment strategy and workforce planning":
+        return "Open vacancies are staying live longer than they should because planning decisions are not landing early enough."
+    if title == "Performance metrics and funnel conversion":
+        return "The business is slower to correct recruitment drift when the funnel is not measured tightly enough."
+    if title == "Employer brand and market perception":
+        return "Candidate attention is not turning into the right level of shortlist quality at the front of the process."
+    if title == "Job adverts and job specifications":
+        return "Role briefs are creating unnecessary mismatch before screening even starts."
+    if title == "Sourcing and advertising process":
+        return "The current sourcing mix is not moving enough interview-ready candidates into the process."
+    if title == "Application handling and screening":
+        return "Strong candidates are carrying too much waiting risk because screening discipline is uneven."
+    if title == "Interview process quality":
+        return f"Interview feedback is taking {_metric_display(metrics.get('interview_feedback_time_days'), 'days')}, which is keeping decisions later than they need to be."
+    if title == "Decision making and offer process":
+        return f"Offer acceptance is running at {_metric_display(metrics.get('offer_acceptance'), '%')}, so any approval delay is expensive at the final stage."
+    if title == "Onboarding and early retention":
+        return f"First-year attrition at {_metric_display(metrics.get('first_year_attrition'), '%')} is reducing the return on each completed hire."
+    if title == "Staff turnover risks":
+        return f"Repeated backfill pressure is building because first-year attrition is at {_metric_display(metrics.get('first_year_attrition'), '%')}."
+    if title == "Candidate experience":
+        return "Candidate goodwill is being put at risk by inconsistent communication through the live process."
+    return "Recruitment decisions are taking longer than they should because ownership is not converting quickly enough into action."
+
+
 def _build_section_headline(title: str, score: int, data: dict, benchmark_summary: dict) -> str:
     opening_mode = _section_opening_mode(title)
     support = _section_supporting_evidence(title, data, benchmark_summary)
@@ -2350,7 +2368,7 @@ def _build_section_headline(title: str, score: int, data: dict, benchmark_summar
     if opening_mode == "metric":
         text = f"{comparison_line} {band_lead} The root cause is {root_cause}."
     elif opening_mode == "consequence":
-        text = f"{_build_section_commercial_impact(title, score, data, benchmark_summary)} {band_lead} The root cause sits in {root_cause}."
+        text = f"{_build_consequence_opening(title, data, benchmark_summary)} {band_lead} The root cause sits in {root_cause}."
     elif opening_mode == "diagnosis":
         if score >= 8:
             diagnosis_lead = "The defining feature in this area is consistency rather than volatility."
