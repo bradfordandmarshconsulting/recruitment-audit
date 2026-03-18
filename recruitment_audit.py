@@ -141,6 +141,10 @@ Rules:
 - No asterisks, hashes or raw bullet symbols.
 - No consultant filler.
 - Do not use these words or phrases: robust, hampered, material, leverage, seamless, best-in-class, best in class, laid the groundwork, it is important to note, overall this suggests, in today's market.
+- Complete the final verdict in full before any other section.
+- Complete the recommended intervention section in full before any other long-form section.
+- Never truncate the final verdict or recommended intervention mid-sentence.
+- If output length is tight, shorten the detailed findings sections first.
 - Keep the executive overview below 150 words.
 - Make strengths, problems and actions specific.
 - Every section diagnosis must identify the stage of the hiring process, the supporting metric or observable behaviour, and the root cause.
@@ -598,6 +602,9 @@ Output requirements
 - Be commercially sharp and direct.
 - Do not invent facts.
 - Keep the final verdict concise.
+- Complete the final verdict in full before any other section.
+- Never truncate the final verdict or the recommended intervention mid-sentence.
+- If there is any length constraint, shorten the detailed findings before shortening the closing sections.
 - In each section diagnosis, state the exact hiring stage, the supporting metric or observable behaviour, and the root cause.
 - In each commercial impact paragraph, refer to time, cost or revenue exposure.
 - In each action, name the owner, timeframe and measurable outcome.
@@ -607,13 +614,12 @@ Output requirements
 def create_overall_score_chart(company_name: str, total_score: int) -> Path:
     path = _output_dir() / f"{_slug(company_name)}_overall_score.png"
     score = max(0, min(total_score, 120))
-    percentage = round((score / 120) * 100)
     rating = _rating_for_score(score)
     fig, ax = plt.subplots(figsize=(6.4, 1.85))
     _apply_chart_style(fig, ax)
-    ax.barh([0], [40], left=0, color="#FEE2E2", height=0.38)
-    ax.barh([0], [35], left=40, color="#FEF3C7", height=0.38)
-    ax.barh([0], [45], left=75, color="#DCFCE7", height=0.38)
+    ax.barh([0], [40], left=0, color="#D94F3D", height=0.38)
+    ax.barh([0], [35], left=40, color="#E8A838", height=0.38)
+    ax.barh([0], [45], left=75, color="#3A7D44", height=0.38)
     ax.set_xlim(0, 120)
     ax.set_ylim(-0.55, 0.55)
     ax.set_yticks([])
@@ -623,7 +629,7 @@ def create_overall_score_chart(company_name: str, total_score: int) -> Path:
     fig.text(0.08, 0.92, company_name, fontsize=8.8, color="#5F6876")
     fig.text(0.08, 0.80, "Overall score", fontsize=12, color="#1F2A40", fontweight="bold")
     fig.text(0.92, 0.82, f"Overall rating: {score}/120 — {rating}", fontsize=9.1, color="#1F2A40", fontweight="bold", ha="right")
-    ax.axvline(score, ymin=0.18, ymax=0.84, color="#1F2A40", linewidth=2.0)
+    ax.axvline(score, ymin=0.16, ymax=0.84, color="#1A2E4A", linewidth=3.0)
     ax.annotate(
         f"{score}/120",
         xy=(score, 0),
@@ -636,6 +642,9 @@ def create_overall_score_chart(company_name: str, total_score: int) -> Path:
         fontweight="bold",
         bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="#CBD5E1", lw=0.8),
     )
+    ax.text(20, -0.44, "Weak", ha="center", va="top", fontsize=8, color="#666666")
+    ax.text(57.5, -0.44, "Functional", ha="center", va="top", fontsize=8, color="#666666")
+    ax.text(97.5, -0.44, "Strong", ha="center", va="top", fontsize=8, color="#666666")
     for spine in ax.spines.values():
         spine.set_visible(False)
     fig.subplots_adjust(left=0.08, right=0.97, top=0.60, bottom=0.24)
@@ -644,26 +653,43 @@ def create_overall_score_chart(company_name: str, total_score: int) -> Path:
     return path
 
 
-def create_section_score_chart(company_name: str, section_scores: list[int]) -> Path:
+def create_section_score_chart(company_name: str, section_scores: list[int], benchmark: pd.DataFrame, sector: str) -> Path:
     path = _output_dir() / f"{_slug(company_name)}_section_scores.png"
-    labels = [_short_label(title) for title in SECTION_ORDER]
+    labels = SECTION_ORDER
     positions = list(range(len(labels)))
     colours = [_score_hex(score) for score in section_scores]
+    sector_average = _sector_average_section_score(benchmark, sector)
 
-    fig, ax = plt.subplots(figsize=(6.5, 5.0))
+    fig, ax = plt.subplots(figsize=(7.2, 5.4))
     _apply_chart_style(fig, ax)
-    ax.barh(positions, section_scores, color=colours, edgecolor="none", height=0.52)
+    ax.barh(positions, section_scores, color=colours, edgecolor="none", height=0.64)
     ax.set_xlim(0, 10)
     ax.set_xticks(range(0, 11, 2))
+    ax.tick_params(axis="x", labelsize=9)
     ax.set_yticks(positions, labels)
     ax.invert_yaxis()
     ax.grid(axis="x", alpha=0.10, linestyle="--", color="#D7DCE4")
-    ax.set_xlabel("Score out of 10", color="#1F2A40", fontsize=8.8, labelpad=6)
+    ax.tick_params(axis="y", labelsize=9)
+    ax.set_xlabel("Score out of 10", color="#1F2A40", fontsize=9.2, labelpad=6)
     ax.set_title("Section scores", fontsize=12, fontweight="bold", color="#1F2A40", pad=10)
     for pos, score in enumerate(section_scores):
-        ax.text(min(score + 0.14, 9.72), pos, f"{score}/10", va="center", fontsize=8.1, color="#1F2A40", fontweight="bold")
+        ax.text(min(score + 0.16, 9.78), pos, f"{score}/10", va="center", ha="left", fontsize=8.8, color="#1F2A40", fontweight="bold")
+    if sector_average is not None:
+        ax.axvline(sector_average, color="#1A2E4A", linewidth=1.6, linestyle="--")
+        ax.text(
+            sector_average,
+            1.02,
+            "Sector average",
+            transform=ax.get_xaxis_transform(),
+            ha="center",
+            va="bottom",
+            fontsize=8.6,
+            color="#1A2E4A",
+            fontweight="bold",
+        )
     fig.text(0.11, 0.95, company_name, fontsize=8.8, color="#5F6876")
     fig.tight_layout(rect=(0, 0.01, 1, 0.93))
+    fig.subplots_adjust(left=0.37, right=0.97)
     fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     return path
@@ -690,7 +716,7 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         plt.close(fig)
         return path
 
-    fig, axes = plt.subplots(len(items), 1, figsize=(6.8, 1.45 + len(items) * 1.32))
+    fig, axes = plt.subplots(len(items), 1, figsize=(6.8, 1.7 + len(items) * 1.62))
     if len(items) == 1:
         axes = [axes]
 
@@ -702,35 +728,29 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         visual_delta, delta_colour, direction_text = _benchmark_visual_delta(label, client_value, benchmark_value, higher_is_better, tolerance)
         delta_span = max(abs(visual_delta), tolerance * 1.6, 1.0)
 
-        ax.text(0.00, 0.78, label, transform=ax.transAxes, fontsize=10.2, fontweight="bold", color="#1F2A40")
-        ax.text(
-            0.00,
-            0.34,
-            f"Client {_format_metric_value(client_value, suffix)}    Benchmark {_format_metric_value(benchmark_value, suffix)}",
-            transform=ax.transAxes,
-            fontsize=9.1,
-            color="#4B5563",
-        )
-        ax.text(0.72, 0.63, delta_text, transform=ax.transAxes, fontsize=11.4, color=delta_colour, fontweight="bold", ha="left")
-        ax.text(0.72, 0.29, direction_text, transform=ax.transAxes, fontsize=9.0, color="#6B7280", ha="left")
+        ax.text(0.00, 0.92, label, transform=ax.transAxes, fontsize=10.4, fontweight="bold", color="#1F2A40")
+        ax.text(0.00, 0.72, f"Client: {_format_metric_value(client_value, suffix)}", transform=ax.transAxes, fontsize=9.2, color="#4B5563")
+        ax.text(0.00, 0.56, f"Benchmark: {_format_metric_value(benchmark_value, suffix)}", transform=ax.transAxes, fontsize=9.2, color="#4B5563")
 
-        inset = ax.inset_axes([0.42, 0.20, 0.25, 0.56])
+        inset = ax.inset_axes([0.00, 0.22, 0.64, 0.22])
         inset.set_xlim(-delta_span * 1.15, delta_span * 1.15)
         inset.set_ylim(-0.5, 0.5)
         inset.axvline(0, color="#CBD5E1", linewidth=1.0)
-        inset.barh([0], [visual_delta], left=0, color=delta_colour, height=0.34)
+        inset.barh([0], [visual_delta], left=0, color=delta_colour, height=0.54)
         inset.set_xticks([])
         inset.set_yticks([])
         inset.set_facecolor("white")
         for spine in inset.spines.values():
             spine.set_visible(False)
         left_label, right_label = _benchmark_axis_labels(label, higher_is_better)
-        inset.text(0.00, -0.58, left_label, transform=inset.transAxes, fontsize=9.0, color="#94A3B8")
-        inset.text(0.66, -0.58, right_label, transform=inset.transAxes, fontsize=9.0, color="#94A3B8")
+        inset.text(0.00, -0.72, left_label, transform=inset.transAxes, fontsize=10.0, color="#666666")
+        inset.text(0.78, -0.72, right_label, transform=inset.transAxes, fontsize=10.0, color="#666666")
+        ax.text(0.00, 0.04, delta_text, transform=ax.transAxes, fontsize=13.2, color=delta_colour, fontweight="bold", ha="left")
+        ax.text(0.72, 0.22, direction_text, transform=ax.transAxes, fontsize=10.0, color="#666666", ha="left")
 
     fig.suptitle("Benchmark comparison", fontsize=12, fontweight="bold", color="#1F2A40", y=0.985)
     fig.text(0.10, 0.948, company_name, fontsize=8.8, color="#5F6876")
-    fig.tight_layout(rect=(0, 0.01, 1, 0.93), h_pad=0.95)
+    fig.tight_layout(rect=(0, 0.01, 1, 0.93), h_pad=1.45)
     fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     return path
@@ -766,6 +786,32 @@ def _benchmark_axis_labels(label: str, higher_is_better: bool) -> tuple[str, str
     if higher_is_better:
         return "behind", "ahead"
     return "slower", "faster"
+
+
+def _sector_average_section_score(benchmark: pd.DataFrame, sector: str) -> float | None:
+    try:
+        industry_rows = benchmark[benchmark["benchmark_type"] == "industry"].copy()
+    except Exception:
+        return None
+    if industry_rows.empty:
+        return None
+    sector_row = _select_benchmark_by_type(industry_rows, "industry", sector)
+    if sector_row.empty:
+        return None
+    baseline = _average_benchmark(industry_rows, "industry")
+    if baseline.empty:
+        return None
+
+    values = [
+        _metric_score(_safe_float(sector_row.get("time_to_hire_days")), _safe_float(baseline.get("time_to_hire_days")), higher_is_better=False),
+        _metric_score(_safe_float(sector_row.get("applications_per_role")), _safe_float(baseline.get("applications_per_role")), higher_is_better=True),
+        _metric_score(_safe_float(sector_row.get("offer_acceptance_rate")), _safe_float(baseline.get("offer_acceptance_rate")), higher_is_better=True),
+        _metric_score(_safe_float(sector_row.get("first_year_attrition_rate")), _safe_float(baseline.get("first_year_attrition_rate")), higher_is_better=False),
+    ]
+    values = [value for value in values if value is not None]
+    if not values:
+        return None
+    return round(sum(values) / len(values), 1)
 
 
 def save_pdf_report(
@@ -881,11 +927,11 @@ def _clean_report(report: dict, data: dict, benchmark_summary: dict) -> dict:
                 "title": title,
                 "score": score,
                 "headline": _build_section_headline(title, score, data, benchmark_summary),
-                "current_state": current_state,
-                "key_risks": key_risks,
-                "commercial_impact": commercial_impact,
-                "immediate_actions": immediate_actions,
-                "structural_improvements": structural_improvements,
+                "current_state": _clean_text(current_state, max_sentences=3, max_words=58),
+                "key_risks": [_clean_text(item, max_sentences=1, max_words=20) for item in key_risks[:2]],
+                "commercial_impact": _clean_text(commercial_impact, max_sentences=2, max_words=38),
+                "immediate_actions": [_clean_text(item, max_sentences=2, max_words=34) for item in immediate_actions[:2]],
+                "structural_improvements": [_clean_text(item, max_sentences=2, max_words=34) for item in structural_improvements[:2]],
             }
         )
 
@@ -1850,12 +1896,10 @@ def _section_rating(score: int) -> str:
 
 def _score_hex(score: int) -> str:
     if score >= 8:
-        return "#4ADE80"
+        return "#3A7D44"
     if score >= 6:
-        return "#F59E0B"
-    if score >= 4:
-        return "#EF4444"
-    return "#EF4444"
+        return "#E8A838"
+    return "#D94F3D"
 
 
 def _score_indicator_markup(score: int) -> str:
@@ -2225,11 +2269,15 @@ def _benchmark_position_text(title: str, data: dict, benchmark_summary: dict) ->
     context = _section_context(title)
     comparison = _find_comparison(benchmark_summary, context["metric_label"])
     if comparison:
+        if comparison["label"] == "Time to hire":
+            delta_line = f"The business is {comparison['comment'].lower()}."
+        else:
+            delta_line = f"The gap stands at {comparison['comment'].lower()}."
         return (
             f"{context['metric_label']} is running at "
             f"{_format_metric_value(comparison['client_value'], comparison['suffix'])} "
             f"against a benchmark of {_format_metric_value(comparison['benchmark_value'], comparison['suffix'])}. "
-            f"The gap shows that {comparison['comment'].lower()}."
+            f"{delta_line}"
         )
     support = _section_supporting_evidence(title, data, benchmark_summary)
     return f"{context['metric_label']} is the clearest signal in this section: {support}."
@@ -2304,12 +2352,6 @@ def _build_section_commercial_impact(title: str, score: int, data: dict, benchma
             max_sentences=2,
             max_words=39,
         )
-    if score >= 6:
-        return _clean_text(
-            f"The gap here is manageable, but it is still adding avoidable time and management effort into the hiring cycle. If left alone, it will show up as slower decisions, weaker conversion or extra screening load on future roles.",
-            max_sentences=2,
-            max_words=40,
-        )
     if title == "Recruitment strategy and workforce planning":
         return _clean_text(
             f"{_vacancy_day_exposure(data)} That extends time to productivity on open roles and keeps senior managers in repeated approval discussions instead of revenue-producing work.",
@@ -2317,48 +2359,96 @@ def _build_section_commercial_impact(title: str, score: int, data: dict, benchma
             max_words=46,
         )
     if title == "Performance metrics and funnel conversion":
+        if score >= 6:
+            return _clean_text(
+                "KPI coverage is present, but the reporting gap is still slowing correction when conversion starts to drift. That means the business can keep spending on the wrong channels or stages for longer than it should.",
+                max_sentences=2,
+                max_words=40,
+            )
         return _clean_text(
             "Without clean funnel reporting, the business loses time in the wrong stages and repeats spend on channels that are not converting. That pushes up cost per hire and delays corrective action when roles stall.",
             max_sentences=2,
             max_words=42,
         )
     if title == "Employer brand and market perception":
+        if score >= 6:
+            return _clean_text(
+                f"Applications per role are {_metric_display(metrics.get('applications_per_role'), '')}, so the commercial issue is candidate relevance rather than total market visibility. That still adds sourcing time when stronger applicants are not engaging early enough.",
+                max_sentences=2,
+                max_words=40,
+            )
         return _clean_text(
             "Weak attraction quality means more advertising effort is needed to reach the same shortlist volume. That raises sourcing cost and stretches time to hire on commercially important roles.",
             max_sentences=2,
             max_words=40,
         )
     if title == "Job adverts and job specifications":
+        if score >= 6:
+            return _clean_text(
+                f"Role briefs are usable, but inconsistent specification quality is still affecting {_metric_display(metrics.get('applications_per_role'), '')} applications per role and increasing shortlist clean-up work. That adds avoidable manager review time before interviews can be confirmed.",
+                max_sentences=2,
+                max_words=41,
+            )
         return _clean_text(
             "Poor role definition creates irrelevant applications, weak briefs and rework for hiring managers. That increases screening time and slows down the point at which a viable shortlist can be built.",
             max_sentences=2,
             max_words=41,
         )
     if title == "Sourcing and advertising process":
+        if score >= 6:
+            return _clean_text(
+                f"The sourcing mix is generating some traction, but {_metric_display(metrics.get('candidates_reaching_interview'), '')} interview-ready candidates per role still leaves the business exposed to thin shortlists on harder hires. That prolongs vacancy cover when demand increases.",
+                max_sentences=2,
+                max_words=41,
+            )
         return _clean_text(
             "When sourcing mix is chosen poorly, the business pays for activity that does not create interview-ready candidates. That adds direct channel cost and lengthens vacancy days on revenue-critical roles.",
             max_sentences=2,
             max_words=41,
         )
     if title == "Application handling and screening":
+        if score >= 6:
+            return _clean_text(
+                f"Screening is catching the main issues, but {_metric_display(metrics.get('candidates_reaching_interview'), '')} candidates per role still means too much weak volume is reaching internal review. That adds recruiter time and slows contact with the best applicants.",
+                max_sentences=2,
+                max_words=41,
+            )
         return _clean_text(
             "Slow or inconsistent screening keeps weak applicants in the funnel and delays contact with strong ones. That wastes recruiter hours and increases the risk of losing viable candidates before interview.",
             max_sentences=2,
             max_words=41,
         )
     if title == "Interview process quality":
+        if score >= 6:
+            return _clean_text(
+                f"Interview structure is workable, but {_metric_display(metrics.get('interview_feedback_time_days'), 'days')} feedback turnaround is still extending decision cycles. That increases management time in the process and gives stronger candidates more room to exit.",
+                max_sentences=2,
+                max_words=40,
+            )
         return _clean_text(
             "Each extra interview stage and delayed feedback cycle adds management time and pushes decisions back. That raises interview cost, slows time to hire and lowers the odds of securing strong candidates.",
             max_sentences=2,
             max_words=41,
         )
     if title == "Decision making and offer process":
+        if score >= 6:
+            return _clean_text(
+                f"Offer acceptance at {_metric_display(metrics.get('offer_acceptance'), '%')} shows the business is converting enough decisions, but delay in the approval path is still wasting final-stage effort. That keeps some vacancies open longer than the shortlist quality should require.",
+                max_sentences=2,
+                max_words=42,
+            )
         return _clean_text(
             f"At {_metric_display(metrics.get('offer_acceptance'), '%')} offer acceptance, the business is already losing part of the shortlist after the final decision. That means repeated interview effort, longer vacancy cover and more manager time spent on replacement offers.",
             max_sentences=2,
             max_words=44,
         )
     if title == "Onboarding and early retention":
+        if score >= 6:
+            return _clean_text(
+                f"First-year attrition at {_metric_display(metrics.get('first_year_attrition'), '%')} is not at crisis level, but it is still reducing return on hiring spend. Each early exit removes ramp-up value and creates avoidable backfill work for managers and HR.",
+                max_sentences=2,
+                max_words=42,
+            )
         if score <= 3:
             return _clean_text(
                 f"At {_metric_display(metrics.get('first_year_attrition'), '%')} first-year attrition, the business is carrying repeated replacement cost and lost ramp-up time within the first year. That creates direct rehire cost and keeps teams below the capacity they planned for.",
@@ -2371,16 +2461,34 @@ def _build_section_commercial_impact(title: str, score: int, data: dict, benchma
             max_words=41,
         )
     if title == "Staff turnover risks":
+        if score >= 6:
+            return _clean_text(
+                f"First-year attrition at {_metric_display(metrics.get('first_year_attrition'), '%')} is still generating some avoidable repeat hiring demand. That means part of the recruitment budget is being recycled into replacement activity instead of growth hiring.",
+                max_sentences=2,
+                max_words=41,
+            )
         return _clean_text(
             f"Early exits at {_metric_display(metrics.get('first_year_attrition'), '%')} are forcing the business back into the market for roles it has only recently filled. That repeats agency, advertising and management effort while delivery teams keep working short-handed.",
             max_sentences=2,
             max_words=40,
         )
     if title == "Candidate experience":
+        if score >= 6:
+            return _clean_text(
+                f"Candidate communication is broadly serviceable, but {_metric_display(metrics.get('interview_feedback_time_days'), 'days')} feedback timing still creates unnecessary drop-off risk. That weakens conversion and can force extra sourcing work later in the process.",
+                max_sentences=2,
+                max_words=41,
+            )
         return _clean_text(
             "Poor communication slows decision cycles and reduces the chance that candidates stay engaged through to offer. That weakens conversion, increases drop-off and forces more sourcing work into the process.",
             max_sentences=2,
             max_words=39,
+        )
+    if score >= 6:
+        return _clean_text(
+            f"Ownership is present, but it is not yet reducing delay across the live process. That means open roles can still sit in queue longer than necessary because accountabilities are not turning quickly enough into action.",
+            max_sentences=2,
+            max_words=40,
         )
     return _clean_text(
         "Weak ownership means decisions sit in queues, actions drift and issues are found too late. That adds time to open vacancies and increases management effort across the full recruitment cycle.",

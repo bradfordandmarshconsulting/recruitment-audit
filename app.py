@@ -1221,7 +1221,7 @@ def generate():
 
         report = generate_report_json(client, data, benchmark_summary) if client is not None else build_fallback_report(data, benchmark_summary)
 
-        section_chart = create_section_score_chart(data["company_name"], data["section_scores"])
+        section_chart = create_section_score_chart(data["company_name"], data["section_scores"], benchmark, data["sector"])
         overall_chart = create_overall_score_chart(data["company_name"], data["total_score"])
         benchmark_chart = create_benchmark_chart(data["company_name"], data["metrics"], benchmark, data["sector"], data["key_roles_hired"])
 
