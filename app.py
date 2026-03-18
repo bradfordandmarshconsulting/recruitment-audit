@@ -522,7 +522,7 @@ def render_page(title: str, body: str) -> str:
                 <div class="completion-state" id="completionState">
                     <div class="completion-kicker">Report ready</div>
                     <h3>Your Recruitment Audit is Ready</h3>
-                    <p>Your report has been generated and is ready to download</p>
+                    <p>Your report is ready. Download it below to complete the audit.</p>
                     <div class="completion-list">
                         <div class="completion-item" id="completionFilename">File prepared</div>
                     </div>
@@ -549,7 +549,6 @@ def render_page(title: str, body: str) -> str:
                 const progressStepLabel = document.getElementById("progressStepLabel");
                 const stepFooterCopy = document.getElementById("stepFooterCopy");
                 const downloadComplete = document.getElementById("downloadComplete");
-                const startNewAudit = document.getElementById("startNewAudit");
                 let isSubmitting = false;
                 let currentStageIndex = 0;
                 let currentStageStepIndex = 0;
@@ -725,6 +724,37 @@ def render_page(title: str, body: str) -> str:
                     if (completionFilename) completionFilename.textContent = "Prepared file: " + filename;
                 }}
 
+                function resetAuditJourney() {{
+                    if (latestDownloadUrl) {{
+                        window.URL.revokeObjectURL(latestDownloadUrl);
+                        latestDownloadUrl = "";
+                    }}
+                    window.location.href = window.location.pathname;
+                }}
+
+                function showThankYouScreen() {{
+                    const completionState = document.getElementById("completionState");
+                    if (!completionState) return;
+                    completionState.innerHTML = `
+                        <div class="completion-kicker">Thank you</div>
+                        <h3>Your Recruitment Audit Has Been Delivered</h3>
+                        <p>Thank you for completing the Bradford &amp; Marsh Recruitment Operating Model Audit. Your report has now been downloaded successfully.</p>
+                        <div class="completion-list">
+                            <div class="completion-item">Your PDF report has been generated and downloaded</div>
+                            <div class="completion-item">A copy has been prepared for internal review</div>
+                            <div class="completion-item">You can start a new audit at any time</div>
+                        </div>
+                        <div class="completion-actions">
+                            <button class="button button-primary" type="button" id="thankYouStartNewAudit">Start New Audit</button>
+                            <a class="button button-secondary" href="https://www.bradfordandmarsh.co.uk/" target="_blank" rel="noopener noreferrer">Visit Bradford &amp; Marsh</a>
+                        </div>
+                    `;
+                    const thankYouStartNewAudit = document.getElementById("thankYouStartNewAudit");
+                    if (thankYouStartNewAudit) {{
+                        thankYouStartNewAudit.addEventListener("click", resetAuditJourney);
+                    }}
+                }}
+
                 function resetOverlayState() {{
                     const overlay = document.getElementById("loadingOverlay");
                     const loadingState = document.getElementById("loadingState");
@@ -742,6 +772,7 @@ def render_page(title: str, body: str) -> str:
                     document.body.appendChild(link);
                     link.click();
                     link.remove();
+                    window.setTimeout(showThankYouScreen, 500);
                 }}
 
                 async function downloadReport(event) {{
@@ -845,14 +876,9 @@ def render_page(title: str, body: str) -> str:
                 if (downloadComplete) {{
                     downloadComplete.addEventListener("click", triggerReportDownload);
                 }}
+                const startNewAudit = document.getElementById("startNewAudit");
                 if (startNewAudit) {{
-                    startNewAudit.addEventListener("click", () => {{
-                        if (latestDownloadUrl) {{
-                            window.URL.revokeObjectURL(latestDownloadUrl);
-                            latestDownloadUrl = "";
-                        }}
-                        window.location.href = window.location.pathname;
-                    }});
+                    startNewAudit.addEventListener("click", resetAuditJourney);
                 }}
                 showStep(0, 0);
             }})();
