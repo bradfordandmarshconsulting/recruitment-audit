@@ -510,32 +510,49 @@ def render_page(title: str, body: str) -> str:
                 border: 1px solid #e5e7eb;
                 border-radius: 6px;
                 flex-wrap: nowrap;
+                flex: 0 0 116px;
             }}
             .discipline-grid {{
                 display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 10px;
+                grid-template-columns: 1fr;
+                gap: 8px;
             }}
             .discipline-item {{
-                display: flex;
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) auto;
                 align-items: center;
-                justify-content: space-between;
                 gap: 12px;
-                padding: 12px 16px;
+                padding: 14px 16px;
                 border: 1px solid #e5e7eb;
                 border-radius: var(--radius-sm);
                 background: #fff;
             }}
+            .discipline-item.is-invalid {{
+                border-color: rgba(185, 28, 28, 0.28);
+                background: #fff7f7;
+            }}
             .discipline-question {{
-                flex: 1 1 auto;
                 font-size: 13px;
                 font-weight: 500;
                 line-height: 1.45;
                 color: #374151;
             }}
+            .stage-alert {{
+                display: none;
+                margin: 0 0 14px;
+                padding: 10px 12px;
+                border: 1px solid rgba(185, 28, 28, 0.18);
+                border-radius: var(--radius-sm);
+                background: #fff7f7;
+                color: #991b1b;
+                font-size: 13px;
+                line-height: 1.45;
+            }}
+            .stage-alert.is-visible {{ display: block; }}
             .toggle-option {{
-                min-width: 56px;
-                padding: 6px 14px;
+                width: 58px;
+                min-width: 58px;
+                padding: 6px 12px;
                 border: 0;
                 border-right: 1px solid #e5e7eb;
                 border-radius: 0;
@@ -815,7 +832,6 @@ def render_page(title: str, body: str) -> str:
             @media (max-width: 980px) {{
                 .shell {{ padding: 20px 18px 48px; }}
                 .stepper,
-                .discipline-grid,
                 .step-fields,
                 .review-grid,
                 .review-pill-grid {{
@@ -980,6 +996,10 @@ def render_page(title: str, body: str) -> str:
                     if (!input || !group) return;
                     input.value = value;
                     group.classList.remove("is-invalid");
+                    const row = input.closest(".discipline-item");
+                    if (row) row.classList.remove("is-invalid");
+                    const alert = document.getElementById("disciplineAlert");
+                    if (alert) alert.classList.remove("is-visible");
                     Array.from(group.querySelectorAll(".toggle-option")).forEach((button) => {{
                         const active = button.getAttribute("data-value") === value;
                         button.classList.toggle("is-active", active);
@@ -1027,10 +1047,18 @@ def render_page(title: str, body: str) -> str:
                         if (field.matches('[data-yes-no="true"]')) {{
                             if (!fieldFilled(field)) {{
                                 const group = document.querySelector(`[data-toggle-group="${{field.id}}"]`);
+                                const row = field.closest(".discipline-item");
+                                const alert = document.getElementById("disciplineAlert");
                                 if (group) {{
                                     group.classList.add("is-invalid");
                                     const firstButton = group.querySelector(".toggle-option");
                                     if (firstButton) firstButton.focus();
+                                }}
+                                if (row) row.classList.add("is-invalid");
+                                if (alert) {{
+                                    alert.textContent = "Answer all twelve discipline checks before continuing.";
+                                    alert.classList.add("is-visible");
+                                    alert.scrollIntoView({{ behavior: "smooth", block: "nearest" }});
                                 }}
                                 return false;
                             }}
@@ -1469,6 +1497,7 @@ def form():
                         </div>
                     </div>
                     <div class="step-panel">
+                        <div class="stage-alert" id="disciplineAlert"></div>
                         <div class="discipline-grid">
                             {discipline_fields_html}
                         </div>
