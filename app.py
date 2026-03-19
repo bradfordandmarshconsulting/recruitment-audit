@@ -380,13 +380,6 @@ def render_page(title: str, body: str) -> str:
                 background: #d1fae5;
                 color: #059669;
             }}
-            .assessment-layout {{
-                display: grid;
-                grid-template-columns: minmax(0, 1fr) 280px;
-                gap: 20px;
-                align-items: start;
-            }}
-            .assessment-layout form {{ min-width: 0; }}
             .panel {{
                 border: 1px solid #e5e7eb;
                 border-radius: var(--radius-lg);
@@ -395,12 +388,11 @@ def render_page(title: str, body: str) -> str:
                 overflow: hidden;
             }}
             .assessment-panel {{ width: 100%; }}
-            .sidebar-card {{
-                position: sticky;
-                top: 24px;
+            .overview-card {{
+                margin-bottom: 20px;
                 padding: 18px;
             }}
-            .sidebar-title {{
+            .overview-title {{
                 margin: 0 0 8px;
                 font-size: 16px;
                 font-weight: 600;
@@ -414,12 +406,16 @@ def render_page(title: str, body: str) -> str:
                 line-height: 1.6;
                 font-size: 14px;
             }}
-            .summary-list {{ display: grid; gap: 10px; margin-top: 18px; }}
+            .summary-list {{
+                display: grid;
+                grid-template-columns: repeat(5, minmax(0, 1fr));
+                gap: 10px;
+                margin-top: 18px;
+            }}
             .summary-item {{
                 display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 10px;
+                flex-direction: column;
+                gap: 4px;
                 padding: 11px 12px;
                 border: 1px solid #e5e7eb;
                 border-radius: var(--radius-sm);
@@ -438,7 +434,7 @@ def render_page(title: str, body: str) -> str:
                 font-size: 14px;
                 font-weight: 600;
                 color: #1a2336;
-                text-align: right;
+                text-align: left;
             }}
             .stage {{
                 display: none;
@@ -818,12 +814,14 @@ def render_page(title: str, body: str) -> str:
             @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
             @media (max-width: 980px) {{
                 .shell {{ padding: 20px 18px 48px; }}
-                .assessment-layout,
                 .stepper,
                 .discipline-grid,
                 .step-fields,
                 .review-grid,
                 .review-pill-grid {{
+                    grid-template-columns: 1fr;
+                }}
+                .summary-list {{
                     grid-template-columns: 1fr;
                 }}
                 .review-strip {{
@@ -834,7 +832,6 @@ def render_page(title: str, body: str) -> str:
                     border-bottom: 1px solid #e5e7eb;
                 }}
                 .review-strip .review-card:last-child {{ border-bottom: 0; }}
-                .sidebar-card {{ position: static; order: 2; }}
                 .progress-top,
                 .footer-bar,
                 .topbar {{
@@ -1334,10 +1331,9 @@ def form():
         </div>
     </div>
 
-    <div class="assessment-layout">
-        <aside class="panel sidebar-card">
+    <div class="panel overview-card">
             <div class="sidebar-kicker">Assessment overview</div>
-            <h3 class="sidebar-title">Live profile</h3>
+            <h3 class="overview-title">Live profile</h3>
             <p class="sidebar-copy">This summary updates as the assessment is completed.</p>
             <div class="summary-list">
                 <div class="summary-item"><span class="summary-label">Company</span><span class="summary-value" id="summaryCompany">Pending</span></div>
@@ -1346,7 +1342,7 @@ def form():
                 <div class="summary-item"><span class="summary-label">Hiring demand</span><span class="summary-value" id="summaryHiringDemand">Pending</span></div>
                 <div class="summary-item"><span class="summary-label">Key roles</span><span class="summary-value" id="summaryKeyRoles">Pending</span></div>
             </div>
-        </aside>
+    </div>
 
         <form id="auditForm" method="post" action="/generate">
             <div class="panel assessment-panel">
@@ -1523,7 +1519,6 @@ def form():
                 </div>
             </div>
         </form>
-    </div>
     """
 
     return render_page("Recruitment Operating Model Audit", body)
