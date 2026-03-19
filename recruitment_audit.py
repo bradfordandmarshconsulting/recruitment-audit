@@ -685,7 +685,7 @@ def create_overall_score_chart(company_name: str, total_score: int) -> Path:
     ax.grid(False)
     fig.text(0.08, 0.92, company_name, fontsize=8.8, color="#5F6876")
     fig.text(0.08, 0.80, "Overall score", fontsize=12, color="#1F2A40", fontweight="bold")
-    fig.text(0.92, 0.82, f"Overall rating: {score}/120 — {rating}", fontsize=9.1, color="#1F2A40", fontweight="bold", ha="right")
+    fig.text(0.92, 0.80, f"Overall rating: {score}/120 — {rating}", fontsize=9.1, color="#1F2A40", fontweight="bold", ha="right")
     ax.axvline(score, ymin=0.16, ymax=0.84, color="#1A2E4A", linewidth=3.0)
     ax.annotate(
         f"{score}/120",
@@ -705,7 +705,7 @@ def create_overall_score_chart(company_name: str, total_score: int) -> Path:
     for spine in ax.spines.values():
         spine.set_visible(False)
     fig.subplots_adjust(left=0.08, right=0.97, top=0.60, bottom=0.24)
-    fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
+    fig.savefig(path, dpi=300, bbox_inches="tight", facecolor="#FBF8F2")
     plt.close(fig)
     return path
 
@@ -731,14 +731,14 @@ def create_section_score_chart(company_name: str, section_scores: list[int], ben
     for pos, score in enumerate(section_scores):
         ax.text(min(score + 0.18, 9.85), pos, f"{score}/10", va="center", ha="left", fontsize=9.0, color="#1F2A40", fontweight="bold")
     if sector_average is not None:
-        ax.axvline(sector_average, color="#C4CAD4", linewidth=1.4, linestyle=(0, (4, 4)))
+        ax.axvline(sector_average, color="#8892A0", linewidth=2.0, linestyle="--")
     fig.text(0.11, 0.95, company_name, fontsize=8.8, color="#5F6876")
     fig.text(0.11, 0.915, "Section Scores", fontsize=12, fontweight="bold", color="#1F2A40", ha="left")
     if sector_average is not None:
         fig.text(0.97, 0.915, "Sector average", fontsize=9, color="#999999", ha="right")
     fig.tight_layout(rect=(0, 0.01, 1, 0.90))
     fig.subplots_adjust(left=0.44, right=0.96)
-    fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
+    fig.savefig(path, dpi=300, bbox_inches="tight", facecolor="#FBF8F2")
     plt.close(fig)
     return path
 
@@ -760,11 +760,11 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         _apply_chart_style(fig, ax)
         ax.axis("off")
         ax.text(0.5, 0.5, "No benchmark comparison available", ha="center", va="center", fontsize=10, color="black")
-        fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
+        fig.savefig(path, dpi=300, bbox_inches="tight", facecolor="#FBF8F2")
         plt.close(fig)
         return path
 
-    fig, axes = plt.subplots(len(items), 1, figsize=(7.2, 2.0 + len(items) * 2.2))
+    fig, axes = plt.subplots(len(items), 1, figsize=(7.2, 1.4 + len(items) * 1.8))
     if len(items) == 1:
         axes = [axes]
 
@@ -779,30 +779,31 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         ax.text(0.00, 0.95, label, transform=ax.transAxes, fontsize=10.4, fontweight="bold", color="#1F2A40")
         ax.text(0.00, 0.78, f"Client: {_format_metric_value(client_value, suffix)}", transform=ax.transAxes, fontsize=9.3, color="#4B5563")
         ax.text(0.00, 0.64, f"Benchmark: {_format_metric_value(benchmark_value, suffix)}", transform=ax.transAxes, fontsize=9.3, color="#4B5563")
-        inset = ax.inset_axes([0.00, 0.24, 0.82, 0.20])
+        inset = ax.inset_axes([0.00, 0.24, 0.88, 0.20])
         inset.set_xlim(0, scale_max)
         inset.set_ylim(-0.5, 0.5)
         inset.hlines(0, 0, scale_max, color="#D8DCE3", linewidth=6, zorder=1)
         inset.axvline(benchmark_value, color="#1A2E4A", linewidth=2.0, zorder=3)
         if label == "Applications per role":
-            inset.scatter([client_value], [0], color=delta_colour, s=55, zorder=4)
+            inset.scatter([client_value], [0], color=delta_colour, s=120, marker="D", zorder=4)
         else:
             inset.barh([0], [client_value], left=0, color=delta_colour, height=0.56, zorder=2)
         inset.set_xticks([])
         inset.set_yticks([])
-        inset.set_facecolor("white")
+        inset.set_facecolor("#FBF8F2")
         for spine in inset.spines.values():
             spine.set_visible(False)
         left_label, right_label = _benchmark_axis_labels(label, higher_is_better)
         inset.text(0.00, -0.92, left_label, transform=inset.transAxes, fontsize=10.0, color="#666666")
-        inset.text(0.83, -0.92, right_label, transform=inset.transAxes, fontsize=10.0, color="#666666", ha="right")
-        ax.text(0.00, 0.06, delta_text, transform=ax.transAxes, fontsize=13.2, color=delta_colour, fontweight="bold", ha="left")
-        ax.text(0.84, 0.28, direction_text, transform=ax.transAxes, fontsize=9.4, color="#666666", ha="left")
+        inset.text(1.00, -0.92, right_label, transform=inset.transAxes, fontsize=10.0, color="#666666", ha="right")
+        delta_weight = "bold" if delta_colour == "#B91C1C" else "normal"
+        ax.text(0.00, 0.06, delta_text, transform=ax.transAxes, fontsize=10.8, color=delta_colour, fontweight=delta_weight, ha="left")
+        ax.text(0.90, 0.28, direction_text, transform=ax.transAxes, fontsize=9.2, color="#666666", ha="left")
 
     fig.suptitle("Benchmark comparison", fontsize=12, fontweight="bold", color="#1F2A40", y=0.985)
     fig.text(0.10, 0.948, company_name, fontsize=8.8, color="#5F6876")
-    fig.tight_layout(rect=(0, 0.01, 1, 0.93), h_pad=2.5)
-    fig.savefig(path, dpi=220, bbox_inches="tight", facecolor="white")
+    fig.tight_layout(rect=(0, 0.01, 1, 0.93), h_pad=1.5)
+    fig.savefig(path, dpi=300, bbox_inches="tight", facecolor="#FBF8F2")
     plt.close(fig)
     return path
 
@@ -1198,6 +1199,14 @@ def _signature_image(width_mm: float) -> Image | None:
     return Image(str(cropped_path), width=width, height=height)
 
 
+def _scaled_pdf_image(path: Path, width: float, min_height: float | None = None) -> Image:
+    with PILImage.open(path) as image:
+        height = width * (image.height / image.width)
+    if min_height is not None:
+        height = max(height, min_height)
+    return Image(str(path), width=width, height=height)
+
+
 def _score_colours(score: int) -> tuple[colors.Color, colors.Color]:
     if score >= 8:
         return GREEN_BG, GREEN_TEXT
@@ -1235,7 +1244,7 @@ def _section_card_table(title: str, body: list, background: colors.Color = color
 
 
 def _add_cover_page(story: list, styles: StyleSheet1, data: dict) -> None:
-    story.append(Spacer(1, 50 * mm))
+    story.append(Spacer(1, 42 * mm))
     logo = _logo_image(90)
     if logo:
         logo.hAlign = "CENTER"
@@ -1268,7 +1277,7 @@ def _add_cover_page(story: list, styles: StyleSheet1, data: dict) -> None:
         )
     )
     story.append(meta_table)
-    story.append(Spacer(1, 92 * mm))
+    story.append(Spacer(1, 72 * mm))
     story.append(PageBreak())
 
 
@@ -1390,8 +1399,8 @@ def _add_overall_score(story: list, styles: StyleSheet1, data: dict, report: dic
     story.append(table)
     story.append(Spacer(1, 4 * mm))
     if overall_chart.exists():
-        story.append(Image(str(overall_chart), width=CHART_WIDTH, height=CHART_WIDTH * 0.23))
-        story.append(Spacer(1, 2 * mm))
+        story.append(_scaled_pdf_image(overall_chart, CHART_WIDTH, min_height=CHART_WIDTH * 0.28))
+        story.append(Spacer(1, 4 * mm))
     story.append(Paragraph(report["overall_recruitment_score"], styles["Body"]))
 
 
@@ -1498,7 +1507,6 @@ def _add_priority_matrix(story: list, styles: StyleSheet1, report: dict) -> None
     matrix = Table(
         [[cells[0], cells[1]], [cells[2], cells[3]]],
         colWidths=[84 * mm, 84 * mm],
-        rowHeights=[62 * mm, 62 * mm],
         hAlign="LEFT",
     )
     matrix.setStyle(
@@ -1522,11 +1530,11 @@ def _add_charts_section(story: list, styles: StyleSheet1, section_chart: Path, b
     story.append(Paragraph("Charts and visual analysis", styles["Heading1"]))
     if section_chart.exists():
         story.append(Paragraph("Section score profile", styles["Heading2"]))
-        story.append(Image(str(section_chart), width=CHART_WIDTH, height=CHART_WIDTH * 0.84))
+        story.append(_scaled_pdf_image(section_chart, CHART_WIDTH))
     if benchmark_chart.exists():
         story.append(Spacer(1, 7 * mm))
         story.append(Paragraph("Benchmark comparison", styles["Heading2"]))
-        story.append(Image(str(benchmark_chart), width=CHART_WIDTH, height=CHART_WIDTH * 0.72))
+        story.append(_scaled_pdf_image(benchmark_chart, CHART_WIDTH))
 
 
 def _add_detailed_findings(story: list, styles: StyleSheet1, report: dict) -> None:
@@ -2438,6 +2446,7 @@ def _vacancy_day_exposure(data: dict) -> str:
 
 def _build_section_commercial_impact(title: str, score: int, data: dict, benchmark_summary: dict) -> str:
     metrics = data["metrics"]
+    offer_comparison = _find_comparison(benchmark_summary, "Offer acceptance")
     annual_volume = _annual_hiring_volume(data)
     if score >= 8:
         return _clean_text(
@@ -2524,7 +2533,20 @@ def _build_section_commercial_impact(title: str, score: int, data: dict, benchma
             max_words=41,
         )
     if title == "Decision making and offer process":
+        benchmark_value = _safe_float(offer_comparison.get("benchmark_value")) if offer_comparison else None
+        client_value = _safe_float(offer_comparison.get("client_value")) if offer_comparison else metrics.get("offer_acceptance")
+        severe_gap = (
+            client_value is not None
+            and benchmark_value is not None
+            and (benchmark_value - client_value) >= 20
+        )
         if score >= 6:
+            if severe_gap:
+                return _clean_text(
+                    f"Offer acceptance is only {_metric_display(client_value, '%')} against a benchmark of {_metric_display(benchmark_value, '%')}, so the business is still losing too many candidates after the final decision. That is forcing repeat offer work, extending vacancy cover and increasing the cost of every completed shortlist.",
+                    max_sentences=2,
+                    max_words=42,
+                )
             return _clean_text(
                 f"Offer acceptance at {_metric_display(metrics.get('offer_acceptance'), '%')} shows the business is converting enough decisions, but delay in the approval path is still wasting final-stage effort. That keeps some vacancies open longer than the shortlist quality should require.",
                 max_sentences=2,
@@ -2942,9 +2964,9 @@ def _select_benchmark_comparisons(comparisons: list[dict]) -> list[dict]:
 
 
 def _select_benchmark_chart_items(items: list[tuple]) -> list[tuple]:
-    if len(items) <= 3:
+    if len(items) <= 4:
         return items
-    return items[:3]
+    return items[:4]
 
 
 def _format_metric_value(value: float | None, suffix: str) -> str:
@@ -3187,9 +3209,9 @@ def _build_day_plan(sections: list[dict], day: int) -> list[str]:
 
 
 def _apply_chart_style(fig, ax) -> None:
-    fig.patch.set_facecolor("white")
-    ax.set_facecolor("white")
-    ax.tick_params(axis="x", colors="black", labelsize=8)
-    ax.tick_params(axis="y", colors="black", labelsize=8)
+    fig.patch.set_facecolor("#FBF8F2")
+    ax.set_facecolor("#FBF8F2")
+    ax.tick_params(axis="x", colors="#1F2A40", labelsize=8)
+    ax.tick_params(axis="y", colors="#1F2A40", labelsize=8)
     for spine in ax.spines.values():
         spine.set_visible(False)
