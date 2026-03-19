@@ -134,28 +134,74 @@ SECTION_IDS = [
 SECTION_ID_TO_TITLE = dict(zip(SECTION_IDS, SECTION_ORDER))
 
 SYSTEM_PROMPT = """
-You are writing a final client report for a Recruitment Operating Model Audit.
+You are a senior recruitment consultant at Bradford & Marsh Consulting. You write recruitment operating model audits for clients. Your writing style is direct, commercially focused, and avoids consultancy jargon. You sound like a sharp operator who has seen hundreds of hiring processes, not like an AI.
 
-Write in British English. Use short sentences. Be direct, commercial and precise.
+Write in British English.
 
-Rules:
-- No markdown.
-- No asterisks, hashes or raw bullet symbols.
-- No consultant filler.
-- Do not use these words or phrases: robust, hampered, material, leverage, seamless, best-in-class, best in class, laid the groundwork, it is important to note, overall this suggests, in today's market.
-- Complete the final verdict in full before any other section.
-- Complete the recommended intervention section in full before any other long-form section.
-- Never truncate the final verdict or recommended intervention mid-sentence.
-- If output length is tight, shorten the detailed findings sections first.
-- Keep the executive overview below 150 words.
-- Make strengths, problems and actions specific.
-- Every section diagnosis must identify the stage of the hiring process, the supporting metric or observable behaviour, and the root cause.
-- Every commercial impact statement must refer to time, cost or revenue exposure.
-- Every action must name an owner, a timeframe, and a measurable outcome.
-- Each detailed section must include current state, key risks, commercial impact, immediate actions and structural improvements.
-- Keep key risks to 2 points.
-- Keep immediate actions to 2 points.
-- Keep structural improvements to 2 points.
+VOICE AND TONE RULES:
+- Write like a person briefing a managing director over coffee. Be direct, not formal.
+- Every sentence must earn its place. Cut anything that does not add new information.
+- Never use filler phrases like "it is worth noting", "it should be noted", "importantly", "it is clear that".
+- Do not hedge with "may", "might", "could potentially". State what is happening and what it means.
+- Use short sentences. Break up any sentence over 25 words.
+
+VARIATION RULES:
+- You are writing 12 separate section analyses. Each one must read differently.
+- Never reuse the same sentence structure across sections. If one section opens with a metric, the next should open with a risk or an observation.
+- Never repeat any full phrase across sections.
+- The following phrases are banned from appearing more than once in the entire report:
+  - "This area is working but not consistently"
+  - "Without a tighter operating standard, results will continue to vary"
+  - "The gap at [X] will keep creating uneven delivery if it is not addressed directly"
+  - "by role, manager or workload"
+  - any close variant of these
+- For each section, vary:
+  - the opening sentence structure
+  - how you describe the root cause
+  - how you frame the risk
+  - how you explain the commercial impact
+  - the action language
+- Think of each section as a standalone paragraph in a newspaper column. A reader should not feel like they have read the same paragraph twelve times.
+
+STRUCTURE RULES:
+- Return content that fits the required JSON schema exactly.
+- Do not return markdown, bullets, commentary, or keys outside the schema.
+- For each section, provide:
+  - headline: one sentence that captures the sharpest insight about this area
+  - current_state: 2 to 3 sentences covering what the evidence shows, what the underlying issue is, and how it compares to benchmark if applicable
+  - key_risks: 2 specific points
+  - commercial_impact: 2 to 3 sentences translating the finding into business cost
+  - immediate_actions: use the owner, timeframe and focus area provided in the data
+  - structural_improvements: use the owner, timeframe and focus area provided in the data
+
+EXECUTIVE OVERVIEW:
+- Maximum 5 sentences.
+- Lead with the overall score and what it means.
+- Name the strongest and weakest areas with scores.
+- State the single most important commercial consequence.
+- State the benchmark position.
+- Close with the one action that matters most right now.
+
+THINGS YOU MUST NEVER DO:
+- Never refer to yourself as an AI or language model.
+- Never use the phrase "based on the information provided" or "according to the data".
+- Never use "synergy", "leverage", "holistic", "robust", "best practice", "going forward".
+- Never start consecutive sections with the same word.
+- Never use more than one exclamation mark in the entire report. Prefer zero.
+""".strip()
+
+EDITING_PROMPT = """
+You are a senior editor reviewing a recruitment audit report before it goes to a client. The report has been drafted and your job is to make it read like a single, carefully written document, not a template with data dropped in.
+
+RULES:
+1. Find any phrase or sentence structure that appears more than once across different sections. Rewrite the duplicates so each section reads distinctly. Keep the meaning identical. Only change the wording.
+2. Check every section opening line. If any two sections start with a similar structure, rewrite one of them to use a different entry point.
+3. Check the key_risks items across all sections. Remove any that are generic enough to apply to multiple sections and replace them with risks specific to that section's topic.
+4. Check the commercial_impact text across all sections. Each one should reference a different kind of business cost. Do not use the same framing more than twice across the whole report.
+5. Cut any sentence that adds no new information beyond what the previous sentence already said.
+6. Do not change scores, data points, percentages, benchmark figures, owner names, timeframes, section names, or the JSON structure.
+7. Do not add new insights, recommendations, or data. You are editing, not rewriting.
+8. Return the complete report again in the exact same JSON schema.
 """.strip()
 
 FINAL_VERDICT_SYSTEM_PROMPT = """
@@ -217,6 +263,7 @@ REPORT_SCHEMA = {
                     "type": "object",
                     "properties": {
                         "score": {"type": "integer", "minimum": 1, "maximum": 10},
+                        "headline": {"type": "string"},
                         "current_state": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 4},
                         "key_risks": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 3},
                         "commercial_impact": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 3},
@@ -225,6 +272,7 @@ REPORT_SCHEMA = {
                     },
                     "required": [
                         "score",
+                        "headline",
                         "current_state",
                         "key_risks",
                         "commercial_impact",
@@ -525,7 +573,7 @@ def generate_report_json(client, data: dict, benchmark_summary: dict) -> dict:
         instructions=SYSTEM_PROMPT,
         input=prompt,
         max_output_tokens=5000,
-        temperature=0.4,
+        temperature=0.7,
         text={
             "verbosity": "medium",
             "format": {
@@ -537,6 +585,29 @@ def generate_report_json(client, data: dict, benchmark_summary: dict) -> dict:
         },
     )
     report = json.loads(response.output_text)
+    try:
+        edit_input = (
+            f"{EDITING_PROMPT}\n\nHere is the report to edit:\n\n"
+            f"{json.dumps(report, ensure_ascii=False, indent=2)}"
+        )
+        edit_response = client.responses.create(
+            model="gpt-4.1",
+            input=edit_input,
+            max_output_tokens=5000,
+            temperature=0.3,
+            text={
+                "verbosity": "medium",
+                "format": {
+                    "type": "json_schema",
+                    "name": "recruitment_audit_report_edit",
+                    "schema": REPORT_SCHEMA,
+                    "strict": True,
+                },
+            },
+        )
+        report = json.loads(edit_response.output_text)
+    except Exception:
+        pass
     normalised = _normalise_report(report, data["section_scores"])
     cleaned = _clean_report(normalised, data, benchmark_summary)
     cleaned["final_verdict"] = generate_final_verdict(client, data, cleaned, benchmark_summary)
@@ -931,6 +1002,7 @@ def _normalise_report(report: dict, fallback_scores: list[int]) -> dict:
                 {
                     "title": str(section.get("title", SECTION_ORDER[index])),
                     "score": int(section.get("score", fallback_scores[index])),
+                    "headline": str(section.get("headline", "")).strip(),
                     "current_state": _ensure_list(section.get("current_state"), 2),
                     "key_risks": _ensure_list(section.get("key_risks"), 2),
                     "commercial_impact": _ensure_list(section.get("commercial_impact"), 1),
@@ -948,6 +1020,7 @@ def _normalise_report(report: dict, fallback_scores: list[int]) -> dict:
             {
                 "title": SECTION_ID_TO_TITLE[section_id],
                 "score": int(section.get("score", fallback_scores[index])),
+                "headline": str(section.get("headline", "")).strip(),
                 "current_state": _ensure_list(section.get("current_state"), 2),
                 "key_risks": _ensure_list(section.get("key_risks"), 2),
                 "commercial_impact": _ensure_list(section.get("commercial_impact"), 1),
@@ -982,20 +1055,27 @@ def _clean_report(report: dict, data: dict, benchmark_summary: dict) -> dict:
     for index, section in enumerate(report.get("sections", [])):
         title = SECTION_ORDER[index]
         score = int(section.get("score", data["section_scores"][index]))
-        current_state = _build_section_current_state(title, score, data, benchmark_summary)
-        commercial_impact = _build_section_commercial_impact(title, score, data, benchmark_summary)
+        generated_headline = _clean_text(section.get("headline"), max_sentences=1, max_words=34)
+        generated_current_state = _clean_text(section.get("current_state"), max_sentences=3, max_words=58)
+        generated_commercial_impact = _clean_text(section.get("commercial_impact"), max_sentences=3, max_words=46)
+        generated_key_risks = _clean_list(section.get("key_risks"), max_items=2, max_words=22)
+        generated_immediate_actions = _clean_list(section.get("immediate_actions"), max_items=2, max_words=34)
+        generated_structural_improvements = _clean_list(section.get("structural_improvements"), max_items=2, max_words=34)
+
+        current_state = generated_current_state or _build_section_current_state(title, score, data, benchmark_summary)
+        commercial_impact = generated_commercial_impact or _build_section_commercial_impact(title, score, data, benchmark_summary)
         immediate_actions, structural_improvements = _build_section_actions(title, score, data)
         key_risks = _build_section_key_risks(title, score, data, benchmark_summary)
         cleaned["sections"].append(
             {
                 "title": title,
                 "score": score,
-                "headline": _build_section_headline(title, score, data, benchmark_summary),
+                "headline": generated_headline or _build_section_headline(title, score, data, benchmark_summary),
                 "current_state": _clean_text(current_state, max_sentences=3, max_words=58),
-                "key_risks": [_clean_text(item, max_sentences=1, max_words=20) for item in key_risks[:2]],
-                "commercial_impact": _clean_text(commercial_impact, max_sentences=2, max_words=38),
-                "immediate_actions": [_clean_text(item, max_sentences=2, max_words=34) for item in immediate_actions[:2]],
-                "structural_improvements": [_clean_text(item, max_sentences=2, max_words=34) for item in structural_improvements[:2]],
+                "key_risks": generated_key_risks or [_clean_text(item, max_sentences=1, max_words=20) for item in key_risks[:2]],
+                "commercial_impact": _clean_text(commercial_impact, max_sentences=3, max_words=46),
+                "immediate_actions": generated_immediate_actions or [_clean_text(item, max_sentences=2, max_words=34) for item in immediate_actions[:2]],
+                "structural_improvements": generated_structural_improvements or [_clean_text(item, max_sentences=2, max_words=34) for item in structural_improvements[:2]],
             }
         )
 
