@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import textwrap
@@ -77,6 +78,8 @@ REPORT_TITLE = "Recruitment Operating Model Audit"
 CONFIDENTIAL_LABEL = "Private & Confidential"
 MANAGING_DIRECTOR_NAME = "Michael Marsh"
 MANAGING_DIRECTOR_TITLE = "Managing Director"
+
+LOGGER = logging.getLogger(__name__)
 
 BENCHMARK_REQUIRED_COLUMNS = [
     "benchmark_type",
@@ -494,6 +497,7 @@ def auto_score_sections(data: dict, benchmark: pd.DataFrame) -> tuple[list[int],
     benchmark_row = _pick_benchmark_row(benchmark, data)
     metrics = data["metrics"]
     flags = data["process_flags"]
+    process_scores = data.get("process_scores", {})
 
     metric_scores = {
         "time_to_hire": _metric_score(
@@ -524,8 +528,13 @@ def auto_score_sections(data: dict, benchmark: pd.DataFrame) -> tuple[list[int],
     def flag_value(*names: str) -> float:
         if not names:
             return 5.0
-        yes = sum(1 for name in names if flags.get(name))
-        return 3.5 + (yes / len(names)) * 5.5
+        values = []
+        for name in names:
+            score = process_scores.get(name)
+            if score is None:
+                score = 1.0 if flags.get(name) else 0.0
+            values.append(float(score))
+        return 3.5 + (sum(values) / len(values)) * 5.5
 
     def blend(*values: float) -> int:
         return max(1, min(10, round(sum(values) / len(values))))
@@ -607,7 +616,7 @@ def generate_report_json(client, data: dict, benchmark_summary: dict) -> dict:
         )
         report = json.loads(edit_response.output_text)
     except Exception:
-        pass
+        LOGGER.exception("Report editing pass failed; using raw first-pass report")
     normalised = _normalise_report(report, data["section_scores"])
     cleaned = _clean_report(normalised, data, benchmark_summary)
     cleaned["final_verdict"] = generate_final_verdict(client, data, cleaned, benchmark_summary)

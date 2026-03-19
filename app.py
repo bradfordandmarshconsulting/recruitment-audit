@@ -37,62 +37,201 @@ NOTIFICATION_RECIPIENTS = [
 ]
 
 FALLBACK_SECTORS = [
-    "Accounting / Audit",
-    "Agriculture / Food Production",
-    "Architecture / Design",
-    "Aerospace / Defence",
-    "Automotive",
-    "Construction",
-    "Consulting",
-    "Consumer Goods / FMCG",
-    "Education",
-    "Ecommerce",
-    "Energy / Utilities",
-    "Engineering",
-    "Financial Services",
-    "Healthcare",
-    "Hospitality",
-    "Insurance",
-    "Investment Management",
-    "Legal Services",
-    "Life Sciences",
-    "Logistics / Supply Chain",
-    "Manufacturing",
-    "Media / Marketing / Advertising",
-    "Medical Devices",
-    "Non-Profit / Charity",
-    "Pharmaceuticals",
-    "Private Equity / Venture Capital",
-    "Professional Services",
-    "Property / Real Estate",
-    "Public Sector / Government",
-    "Retail",
-    "SaaS",
-    "Technology / Software",
-    "Telecommunications",
-    "Transport / Aviation / Maritime",
-    "Travel / Leisure",
     "Other",
 ]
 
-YES_NO_FIELDS = [
-    ("has_hiring_plan", "Do you have a formal recruitment or workforce plan in place?"),
-    ("tracks_metrics", "Do you track recruitment KPIs on a regular basis?"),
-    ("has_employer_brand", "Do you have a defined employer brand or EVP?"),
-    ("standardised_job_specs", "Do you use standard job adverts and job descriptions?"),
-    ("multi_channel_sourcing", "Do you use multiple sourcing channels consistently?"),
-    ("structured_screening", "Do you follow a consistent screening process?"),
-    ("structured_interviews", "Do you use structured interviews or interview scorecards?"),
-    ("fast_offer_process", "Do you have a fast and consistent offer approval process?"),
-    ("formal_onboarding", "Do you follow a documented onboarding process?"),
-    ("collects_candidate_feedback", "Do you collect candidate experience feedback?"),
-    ("named_process_owner", "Is there a clearly named owner for the recruitment process?"),
-    ("hiring_manager_training", "Do hiring managers receive interview or hiring training?"),
+TIER_SCORE_THRESHOLD = 0.55
+
+WIZARD_STEPS = [
+    {
+        "title": "About you",
+        "subtitle": "So we know who to send the report to.",
+        "kind": "contact",
+        "fields": [
+            {"name": "contact_name", "label": "Full name", "placeholder": "e.g. Max Powell", "type": "text", "autocomplete": "name"},
+            {"name": "job_title", "label": "Job title", "placeholder": "e.g. Head of People", "type": "text", "autocomplete": "organization-title"},
+            {"name": "email_address", "label": "Email address", "placeholder": "e.g. max@company.com", "type": "email", "autocomplete": "email"},
+            {"name": "phone_number", "label": "Phone number", "placeholder": "e.g. 07700 900123", "type": "tel", "autocomplete": "tel"},
+            {"name": "company_name", "label": "Company name", "placeholder": "e.g. Acme Telecom", "type": "text", "autocomplete": "organization"},
+        ],
+    },
+    {
+        "title": "Planning & strategy",
+        "subtitle": "How hiring decisions get made before a role goes live.",
+        "kind": "questions",
+        "questions": [
+            {
+                "name": "has_hiring_plan",
+                "label": "When a new role opens, is there a workforce plan or headcount forecast behind it — or does hiring tend to be reactive?",
+                "options": [
+                    ("1.0", "Always planned"),
+                    ("0.7", "Mostly planned"),
+                    ("0.4", "Sometimes planned"),
+                    ("0.1", "Usually reactive"),
+                ],
+            },
+            {
+                "name": "tracks_metrics",
+                "label": "Do you track hiring metrics like time to hire, cost per hire, or offer acceptance — and actually review them?",
+                "options": [
+                    ("1.0", "Yes, reviewed regularly"),
+                    ("0.7", "Tracked but rarely reviewed"),
+                    ("0.4", "Loosely tracked"),
+                    ("0.1", "Not really"),
+                ],
+            },
+        ],
+    },
+    {
+        "title": "Brand & attraction",
+        "subtitle": "How candidates see you before they apply.",
+        "kind": "questions",
+        "questions": [
+            {
+                "name": "has_employer_brand",
+                "label": "If a candidate Googled your company right now, would they find a clear picture of what it's like to work there?",
+                "options": [
+                    ("1.0", "Yes, it's well defined"),
+                    ("0.7", "Partially — some content exists"),
+                    ("0.4", "Not much out there"),
+                    ("0.1", "Probably not"),
+                ],
+            },
+            {
+                "name": "standardised_job_specs",
+                "label": "Are your job adverts written to a consistent standard, or does it depend on who drafts them?",
+                "options": [
+                    ("1.0", "Consistent standard"),
+                    ("0.7", "Mostly consistent"),
+                    ("0.4", "Varies quite a bit"),
+                    ("0.1", "No real standard"),
+                ],
+            },
+        ],
+    },
+    {
+        "title": "Sourcing & screening",
+        "subtitle": "How candidates enter and move through the top of the funnel.",
+        "kind": "questions",
+        "questions": [
+            {
+                "name": "multi_channel_sourcing",
+                "label": "How do you typically find candidates — is it the same channels every time, or do you mix it up depending on the role?",
+                "options": [
+                    ("1.0", "Multi-channel, role by role"),
+                    ("0.7", "A few go-to channels"),
+                    ("0.4", "Mostly one channel"),
+                    ("0.1", "Whatever works at the time"),
+                ],
+            },
+            {
+                "name": "structured_screening",
+                "label": "When applications come in, is there a set process for screening them — or does each manager handle it their own way?",
+                "options": [
+                    ("1.0", "Standard process, consistently followed"),
+                    ("0.7", "Process exists but not always followed"),
+                    ("0.4", "Informal — manager dependent"),
+                    ("0.1", "No set process"),
+                ],
+            },
+        ],
+    },
+    {
+        "title": "Interviews & decisions",
+        "subtitle": "Where good candidates are either secured or lost.",
+        "kind": "questions",
+        "questions": [
+            {
+                "name": "structured_interviews",
+                "label": "Do your interviews follow a set structure — same questions, same scorecard — or is it more conversational?",
+                "options": [
+                    ("1.0", "Structured with scorecards"),
+                    ("0.7", "Mostly structured"),
+                    ("0.4", "Semi-structured"),
+                    ("0.1", "Mainly conversational"),
+                ],
+            },
+            {
+                "name": "fast_offer_process",
+                "label": "Once you've found the right person, how quickly can you get an offer out the door?",
+                "options": [
+                    ("1.0", "Within 24–48 hours"),
+                    ("0.7", "Within a week"),
+                    ("0.4", "It varies — sometimes longer"),
+                    ("0.1", "It often gets held up"),
+                ],
+            },
+        ],
+    },
+    {
+        "title": "Onboarding & retention",
+        "subtitle": "What happens after someone says yes.",
+        "kind": "questions",
+        "questions": [
+            {
+                "name": "formal_onboarding",
+                "label": "Is there a documented onboarding process that every new starter goes through, or does it depend on the team?",
+                "options": [
+                    ("1.0", "Fully documented and consistent"),
+                    ("0.7", "Documented but inconsistent"),
+                    ("0.4", "Informal — team dependent"),
+                    ("0.1", "Not really in place"),
+                ],
+            },
+            {
+                "name": "collects_candidate_feedback",
+                "label": "Do you collect feedback from candidates about their experience — whether they got the job or not?",
+                "options": [
+                    ("1.0", "Yes, consistently"),
+                    ("0.7", "Sometimes"),
+                    ("0.4", "Rarely"),
+                    ("0.1", "No"),
+                ],
+            },
+        ],
+    },
+    {
+        "title": "Ownership & capability",
+        "subtitle": "Who's accountable and how equipped they are.",
+        "kind": "questions",
+        "questions": [
+            {
+                "name": "named_process_owner",
+                "label": "Is there one person who owns the recruitment process end to end — someone who'd notice if things started slipping?",
+                "options": [
+                    ("1.0", "Yes, clearly named"),
+                    ("0.7", "Sort of — it's shared"),
+                    ("0.4", "It's unclear"),
+                    ("0.1", "Not really"),
+                ],
+            },
+            {
+                "name": "hiring_manager_training",
+                "label": "Have your hiring managers had any training on interviewing, assessing candidates, or managing a hiring process?",
+                "options": [
+                    ("1.0", "Yes, formally trained"),
+                    ("0.7", "Some informal guidance"),
+                    ("0.4", "Very little"),
+                    ("0.1", "None"),
+                ],
+            },
+        ],
+    },
 ]
 
 
 def yes_no_to_bool(value: str | None) -> bool:
     return str(value).strip().lower() in {"yes", "y", "true"}
+
+
+def parse_tier_score(value: str | None) -> float | None:
+    try:
+        if value is None:
+            return None
+        text = str(value).strip()
+        return float(text) if text else None
+    except (TypeError, ValueError):
+        return None
 
 
 def get_sector_options() -> list[str]:
@@ -388,6 +527,7 @@ def render_page(title: str, body: str) -> str:
                 overflow: hidden;
             }}
             .assessment-panel {{ width: 100%; }}
+            .wizard-body {{ padding: 0; }}
             .overview-card {{
                 margin-bottom: 20px;
                 padding: 18px;
@@ -436,11 +576,13 @@ def render_page(title: str, body: str) -> str:
                 color: #1a2336;
                 text-align: left;
             }}
-            .stage {{
+            .stage,
+            .wizard-step {{
                 display: none;
                 padding: 32px;
             }}
-            .stage.active {{ display: block; }}
+            .stage.active,
+            .wizard-step.active {{ display: block; }}
             .section-head {{ margin-bottom: 28px; }}
             .section-kicker {{ margin-bottom: 6px; }}
             .section-title {{
@@ -466,6 +608,12 @@ def render_page(title: str, body: str) -> str:
             }}
             .field {{ display: flex; flex-direction: column; gap: 6px; }}
             .field.full {{ grid-column: 1 / -1; }}
+            .field-error {{
+                min-height: 18px;
+                font-size: 12px;
+                line-height: 1.4;
+                color: #991b1b;
+            }}
             label {{
                 font-size: 13px;
                 font-weight: 600;
@@ -549,6 +697,66 @@ def render_page(title: str, body: str) -> str:
                 line-height: 1.45;
             }}
             .stage-alert.is-visible {{ display: block; }}
+            .question-card {{
+                padding: 20px;
+                border: 1px solid #e5e7eb;
+                border-radius: var(--radius-md);
+                background: #fafbfc;
+            }}
+            .question-card + .question-card {{ margin-top: 16px; }}
+            .question-card.is-invalid {{
+                border-color: rgba(185, 28, 28, 0.28);
+                background: #fff7f7;
+            }}
+            .question-label {{
+                margin-bottom: 14px;
+                font-size: 14px;
+                font-weight: 600;
+                line-height: 1.55;
+                color: #1a2336;
+            }}
+            .option-grid {{
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }}
+            .option-card {{
+                position: relative;
+                display: flex;
+                align-items: flex-start;
+                min-height: 68px;
+                padding: 14px 16px;
+                border: 1px solid #d1d5db;
+                border-radius: var(--radius-sm);
+                background: #fff;
+                color: #374151;
+                cursor: pointer;
+                transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+            }}
+            .option-card:hover {{
+                border-color: #9ca3af;
+                background: #fff;
+            }}
+            .option-card span {{
+                display: block;
+                font-size: 13px;
+                line-height: 1.5;
+                font-weight: 500;
+            }}
+            .option-input {{
+                position: absolute;
+                inset: 0;
+                opacity: 0;
+                pointer-events: none;
+            }}
+            .option-input:checked + span {{
+                color: #1a2336;
+            }}
+            .option-card:has(.option-input:checked) {{
+                border-color: #1a2336;
+                background: #f7f8fb;
+                box-shadow: 0 0 0 3px rgba(26, 35, 54, 0.08);
+            }}
             .toggle-option {{
                 width: 58px;
                 min-width: 58px;
@@ -636,6 +844,31 @@ def render_page(title: str, body: str) -> str:
             .review-pill.is-no {{
                 background: #fee2e2;
                 color: #b91c1c;
+            }}
+            .confirmation-panel {{
+                padding: 22px;
+                border: 1px solid #e5e7eb;
+                border-radius: var(--radius-md);
+                background: #fafbfc;
+            }}
+            .confirmation-grid {{
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }}
+            .confirmation-item {{
+                padding: 12px 14px;
+                border: 1px solid #e5e7eb;
+                border-radius: var(--radius-sm);
+                background: #fff;
+            }}
+            .confirmation-note {{
+                margin-top: 16px;
+                padding-top: 16px;
+                border-top: 1px solid #e5e7eb;
+                color: #6b7280;
+                font-size: 13px;
+                line-height: 1.6;
             }}
             .footer-bar {{
                 display: flex;
@@ -841,6 +1074,8 @@ def render_page(title: str, body: str) -> str:
                 .shell {{ padding: 20px 18px 48px; }}
                 .stepper,
                 .step-fields,
+                .option-grid,
+                .confirmation-grid,
                 .review-grid,
                 .review-pill-grid {{
                     grid-template-columns: 1fr;
@@ -864,6 +1099,7 @@ def render_page(title: str, body: str) -> str:
                 }}
                 .stepper {{ grid-template-columns: repeat(2, 1fr); }}
                 .stage,
+                .wizard-step,
                 .footer-bar,
                 .step-panel {{
                     padding-left: 20px;
@@ -916,8 +1152,7 @@ def render_page(title: str, body: str) -> str:
             (function() {{
                 const form = document.getElementById("auditForm");
                 if (!form) return;
-                const stages = Array.from(document.querySelectorAll(".stage"));
-                const tabs = Array.from(document.querySelectorAll(".step"));
+                const steps = Array.from(document.querySelectorAll(".wizard-step"));
                 const nextBtn = document.querySelector("[data-next-step]");
                 const prevBtn = document.querySelector("[data-prev-step]");
                 const submitBtn = form.querySelector('button[type="submit"]');
@@ -928,190 +1163,113 @@ def render_page(title: str, body: str) -> str:
                 const stepFooterCopy = document.getElementById("stepFooterCopy");
                 const downloadComplete = document.getElementById("downloadComplete");
                 const loadingSteps = Array.from(document.querySelectorAll(".loading-step"));
-                const summaryMappings = [
-                    ["summaryCompany", "company_name"],
-                    ["summarySector", "sector"],
-                    ["summaryLocation", "location"],
-                    ["summaryHiringDemand", "annual_hiring_volume"],
-                    ["summaryKeyRoles", "key_roles_hired"],
-                    ["reviewCompanyName", "company_name"],
-                    ["reviewContact", "contact_name"],
-                    ["reviewSector", "sector"],
-                    ["reviewLocation", "location"],
-                    ["reviewHeadcount", "headcount"],
-                    ["reviewAnnualHiringVolume", "annual_hiring_volume"],
-                    ["reviewKeyRoles", "key_roles_hired"],
-                    ["reviewTimeToHire", "time_to_hire"],
-                    ["reviewApplicationsPerRole", "applications_per_role"],
-                    ["reviewOfferAcceptance", "offer_acceptance"],
-                    ["reviewFirstYearAttrition", "first_year_attrition"],
-                    ["reviewInterviewStages", "interview_stages"],
-                    ["reviewInterviewFeedbackTime", "interview_feedback_time"],
-                    ["reviewCandidatesReachingInterview", "candidates_reaching_interview"],
-                ];
                 let currentStageIndex = 0;
                 let isSubmitting = false;
                 let latestDownloadUrl = "";
                 let latestFilename = "recruitment_audit.pdf";
 
-                function fieldFilled(field) {{
-                    return String(field.value || "").trim() !== "";
+                function stepElement(index) {{
+                    return steps[index] || null;
                 }}
 
-                function stageFields(stageIndex) {{
-                    const stage = stages[stageIndex];
-                    if (!stage) return [];
-                    return Array.from(stage.querySelectorAll("input, select, textarea"));
+                function clearError(name) {{
+                    const error = form.querySelector(`[data-error-for="${{name}}"]`);
+                    if (error) error.textContent = "";
                 }}
 
-                function stageIsComplete(stageIndex) {{
-                    const fields = stageFields(stageIndex);
-                    return fields.length > 0 && fields.every(fieldFilled);
+                function setError(name, message) {{
+                    const error = form.querySelector(`[data-error-for="${{name}}"]`);
+                    if (error) error.textContent = message;
                 }}
 
                 function inputValue(name) {{
                     const field = form.elements.namedItem(name);
-                    return field ? String(field.value || "").trim() : "";
+                    if (!field) return "";
+                    if (field instanceof RadioNodeList) return String(field.value || "").trim();
+                    return String(field.value || "").trim();
                 }}
 
-                function displayValue(value) {{
-                    return value || "Pending";
-                }}
-
-                function renderReviewControls() {{
-                    const container = document.getElementById("reviewControlPills");
-                    if (!container) return;
-                    container.innerHTML = Array.from(document.querySelectorAll(".yes-no-field")).map((field) => {{
-                        const label = field.querySelector(".discipline-question");
-                        const input = field.querySelector('input[data-yes-no="true"]');
-                        const value = input ? String(input.value || "").trim() : "";
-                        const tone = value === "Yes" ? " is-yes" : (value === "No" ? " is-no" : "");
-                        return `<span class="review-pill${{tone}}">${{label ? label.textContent : ""}}: ${{value || "Pending"}}</span>`;
-                    }}).join("");
-                }}
-
-                function updateSummaries() {{
-                    summaryMappings.forEach(([targetId, fieldName]) => {{
-                        const target = document.getElementById(targetId);
-                        if (target) target.textContent = displayValue(inputValue(fieldName));
-                    }});
-                    renderReviewControls();
-                }}
-
-                function setToggleValue(targetName, value) {{
-                    const input = document.getElementById(targetName);
-                    const group = document.querySelector(`[data-toggle-group="${{targetName}}"]`);
-                    if (!input || !group) return;
-                    input.value = value;
-                    group.classList.remove("is-invalid");
-                    const row = input.closest(".discipline-item");
-                    if (row) row.classList.remove("is-invalid");
-                    const alert = document.getElementById("disciplineAlert");
-                    if (alert) alert.classList.remove("is-visible");
-                    Array.from(group.querySelectorAll(".toggle-option")).forEach((button) => {{
-                        const active = button.getAttribute("data-value") === value;
-                        button.classList.toggle("is-active", active);
-                        button.setAttribute("aria-pressed", active ? "true" : "false");
-                    }});
-                    updateProgress();
+                function updateConfirmation() {{
+                    const email = inputValue("email_address") || "your email address";
+                    const emailTarget = document.getElementById("confirmEmail");
+                    if (emailTarget) emailTarget.textContent = email;
+                    const companyTarget = document.getElementById("confirmCompany");
+                    if (companyTarget) companyTarget.textContent = inputValue("company_name") || "Pending";
+                    const nameTarget = document.getElementById("confirmName");
+                    if (nameTarget) nameTarget.textContent = inputValue("contact_name") || "Pending";
+                    const jobTitleTarget = document.getElementById("confirmJobTitle");
+                    if (jobTitleTarget) jobTitleTarget.textContent = inputValue("job_title") || "Pending";
+                    const phoneTarget = document.getElementById("confirmPhone");
+                    if (phoneTarget) phoneTarget.textContent = inputValue("phone_number") || "Pending";
                 }}
 
                 function updateProgress() {{
-                    const completedCount = stages.filter((_, index) => stageIsComplete(index)).length;
-                    const percentage = Math.round((completedCount / stages.length) * 100);
+                    const percentage = Math.round(((currentStageIndex + 1) / steps.length) * 100);
                     if (progressFill) progressFill.style.width = percentage + "%";
-                    if (progressPercent) progressPercent.textContent = percentage + "% complete";
-                    if (progressStageLabel) progressStageLabel.textContent = "Stage " + (currentStageIndex + 1) + " of " + stages.length;
-                    if (progressStageName) progressStageName.textContent = stages[currentStageIndex].getAttribute("data-stage-title") || "";
+                    if (progressPercent) progressPercent.textContent = percentage + "%";
+                    if (progressStageLabel) progressStageLabel.textContent = "Step " + (currentStageIndex + 1) + " of " + steps.length;
+                    if (progressStageName) progressStageName.textContent = stepElement(currentStageIndex)?.getAttribute("data-step-title") || "";
 
-                    stages.forEach((stage, index) => {{
-                        stage.classList.toggle("active", index === currentStageIndex);
-                    }});
-
-                    tabs.forEach((tab, index) => {{
-                        const complete = stageIsComplete(index);
-                        const dot = tab.querySelector(".step-dot");
-                        tab.classList.toggle("active", index === currentStageIndex);
-                        tab.classList.toggle("complete", complete);
-                        if (dot) dot.textContent = complete && index !== currentStageIndex ? "✓" : String(index + 1).padStart(2, "0");
+                    steps.forEach((step, index) => {{
+                        step.classList.toggle("active", index === currentStageIndex);
                     }});
 
                     if (prevBtn) prevBtn.hidden = currentStageIndex === 0;
-                    if (nextBtn) nextBtn.hidden = currentStageIndex === stages.length - 1;
-                    if (submitBtn) submitBtn.hidden = currentStageIndex !== stages.length - 1;
+                    if (nextBtn) nextBtn.hidden = currentStageIndex === steps.length - 1;
+                    if (submitBtn) submitBtn.hidden = currentStageIndex !== steps.length - 1;
                     if (stepFooterCopy) {{
-                        stepFooterCopy.textContent = stages[currentStageIndex].getAttribute("data-stage-summary") || "Complete each stage to build the final recruitment audit report.";
+                        stepFooterCopy.textContent = "Your answers are confidential and used only to produce your audit report.";
                     }}
-                    updateSummaries();
+                    updateConfirmation();
                 }}
 
                 function showStage(stageIndex) {{
-                    currentStageIndex = Math.max(0, Math.min(stages.length - 1, stageIndex));
+                    currentStageIndex = Math.max(0, Math.min(steps.length - 1, stageIndex));
                     updateProgress();
+                    window.scrollTo({{ top: 0, behavior: "smooth" }});
                 }}
 
-                function validateFields(fields) {{
-                    for (const field of fields) {{
-                        if (field.matches('[data-yes-no="true"]')) {{
-                            if (!fieldFilled(field)) {{
-                                const group = document.querySelector(`[data-toggle-group="${{field.id}}"]`);
-                                const row = field.closest(".discipline-item");
-                                const alert = document.getElementById("disciplineAlert");
-                                if (group) {{
-                                    group.classList.add("is-invalid");
-                                    const firstButton = group.querySelector(".toggle-option");
-                                    if (firstButton) firstButton.focus();
-                                }}
-                                if (row) row.classList.add("is-invalid");
-                                if (alert) {{
-                                    alert.textContent = "Answer all twelve discipline checks before continuing.";
-                                    alert.classList.add("is-visible");
-                                    alert.scrollIntoView({{ behavior: "smooth", block: "nearest" }});
-                                }}
-                                return false;
-                            }}
-                            continue;
-                        }}
-                        if (!field.checkValidity()) {{
-                            field.reportValidity();
-                            field.focus();
-                            return false;
-                        }}
+                function validateStep(stepIndex) {{
+                    const step = stepElement(stepIndex);
+                    if (!step) return true;
+                    let valid = true;
+                    const alert = step.querySelector("[data-step-alert]");
+                    if (alert) {{
+                        alert.classList.remove("is-visible");
+                        alert.textContent = "";
                     }}
-                    return true;
-                }}
 
-                function validateCurrentStage() {{
-                    return validateFields(stageFields(currentStageIndex));
-                }}
-
-                function validateAllStages() {{
-                    return validateFields(Array.from(form.querySelectorAll("input, select, textarea")));
-                }}
-
-                Array.from(form.querySelectorAll("input, select, textarea")).forEach((field) => {{
-                    field.addEventListener("input", updateProgress);
-                    field.addEventListener("change", updateProgress);
-                }});
-
-                Array.from(document.querySelectorAll(".toggle-option")).forEach((button) => {{
-                    button.addEventListener("click", () => {{
-                        setToggleValue(button.getAttribute("data-target"), button.getAttribute("data-value"));
+                    step.querySelectorAll("input[type='text'], input[type='email'], input[type='tel']").forEach((field) => {{
+                        clearError(field.name);
+                        if (!field.checkValidity()) {{
+                            valid = false;
+                            setError(field.name, field.value.trim() ? "Enter a valid value." : "This field is required.");
+                            if (valid === false && document.activeElement === document.body) field.focus();
+                        }}
                     }});
-                }});
 
-                tabs.forEach((tab) => {{
-                    tab.addEventListener("click", () => {{
-                        const targetIndex = Number(tab.getAttribute("data-stage-index"));
-                        if (Number.isNaN(targetIndex) || targetIndex === currentStageIndex) return;
-                        if (targetIndex > currentStageIndex && !validateCurrentStage()) return;
-                        showStage(targetIndex);
+                    step.querySelectorAll("[data-question-name]").forEach((questionCard) => {{
+                        const fieldName = questionCard.getAttribute("data-question-name");
+                        clearError(fieldName);
+                        questionCard.classList.remove("is-invalid");
+                        const checked = step.querySelector(`input[name="${{fieldName}}"]:checked`);
+                        if (!checked) {{
+                            valid = false;
+                            questionCard.classList.add("is-invalid");
+                            setError(fieldName, "Select one option to continue.");
+                        }}
                     }});
-                }});
+
+                    if (!valid && alert) {{
+                        alert.textContent = "Complete the current step before continuing.";
+                        alert.classList.add("is-visible");
+                    }}
+                    return valid;
+                }}
 
                 if (nextBtn) {{
                     nextBtn.addEventListener("click", () => {{
-                        if (!validateCurrentStage()) return;
+                        if (!validateStep(currentStageIndex)) return;
                         showStage(currentStageIndex + 1);
                     }});
                 }}
@@ -1121,6 +1279,21 @@ def render_page(title: str, body: str) -> str:
                         showStage(currentStageIndex - 1);
                     }});
                 }}
+
+                form.querySelectorAll("input").forEach((field) => {{
+                    field.addEventListener("input", () => {{
+                        clearError(field.name);
+                        const questionCard = field.closest("[data-question-name]");
+                        if (questionCard) questionCard.classList.remove("is-invalid");
+                        updateConfirmation();
+                    }});
+                    field.addEventListener("change", () => {{
+                        clearError(field.name);
+                        const questionCard = field.closest("[data-question-name]");
+                        if (questionCard) questionCard.classList.remove("is-invalid");
+                        updateConfirmation();
+                    }});
+                }});
 
                 function setLoadingState(activeIndex) {{
                     const overlay = document.getElementById("loadingOverlay");
@@ -1200,7 +1373,8 @@ def render_page(title: str, body: str) -> str:
                         event.preventDefault();
                         return;
                     }}
-                    if (!validateAllStages()) {{
+                    const allValid = steps.every((_, index) => validateStep(index));
+                    if (!allValid) {{
                         event.preventDefault();
                         return;
                     }}
@@ -1282,7 +1456,6 @@ def render_page(title: str, body: str) -> str:
                     startNewAudit.addEventListener("click", resetAuditJourney);
                 }}
 
-                updateSummaries();
                 showStage(0);
             }})();
         </script>
@@ -1294,25 +1467,97 @@ def render_page(title: str, body: str) -> str:
 
 @app.route("/")
 def form():
-    sectors = get_sector_options()
-    sector_options = "\n".join(
-        f'<option value="{sector}">{sector}</option>' for sector in sectors
-    )
-
-    def render_yes_no_field(field_name: str, label: str) -> str:
+    def render_contact_field(field: dict) -> str:
+        autocomplete = field.get("autocomplete", "")
         return f"""
-        <div class="discipline-item yes-no-field">
-            <div class="discipline-question">{label}</div>
-            <input id="{field_name}" name="{field_name}" type="hidden" data-yes-no="true">
-            <div class="toggle-group" data-toggle-group="{field_name}" role="group" aria-label="{label}">
-                <button class="toggle-option is-yes" type="button" data-target="{field_name}" data-value="Yes">Yes</button>
-                <button class="toggle-option is-no" type="button" data-target="{field_name}" data-value="No">No</button>
-            </div>
+        <div class="field">
+            <label for="{field['name']}">{field['label']}</label>
+            <input
+                id="{field['name']}"
+                name="{field['name']}"
+                type="{field['type']}"
+                placeholder="{field['placeholder']}"
+                autocomplete="{autocomplete}"
+                required
+            >
+            <div class="field-error" data-error-for="{field['name']}"></div>
         </div>
         """
 
-    discipline_fields_html = "\n".join(
-        render_yes_no_field(field_name, label) for field_name, label in YES_NO_FIELDS
+    def render_question(question: dict) -> str:
+        options_html = "\n".join(
+            f"""
+            <label class="option-card">
+                <input class="option-input" type="radio" name="{question['name']}" value="{value}">
+                <span>{label}</span>
+            </label>
+            """
+            for value, label in question["options"]
+        )
+        return f"""
+        <div class="question-card" data-question-name="{question['name']}">
+            <div class="question-label">{question['label']}</div>
+            <div class="option-grid">
+                {options_html}
+            </div>
+            <div class="field-error" data-error-for="{question['name']}"></div>
+        </div>
+        """
+
+    sections_html = []
+    total_steps = len(WIZARD_STEPS) + 1
+    for index, step in enumerate(WIZARD_STEPS, start=1):
+        if step["kind"] == "contact":
+            content_html = f'<div class="step-fields">{ "".join(render_contact_field(field) for field in step["fields"]) }</div>'
+        else:
+            content_html = "\n".join(render_question(question) for question in step["questions"])
+        sections_html.append(
+            f"""
+            <section class="wizard-step{' active' if index == 1 else ''}" data-step-index="{index - 1}" data-step-title="{step['title']}" data-step-subtitle="{step['subtitle']}">
+                <div class="section-head">
+                    <div class="section-kicker">Step {index}</div>
+                    <h2 class="section-title">{step['title']}</h2>
+                    <p class="section-copy">{step['subtitle']}</p>
+                </div>
+                <div class="stage-alert" data-step-alert></div>
+                {content_html}
+            </section>
+            """
+        )
+
+    sections_html.append(
+        f"""
+        <section class="wizard-step" data-step-index="{total_steps - 1}" data-step-title="Confirmation" data-step-subtitle="Everything is captured and ready for report generation.">
+            <div class="section-head">
+                <div class="section-kicker">Step {total_steps}</div>
+                <h2 class="section-title">That's everything we need</h2>
+                <p class="section-copy">We'll put your recruitment audit together and send it to <strong id="confirmEmail">your email address</strong> within 24 hours.</p>
+            </div>
+            <div class="confirmation-panel">
+                <div class="confirmation-grid">
+                    <div class="confirmation-item">
+                        <div class="review-label">Company</div>
+                        <div class="review-value" id="confirmCompany">Pending</div>
+                    </div>
+                    <div class="confirmation-item">
+                        <div class="review-label">Full name</div>
+                        <div class="review-value" id="confirmName">Pending</div>
+                    </div>
+                    <div class="confirmation-item">
+                        <div class="review-label">Job title</div>
+                        <div class="review-value" id="confirmJobTitle">Pending</div>
+                    </div>
+                    <div class="confirmation-item">
+                        <div class="review-label">Phone number</div>
+                        <div class="review-value" id="confirmPhone">Pending</div>
+                    </div>
+                </div>
+                <div class="confirmation-note">
+                    The report covers 12 recruitment operating areas benchmarked against UK sector data.
+                </div>
+            </div>
+        </section>
+        """
     )
 
     body = f"""
@@ -1321,238 +1566,40 @@ def form():
         <div class="trust-pill">Confidential assessment</div>
     </div>
 
-    <div class="progress-shell">
-        <div class="progress-bar">
-            <div class="progress-top">
-                <div>
-                    <div class="progress-title" id="progressStageLabel">Stage 1 of 4</div>
-                    <div class="progress-stage-name" id="progressStageName">Organisation</div>
+    <form id="auditForm" method="post" action="/generate">
+        <input type="hidden" name="office_address" value="">
+        <input type="hidden" name="sector" value="Other">
+        <input type="hidden" name="location" value="Not provided">
+        <input type="hidden" name="headcount" value="Not provided">
+        <input type="hidden" name="annual_hiring_volume" value="Not provided">
+        <input type="hidden" name="key_roles_hired" value="Not provided">
+
+        <div class="panel assessment-panel">
+            <div class="progress-shell">
+                <div class="progress-top">
+                    <div>
+                        <div class="progress-title" id="progressStageLabel">Step 1 of {total_steps}</div>
+                        <div class="progress-stage-name" id="progressStageName">{WIZARD_STEPS[0]['title']}</div>
+                    </div>
+                    <div class="progress-percent" id="progressPercent">13%</div>
                 </div>
-                <div class="progress-percent" id="progressPercent">0% complete</div>
+                <div class="track"><div class="track-fill" id="progressFill"></div></div>
             </div>
-            <div class="track"><div class="track-fill" id="progressFill"></div></div>
-            <div class="stepper">
-                <button class="step active" type="button" data-stage-index="0">
-                    <div class="step-dot">01</div>
-                    <div class="step-copy">
-                        <div class="step-kicker">Stage 1</div>
-                        <div class="step-title">Organisation</div>
-                    </div>
-                </button>
-                <button class="step" type="button" data-stage-index="1">
-                    <div class="step-dot">02</div>
-                    <div class="step-copy">
-                        <div class="step-kicker">Stage 2</div>
-                        <div class="step-title">Performance</div>
-                    </div>
-                </button>
-                <button class="step" type="button" data-stage-index="2">
-                    <div class="step-dot">03</div>
-                    <div class="step-copy">
-                        <div class="step-kicker">Stage 3</div>
-                        <div class="step-title">Discipline</div>
-                    </div>
-                </button>
-                <button class="step" type="button" data-stage-index="3">
-                    <div class="step-dot">04</div>
-                    <div class="step-copy">
-                        <div class="step-kicker">Stage 4</div>
-                        <div class="step-title">Review</div>
-                    </div>
-                </button>
+
+            <div class="wizard-body">
+                {"".join(sections_html)}
+            </div>
+
+            <div class="footer-bar">
+                <div class="footer-copy" id="stepFooterCopy">Your answers are confidential and used only to produce your audit report.</div>
+                <div class="button-row">
+                    <button class="button button-ghost" type="button" data-prev-step>Back</button>
+                    <button class="button button-secondary" type="button" data-next-step>Continue</button>
+                    <button class="button button-primary" type="submit" hidden>Generate Audit Report</button>
+                </div>
             </div>
         </div>
-    </div>
-
-    <div class="panel overview-card">
-            <div class="sidebar-kicker">Assessment overview</div>
-            <h3 class="overview-title">Live profile</h3>
-            <p class="sidebar-copy">This summary updates as the assessment is completed.</p>
-            <div class="summary-list">
-                <div class="summary-item"><span class="summary-label">Company</span><span class="summary-value" id="summaryCompany">Pending</span></div>
-                <div class="summary-item"><span class="summary-label">Sector</span><span class="summary-value" id="summarySector">Pending</span></div>
-                <div class="summary-item"><span class="summary-label">Location</span><span class="summary-value" id="summaryLocation">Pending</span></div>
-                <div class="summary-item"><span class="summary-label">Hiring demand</span><span class="summary-value" id="summaryHiringDemand">Pending</span></div>
-                <div class="summary-item"><span class="summary-label">Key roles</span><span class="summary-value" id="summaryKeyRoles">Pending</span></div>
-            </div>
-    </div>
-
-        <form id="auditForm" method="post" action="/generate">
-            <div class="panel assessment-panel">
-                <section class="stage active" data-stage="1" data-stage-title="Organisation" data-stage-summary="Capture the organisation profile used to anchor the audit and benchmark selection.">
-                    <div class="section-head">
-                        <div>
-                            <div class="section-kicker">Stage 1</div>
-                            <h2 class="section-title">Organisation</h2>
-                            <p class="section-copy">Capture the organisation profile used to anchor the audit and benchmark selection.</p>
-                        </div>
-                    </div>
-                    <div class="step-panel">
-                        <div class="step-fields">
-                            <div class="field">
-                                <label for="company_name">What is the name of your company?</label>
-                                <input id="company_name" name="company_name" required>
-                            </div>
-                            <div class="field">
-                                <label for="contact_name">What is the name of the audit contact?</label>
-                                <input id="contact_name" name="contact_name" autocomplete="name" required>
-                            </div>
-                            <div class="field">
-                                <label for="sector">Which sector does your business operate in?</label>
-                                <select id="sector" name="sector" required>
-                                    <option value="">Select…</option>
-                                    {sector_options}
-                                </select>
-                            </div>
-                            <div class="field">
-                                <label for="location">Where is the business based?</label>
-                                <input id="location" name="location" autocomplete="address-level2" required>
-                            </div>
-                            <div class="field has-suffix">
-                                <label for="headcount">How many employees does the business have?</label>
-                                <div class="input-wrap">
-                                    <input id="headcount" name="headcount" inputmode="numeric" pattern="[0-9, ]+" title="Use numbers only." required>
-                                    <span class="suffix">employees</span>
-                                </div>
-                            </div>
-                            <div class="field has-suffix">
-                                <label for="annual_hiring_volume">How many hires do you typically make each year?</label>
-                                <div class="input-wrap">
-                                    <input id="annual_hiring_volume" name="annual_hiring_volume" inputmode="numeric" pattern="[0-9, ]+" title="Use numbers only." required>
-                                    <span class="suffix">hires</span>
-                                </div>
-                            </div>
-                            <div class="field full">
-                                <label for="key_roles_hired">Which roles or job titles do you hire for most often?</label>
-                                <input id="key_roles_hired" name="key_roles_hired" placeholder="e.g. Sales Managers, Service Engineers, Finance Business Partners" required>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="stage" data-stage="2" data-stage-title="Performance" data-stage-summary="Capture the operating metrics that show pace, conversion and early retention performance.">
-                    <div class="section-head">
-                        <div>
-                            <div class="section-kicker">Stage 2</div>
-                            <h2 class="section-title">Performance</h2>
-                            <p class="section-copy">Capture the operating metrics that show pace, conversion and early retention performance.</p>
-                        </div>
-                    </div>
-                    <div class="step-panel">
-                        <div class="step-fields">
-                            <div class="field has-suffix">
-                                <label for="time_to_hire">How long does it currently take to hire a role?</label>
-                                <div class="input-wrap">
-                                    <input id="time_to_hire" name="time_to_hire" placeholder="e.g. 42" required>
-                                    <span class="suffix">days</span>
-                                </div>
-                            </div>
-                            <div class="field has-suffix">
-                                <label for="applications_per_role">How many applications do you receive for a typical role?</label>
-                                <div class="input-wrap">
-                                    <input id="applications_per_role" name="applications_per_role" placeholder="e.g. 36" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." required>
-                                    <span class="suffix">applications</span>
-                                </div>
-                            </div>
-                            <div class="field has-suffix">
-                                <label for="offer_acceptance">What percentage of offers are accepted?</label>
-                                <div class="input-wrap">
-                                    <input id="offer_acceptance" name="offer_acceptance" placeholder="e.g. 72" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." required>
-                                    <span class="suffix">%</span>
-                                </div>
-                            </div>
-                            <div class="field has-suffix">
-                                <label for="first_year_attrition">What percentage of hires leave within the first year?</label>
-                                <div class="input-wrap">
-                                    <input id="first_year_attrition" name="first_year_attrition" placeholder="e.g. 18" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." required>
-                                    <span class="suffix">%</span>
-                                </div>
-                            </div>
-                            <div class="field has-suffix">
-                                <label for="interview_stages">How many interview stages are typically used?</label>
-                                <div class="input-wrap">
-                                    <input id="interview_stages" name="interview_stages" placeholder="e.g. 2" inputmode="numeric" pattern="[0-9 ]+" title="Use numbers only." required>
-                                    <span class="suffix">stages</span>
-                                </div>
-                            </div>
-                            <div class="field has-suffix">
-                                <label for="interview_feedback_time">How long does interview feedback usually take to return?</label>
-                                <div class="input-wrap">
-                                    <input id="interview_feedback_time" name="interview_feedback_time" placeholder="e.g. 2" required>
-                                    <span class="suffix">days</span>
-                                </div>
-                            </div>
-                            <div class="field full has-suffix">
-                                <label for="candidates_reaching_interview">How many candidates typically reach interview for each role?</label>
-                                <div class="input-wrap">
-                                    <input id="candidates_reaching_interview" name="candidates_reaching_interview" placeholder="e.g. 5" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." required>
-                                    <span class="suffix">candidates</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="stage" data-stage="3" data-stage-title="Discipline" data-stage-summary="Assess whether recruitment is planned, controlled and governed consistently in practice.">
-                    <div class="section-head">
-                        <div>
-                            <div class="section-kicker">Stage 3</div>
-                            <h2 class="section-title">Discipline</h2>
-                            <p class="section-copy">Assess whether recruitment is planned, controlled and governed consistently in practice.</p>
-                        </div>
-                    </div>
-                    <div class="step-panel">
-                        <div class="stage-alert" id="disciplineAlert"></div>
-                        <div class="discipline-grid">
-                            {discipline_fields_html}
-                        </div>
-                    </div>
-                </section>
-
-                <section class="stage" data-stage="4" data-stage-title="Review" data-stage-summary="Review the completed input set before generating the audit report.">
-                    <div class="section-head">
-                        <div>
-                            <div class="section-kicker">Stage 4</div>
-                            <h2 class="section-title">Review</h2>
-                            <p class="section-copy">Check the final input set before generating the audit report.</p>
-                        </div>
-                    </div>
-                    <div class="step-panel">
-                        <div class="review-strip">
-                            <div class="review-card"><div class="review-label">Company</div><div class="review-value" id="reviewCompanyName">Pending</div></div>
-                            <div class="review-card"><div class="review-label">Contact</div><div class="review-value" id="reviewContact">Pending</div></div>
-                            <div class="review-card"><div class="review-label">Sector</div><div class="review-value" id="reviewSector">Pending</div></div>
-                            <div class="review-card"><div class="review-label">Location</div><div class="review-value" id="reviewLocation">Pending</div></div>
-                        </div>
-                        <div class="review-grid">
-                            <div class="review-metric"><div class="review-label">Employees</div><div class="review-value" id="reviewHeadcount">Pending</div></div>
-                            <div class="review-metric"><div class="review-label">Annual hiring volume</div><div class="review-value" id="reviewAnnualHiringVolume">Pending</div></div>
-                            <div class="review-metric"><div class="review-label">Key roles</div><div class="review-value" id="reviewKeyRoles">Pending</div></div>
-                            <div class="review-metric"><div class="review-label">Time to hire</div><div class="review-value" id="reviewTimeToHire">Pending</div></div>
-                            <div class="review-metric"><div class="review-label">Applications per role</div><div class="review-value" id="reviewApplicationsPerRole">Pending</div></div>
-                            <div class="review-metric"><div class="review-label">Offer acceptance</div><div class="review-value" id="reviewOfferAcceptance">Pending</div></div>
-                            <div class="review-metric"><div class="review-label">First-year attrition</div><div class="review-value" id="reviewFirstYearAttrition">Pending</div></div>
-                            <div class="review-metric"><div class="review-label">Interview stages</div><div class="review-value" id="reviewInterviewStages">Pending</div></div>
-                            <div class="review-metric"><div class="review-label">Feedback time</div><div class="review-value" id="reviewInterviewFeedbackTime">Pending</div></div>
-                            <div class="review-metric"><div class="review-label">Candidates reaching interview</div><div class="review-value" id="reviewCandidatesReachingInterview">Pending</div></div>
-                        </div>
-                        <div class="review-pill-card">
-                            <div class="review-label">Process controls</div>
-                            <div class="review-pill-grid" id="reviewControlPills"></div>
-                        </div>
-                    </div>
-                </section>
-
-                <div class="footer-bar">
-                    <div class="footer-copy" id="stepFooterCopy">Complete each step to build the final recruitment audit report.</div>
-                    <div class="button-row">
-                        <button class="button button-ghost" type="button" data-prev-step>Back</button>
-                        <button class="button button-secondary" type="button" data-next-step>Continue</button>
-                        <button class="button button-primary" type="submit" hidden>Generate Audit Report</button>
-                    </div>
-                </div>
-            </div>
-        </form>
+    </form>
     """
 
     return render_page("Recruitment Operating Model Audit", body)
@@ -1567,6 +1614,13 @@ def generate():
         except ValueError:
             pass
 
+        process_scores = {
+            field_name: parse_tier_score(request.form.get(field_name))
+            for step in WIZARD_STEPS
+            if step["kind"] == "questions"
+            for field_name in [question["name"] for question in step["questions"]]
+        }
+
         data = {
             "company_name": request.form.get("company_name", "").strip(),
             "contact_name": request.form.get("contact_name", "").strip(),
@@ -1574,11 +1628,11 @@ def generate():
             "phone_number": request.form.get("phone_number", "").strip(),
             "email_address": request.form.get("email_address", "").strip(),
             "office_address": request.form.get("office_address", "").strip(),
-            "sector": request.form.get("sector", "").strip(),
-            "location": request.form.get("location", "").strip(),
-            "headcount": request.form.get("headcount", "").strip(),
-            "annual_hiring_volume": request.form.get("annual_hiring_volume", "").strip(),
-            "key_roles_hired": request.form.get("key_roles_hired", "").strip(),
+            "sector": request.form.get("sector", "").strip() or "Other",
+            "location": request.form.get("location", "").strip() or "Not provided",
+            "headcount": request.form.get("headcount", "").strip() or "Not provided",
+            "annual_hiring_volume": request.form.get("annual_hiring_volume", "").strip() or "Not provided",
+            "key_roles_hired": request.form.get("key_roles_hired", "").strip() or "Not provided",
             "raw_metrics": {
                 "time_to_hire": request.form.get("time_to_hire", "").strip(),
                 "applications_per_role": request.form.get("applications_per_role", "").strip(),
@@ -1597,19 +1651,10 @@ def generate():
                 "interview_feedback_time_days": parse_time_to_hire_days(request.form.get("interview_feedback_time", "").strip()),
                 "candidates_reaching_interview": parse_numeric_value(request.form.get("candidates_reaching_interview", "").strip()),
             },
+            "process_scores": process_scores,
             "process_flags": {
-                "has_hiring_plan": yes_no_to_bool(request.form.get("has_hiring_plan")),
-                "tracks_metrics": yes_no_to_bool(request.form.get("tracks_metrics")),
-                "has_employer_brand": yes_no_to_bool(request.form.get("has_employer_brand")),
-                "standardised_job_specs": yes_no_to_bool(request.form.get("standardised_job_specs")),
-                "multi_channel_sourcing": yes_no_to_bool(request.form.get("multi_channel_sourcing")),
-                "structured_screening": yes_no_to_bool(request.form.get("structured_screening")),
-                "structured_interviews": yes_no_to_bool(request.form.get("structured_interviews")),
-                "fast_offer_process": yes_no_to_bool(request.form.get("fast_offer_process")),
-                "formal_onboarding": yes_no_to_bool(request.form.get("formal_onboarding")),
-                "collects_candidate_feedback": yes_no_to_bool(request.form.get("collects_candidate_feedback")),
-                "named_process_owner": yes_no_to_bool(request.form.get("named_process_owner")),
-                "hiring_manager_training": yes_no_to_bool(request.form.get("hiring_manager_training")),
+                field_name: (score is not None and score >= TIER_SCORE_THRESHOLD)
+                for field_name, score in process_scores.items()
             },
         }
 
