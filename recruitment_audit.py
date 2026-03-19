@@ -65,6 +65,8 @@ BRAND_PANEL_ALT = colors.HexColor("#FAFBFC")
 BRAND_PANEL_WARM = colors.HexColor("#FBF8F2")
 GREEN_TEXT = colors.HexColor("#166534")
 GREEN_BG = colors.HexColor("#DCFCE7")
+TEAL_TEXT = colors.HexColor("#047857")
+TEAL_BG = colors.HexColor("#D1FAE5")
 AMBER_TEXT = colors.HexColor("#9A6700")
 AMBER_BG = colors.HexColor("#FEF3C7")
 RED_TEXT = colors.HexColor("#991B1B")
@@ -674,13 +676,15 @@ def create_overall_score_chart(company_name: str, total_score: int) -> Path:
     rating = _rating_for_score(score)
     fig, ax = plt.subplots(figsize=(6.4, 1.85))
     _apply_chart_style(fig, ax)
-    ax.barh([0], [40], left=0, color="#B91C1C", height=0.38)
-    ax.barh([0], [35], left=40, color="#E8A838", height=0.38)
-    ax.barh([0], [45], left=75, color="#3A7D44", height=0.38)
+    ax.barh([0], [25], left=0, color="#B91C1C", height=0.38)
+    ax.barh([0], [25], left=25, color="#D85A30", height=0.38)
+    ax.barh([0], [25], left=50, color="#E8A838", height=0.38)
+    ax.barh([0], [21], left=75, color="#1D9E75", height=0.38)
+    ax.barh([0], [25], left=96, color="#3A7D44", height=0.38)
     ax.set_xlim(0, 120)
     ax.set_ylim(-0.55, 0.55)
     ax.set_yticks([])
-    ax.set_xticks([0, 40, 75, 120])
+    ax.set_xticks([0, 24, 49, 74, 95, 120])
     ax.tick_params(axis="x", labelsize=9)
     ax.grid(False)
     fig.text(0.08, 0.92, company_name, fontsize=8.8, color="#5F6876")
@@ -699,9 +703,11 @@ def create_overall_score_chart(company_name: str, total_score: int) -> Path:
         fontweight="bold",
         bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="#CBD5E1", lw=0.8),
     )
-    ax.text(20, -0.44, "Weak", ha="center", va="top", fontsize=8, color="#666666")
-    ax.text(57.5, -0.44, "Functional", ha="center", va="top", fontsize=8, color="#666666")
-    ax.text(97.5, -0.44, "Strong", ha="center", va="top", fontsize=8, color="#666666")
+    ax.text(12.5, -0.44, "Critical", ha="center", va="top", fontsize=8, color="#666666")
+    ax.text(37.5, -0.44, "Weak", ha="center", va="top", fontsize=8, color="#666666")
+    ax.text(62.5, -0.44, "Functional", ha="center", va="top", fontsize=8, color="#666666")
+    ax.text(85.5, -0.44, "Strong", ha="center", va="top", fontsize=8, color="#666666")
+    ax.text(108, -0.44, "High", ha="center", va="top", fontsize=8, color="#666666")
     for spine in ax.spines.values():
         spine.set_visible(False)
     fig.subplots_adjust(left=0.08, right=0.97, top=0.60, bottom=0.24)
@@ -954,9 +960,14 @@ def _normalise_report(report: dict, fallback_scores: list[int]) -> dict:
 
 
 def _clean_report(report: dict, data: dict, benchmark_summary: dict) -> dict:
+    overall_band = _overall_score_band(data["total_score"])
     cleaned = {
         "executive_overview": _clean_text(report.get("executive_overview"), max_sentences=5, max_words=140),
-        "overall_recruitment_score": _clean_text(report.get("overall_recruitment_score"), max_sentences=2, max_words=40),
+        "overall_recruitment_score": _clean_text(
+            f"{overall_band['description']} Recommended response: {overall_band['response']}",
+            max_sentences=4,
+            max_words=64,
+        ),
         "final_verdict": _clean_text(report.get("final_verdict"), max_sentences=4),
         "top_strengths": _clean_list(report.get("top_strengths"), max_items=5, max_words=16),
         "top_problems": _clean_list(report.get("top_problems"), max_items=5, max_words=16),
@@ -993,8 +1004,6 @@ def _clean_report(report: dict, data: dict, benchmark_summary: dict) -> dict:
     cleaned["day_30_plan"] = _build_day_plan(cleaned["sections"], 30)
     cleaned["day_60_plan"] = _build_day_plan(cleaned["sections"], 60)
     cleaned["day_90_plan"] = _build_day_plan(cleaned["sections"], 90)
-    if not cleaned["overall_recruitment_score"]:
-        cleaned["overall_recruitment_score"] = "The overall score points to a recruitment function that is workable, but not yet consistent enough in the areas that matter most."
     if not cleaned["final_verdict"]:
         cleaned["final_verdict"] = _build_default_final_verdict(data, cleaned)
 
@@ -1087,6 +1096,15 @@ def _build_pdf_styles() -> StyleSheet1:
     )
     styles.add(
         ParagraphStyle(
+            name="SectionHeaderTitle",
+            parent=styles["Heading2"],
+            spaceBefore=0,
+            spaceAfter=0,
+            leading=14,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
             name="Heading3",
             fontName=PDF_FONT_BOLD,
             fontSize=10,
@@ -1141,8 +1159,8 @@ def _build_pdf_styles() -> StyleSheet1:
         ParagraphStyle(
             name="ScoreBadge",
             fontName=PDF_FONT_BOLD,
-            fontSize=10,
-            leading=12,
+            fontSize=9.2,
+            leading=11,
             alignment=TA_CENTER,
             textColor=TEXT_COLOR,
         )
@@ -1213,21 +1231,17 @@ def _fixed_pdf_image(path: Path, width: float, height: float) -> Image:
 
 
 def _score_colours(score: int) -> tuple[colors.Color, colors.Color]:
-    if score >= 8:
+    if score >= 9:
         return GREEN_BG, GREEN_TEXT
     if score >= 6:
+        return TEAL_BG, TEAL_TEXT
+    if score >= 4:
         return AMBER_BG, AMBER_TEXT
     return RED_BG, RED_TEXT
 
 
 def _status_label(score: int) -> str:
-    if score >= 8:
-        return "Strong"
-    if score >= 6:
-        return "Sound with gaps"
-    if score >= 4:
-        return "Inconsistent"
-    return "Critical"
+    return _section_score_band(score)["label"]
 
 
 def _section_card_table(title: str, body: list, background: colors.Color = colors.white) -> Table:
@@ -1553,11 +1567,13 @@ def _add_detailed_findings(story: list, styles: StyleSheet1, report: dict) -> No
     story.append(PageBreak())
     story.append(Paragraph("Detailed findings", styles["Heading1"]))
     for section in report["sections"]:
-        story.append(Spacer(1, 7.5 * mm))
+        story.append(Spacer(1, 9 * mm))
         score_bg, score_text = _score_colours(section["score"])
+        badge_width = 60 * mm
+        title_width = 170 * mm - badge_width
         badge = Table(
             [[Paragraph(f"{section['score']}/10 — {_status_label(section['score'])}", styles["ScoreBadge"])]],
-            colWidths=[48 * mm],
+            colWidths=[badge_width],
         )
         badge.setStyle(
             TableStyle(
@@ -1576,8 +1592,8 @@ def _add_detailed_findings(story: list, styles: StyleSheet1, report: dict) -> No
             )
         )
         header = Table(
-            [[Paragraph(section["title"], styles["Heading2"]), badge]],
-            colWidths=[122 * mm, 48 * mm],
+            [[Paragraph(section["title"], styles["SectionHeaderTitle"]), badge]],
+            colWidths=[title_width, badge_width],
             hAlign="LEFT",
         )
         header.setStyle(
@@ -1932,6 +1948,60 @@ def _safe_float(value) -> float | None:
     return float(value)
 
 
+def _overall_score_band(total_score: int) -> dict[str, str]:
+    if total_score >= 96:
+        return {
+            "label": "High-performing",
+            "description": "The recruitment operating model is consistently strong. Controls, speed and decision quality are working across all stages.",
+            "response": "Protect the standard. Light-touch advisory review on a quarterly cycle.",
+        }
+    if total_score >= 75:
+        return {
+            "label": "Strong but inconsistent",
+            "description": "The model has clear strengths, but execution varies across stages. One or two areas are dragging overall performance and creating avoidable delay or risk.",
+            "response": "Targeted intervention. Fix the weakest area, tighten ownership and track weekly.",
+        }
+    if total_score >= 50:
+        return {
+            "label": "Functional but exposed",
+            "description": "Hiring gets done, but without reliable structure. Process gaps are increasing cost, slowing decisions and producing inconsistent outcomes.",
+            "response": "Structured support needed. Advertising, screening or end-to-end delivery intervention recommended.",
+        }
+    if total_score >= 25:
+        return {
+            "label": "Weak and reactive",
+            "description": "The model is operating without meaningful control. Hiring is reactive, roles stay open too long and quality depends on individual effort.",
+            "response": "Significant intervention required. End-to-end managed recruitment or full operating model redesign.",
+        }
+    return {
+        "label": "Critical",
+        "description": "No functioning recruitment model. Hiring is ad hoc, unowned and producing avoidable commercial damage.",
+        "response": "Immediate escalation. Full outsourced recruitment or emergency operating model build required.",
+    }
+
+
+def _section_score_band(score: int) -> dict[str, str]:
+    if score >= 9:
+        return {
+            "label": "Strong",
+            "description": "Performing well. Protect at scale and monitor for drift.",
+        }
+    if score >= 6:
+        return {
+            "label": "Sound with gaps",
+            "description": "Working but not consistently. Refine the operating standard and tighten ownership.",
+        }
+    if score >= 4:
+        return {
+            "label": "Inconsistent",
+            "description": "Creating visible drag. Fix the root cause and assign a single accountable owner.",
+        }
+    return {
+        "label": "Critical",
+        "description": "Broken or absent. Immediate intervention required.",
+    }
+
+
 def _short_label(title: str) -> str:
     mapping = {
         "Recruitment strategy and workforce planning": "Strategy and planning",
@@ -1951,39 +2021,29 @@ def _short_label(title: str) -> str:
 
 
 def _rating_for_score(total_score: int) -> str:
-    if total_score >= 90:
-        return "High performing"
-    if total_score >= 70:
-        return "Strong but inconsistent"
-    if total_score >= 50:
-        return "Functional but inconsistent"
-    if total_score >= 30:
-        return "Underperforming"
-    return "Broken"
+    return _overall_score_band(total_score)["label"]
 
 
 def _section_rating(score: int) -> str:
-    if score >= 8:
-        return "Strong"
-    if score >= 6:
-        return "Sound with gaps"
-    if score >= 4:
-        return "Inconsistent"
-    return "Critical"
+    return _section_score_band(score)["label"]
 
 
 def _score_hex(score: int) -> str:
-    if score >= 8:
+    if score >= 9:
         return "#3A7D44"
     if score >= 6:
+        return "#1D9E75"
+    if score >= 4:
         return "#E8A838"
     return "#B91C1C"
 
 
 def _section_chart_score_hex(score: int) -> str:
-    if score >= 7:
+    if score >= 9:
         return "#3A7D44"
-    if score >= 5:
+    if score >= 6:
+        return "#1D9E75"
+    if score >= 4:
         return "#E8A838"
     return "#B91C1C"
 
@@ -2342,7 +2402,7 @@ def _section_opening_mode(title: str) -> str:
 
 
 def _score_band_lead(score: int) -> str:
-    if score >= 8:
+    if score >= 9:
         return "This is one of the stronger parts of the process."
     if score >= 6:
         return "This area is working but not consistently."
@@ -2407,7 +2467,7 @@ def _build_section_headline(title: str, score: int, data: dict, benchmark_summar
     elif opening_mode == "consequence":
         text = f"{_build_consequence_opening(title, data, benchmark_summary)} {band_lead} The root cause sits in {root_cause}."
     elif opening_mode == "diagnosis":
-        if score >= 8:
+        if score >= 9:
             diagnosis_lead = "The defining feature in this area is consistency rather than volatility."
         elif score >= 6:
             diagnosis_lead = "The issue in this area is not basic failure; it is uneven execution."
@@ -2460,7 +2520,7 @@ def _build_section_commercial_impact(title: str, score: int, data: dict, benchma
     metrics = data["metrics"]
     offer_comparison = _find_comparison(benchmark_summary, "Offer acceptance")
     annual_volume = _annual_hiring_volume(data)
-    if score >= 8:
+    if score >= 9:
         return _clean_text(
             f"This part of the process is not the main cost issue today. The commercial task is to protect performance at scale so vacancy days, management time and candidate quality do not drift as hiring volume changes.",
             max_sentences=2,
@@ -2625,7 +2685,7 @@ def _build_section_commercial_impact(title: str, score: int, data: dict, benchma
 
 
 def _build_section_key_risks(title: str, score: int, data: dict, benchmark_summary: dict) -> list[str]:
-    if score >= 8:
+    if score >= 9:
         return [
             "The main task is to protect this standard as the business scales.",
             f"Minor drift at { _section_context(title)['location'] } should be picked up early before it affects the wider process.",
@@ -2705,7 +2765,7 @@ def _build_section_key_risks(title: str, score: int, data: dict, benchmark_summa
 def _build_section_actions(title: str, score: int, data: dict) -> tuple[list[str], list[str]]:
     context = _section_context(title)
     owner = context["owner"]
-    if score >= 8:
+    if score >= 9:
         first_label = second_label = "Maintain"
     elif score >= 6:
         first_label = "Refine"
@@ -2761,7 +2821,7 @@ def _build_recommended_intervention(data: dict, report: dict, benchmark_summary:
     low_titles = [title for title, score in scores.items() if score <= 5]
     weakest_areas = ", ".join(low_titles[:3]).lower() if low_titles else "the weakest parts of the hiring process"
 
-    if overall_score >= 90:
+    if overall_score >= 96:
         service_key = "Advisory Review"
         summary = _clean_text(
             "The process is performing well. The current pattern is one of control and consistency rather than structural breakdown.",
@@ -2778,7 +2838,7 @@ def _build_recommended_intervention(data: dict, report: dict, benchmark_summary:
             "Bradford & Marsh can provide a light-touch review and quarterly check-in to protect current performance as the business grows. That gives the client external judgement without adding unnecessary process weight.",
         ]
         escalation = "If filtering discipline starts to weaken or decision quality becomes uneven, the next level would be Advertising + Screening to restore front-end control before the problem spreads."
-    elif overall_score >= 70:
+    elif overall_score >= 75:
         service_key = "Advertising + Screening"
         summary = _clean_text(
             f"The overall process is sound, but the evidence points to inconsistent control once candidates enter review. {weakest_titles[0]} and {weakest_titles[1].lower()} are the clearest signs that candidate handling is not tight enough before work reaches the client team.",
@@ -2812,7 +2872,7 @@ def _build_recommended_intervention(data: dict, report: dict, benchmark_summary:
             "Advertising + Screening alone would still leave the business too exposed to weak market coverage. The process needs stronger input as well as tighter filtering if quality is going to improve consistently.",
         ]
         escalation = "If coordination, ownership and decision control remain weak after this level of support, the next level would be Fully Managed Recruitment."
-    elif overall_score >= 30:
+    elif overall_score >= 25:
         service_key = "Fully Managed Recruitment"
         summary = _clean_text(
             f"The audit shows a weak operating model rather than a contained issue. {weakest_titles[0]} and {weakest_titles[1].lower()} are both dragging the process down, and the business is not getting enough consistency from role launch through to decision.",
