@@ -1156,17 +1156,14 @@ def render_page(title: str, body: str) -> str:
                         <div class="completion-list">
                             <div class="completion-item">Your PDF report has been generated and downloaded</div>
                             <div class="completion-item">A copy has been prepared for internal review</div>
-                            <div class="completion-item">You can start a new audit at any time</div>
+                            <div class="completion-item">If you would like to discuss the findings, Bradford &amp; Marsh can walk you through the audit and recommended next steps</div>
                         </div>
                         <div class="completion-actions">
-                            <button class="button button-primary" type="button" id="thankYouStartNewAudit">Start New Audit</button>
+                            <a class="button button-primary" href="mailto:audit@bradfordandmarsh.co.uk?subject=Book%20a%20meeting%20to%20discuss%20my%20recruitment%20audit">Book a discussion</a>
+                            <a class="button button-secondary" href="tel:01260544934">Call 01260 544934</a>
                             <a class="button button-secondary" href="https://www.bradfordandmarsh.co.uk/" target="_blank" rel="noopener noreferrer">Visit Bradford &amp; Marsh</a>
                         </div>
                     `;
-                    const thankYouStartNewAudit = document.getElementById("thankYouStartNewAudit");
-                    if (thankYouStartNewAudit) {{
-                        thankYouStartNewAudit.addEventListener("click", resetAuditJourney);
-                    }}
                 }}
 
                 function resetOverlayState() {{
