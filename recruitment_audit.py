@@ -803,8 +803,8 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         inset.text(0.00, -0.92, left_label, transform=inset.transAxes, fontsize=10.0, color="#666666")
         inset.text(1.00, -0.92, right_label, transform=inset.transAxes, fontsize=10.0, color="#666666", ha="right")
         delta_weight = "bold" if delta_colour == "#B91C1C" else "normal"
-        ax.text(0.00, 0.06, delta_text, transform=ax.transAxes, fontsize=10.8, color=delta_colour, fontweight=delta_weight, ha="left")
-        ax.text(0.90, 0.28, direction_text, transform=ax.transAxes, fontsize=9.2, color="#666666", ha="left")
+        ax.text(0.00, -0.08, delta_text, transform=ax.transAxes, fontsize=10.8, color=delta_colour, fontweight=delta_weight, ha="left")
+        ax.text(0.90, -0.08, direction_text, transform=ax.transAxes, fontsize=9.2, color="#666666", ha="left")
 
     fig.suptitle("Benchmark comparison", fontsize=12, fontweight="bold", color="#1F2A40", y=0.985)
     fig.text(0.10, 0.948, company_name, fontsize=8.8, color="#5F6876")
@@ -1558,9 +1558,15 @@ def _add_charts_section(
         story.append(_scaled_pdf_image(section_chart, CHART_WIDTH))
     if benchmark_chart.exists():
         story.append(Spacer(1, 7 * mm))
-        story.append(Paragraph("Benchmark comparison", styles["Heading2"]))
         benchmark_height = CHART_WIDTH * (0.22 * max(benchmark_chart_item_count, 1) + 0.12)
-        story.append(_fixed_pdf_image(benchmark_chart, CHART_WIDTH, benchmark_height))
+        story.append(
+            KeepTogether(
+                [
+                    Paragraph("Benchmark comparison", styles["Heading2"]),
+                    _fixed_pdf_image(benchmark_chart, CHART_WIDTH, benchmark_height),
+                ]
+            )
+        )
 
 
 def _add_detailed_findings(story: list, styles: StyleSheet1, report: dict) -> None:
@@ -1690,10 +1696,11 @@ def _add_recommended_intervention_section(story: list, styles: StyleSheet1, repo
 
 
 def _add_final_verdict(story: list, styles: StyleSheet1, report: dict) -> None:
-    story.append(Paragraph("Final verdict", styles["Heading1"]))
     final_verdict = report.get("final_verdict") or " ".join(_build_final_verdict_paragraphs(report))
+    verdict_block = [Paragraph("Final verdict", styles["Heading1"])]
     for paragraph in _split_sentences(final_verdict)[:4]:
-        story.append(Paragraph(paragraph, styles["Body"]))
+        verdict_block.append(Paragraph(paragraph, styles["Body"]))
+    story.append(KeepTogether(verdict_block))
 
 
 def _bullet_list(items: list[str], styles: StyleSheet1, max_words: int = 18) -> ListFlowable:
