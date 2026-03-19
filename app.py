@@ -232,7 +232,7 @@ def render_page(title: str, body: str) -> str:
                 margin: 0;
                 padding: 0;
                 min-height: 100%;
-                background: var(--bg);
+                background: #f1f3f5;
                 color: var(--ink);
                 font-family: var(--font-sans);
             }}
@@ -249,7 +249,6 @@ def render_page(title: str, body: str) -> str:
                 font-family: var(--font-display);
                 font-size: 20px;
                 font-weight: 700;
-                letter-spacing: -0.01em;
             }}
             .trust-pill {{
                 display: inline-flex;
@@ -278,9 +277,7 @@ def render_page(title: str, body: str) -> str:
                 margin-bottom: 14px;
             }}
             .progress-title,
-            .progress-step-label,
             .section-kicker,
-            .step-overline,
             .sidebar-kicker,
             .completion-kicker {{
                 font-size: 11px;
@@ -294,13 +291,11 @@ def render_page(title: str, body: str) -> str:
                 font-family: var(--font-display);
                 font-size: 20px;
                 font-weight: 700;
-                letter-spacing: -0.01em;
             }}
-            .progress-metrics {{ text-align: right; }}
             .progress-percent {{ margin-top: 4px; font-size: 13px; font-weight: 700; color: var(--brand); }}
             .track {{
                 width: 100%;
-                height: 8px;
+                height: 3px;
                 margin-bottom: 14px;
                 overflow: hidden;
                 border-radius: 999px;
@@ -315,14 +310,17 @@ def render_page(title: str, body: str) -> str:
             }}
             .stepper {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }}
             .step {{
+                appearance: none;
                 display: flex;
                 align-items: center;
                 gap: 12px;
                 min-width: 0;
                 padding: 12px;
+                cursor: pointer;
                 border: 1px solid var(--line);
                 border-radius: var(--radius-md);
                 background: var(--panel-soft);
+                text-align: left;
             }}
             .step-dot {{
                 flex: 0 0 auto;
@@ -386,7 +384,6 @@ def render_page(title: str, body: str) -> str:
                 font-family: var(--font-display);
                 font-size: 20px;
                 font-weight: 700;
-                letter-spacing: -0.01em;
             }}
             .sidebar-copy,
             .section-copy,
@@ -436,12 +433,6 @@ def render_page(title: str, body: str) -> str:
                 font-family: var(--font-display);
                 font-size: 20px;
                 font-weight: 700;
-                letter-spacing: -0.01em;
-            }}
-            .stage-step {{ display: none; }}
-            .stage-step.active {{
-                display: block;
-                animation: stageIn 0.22s ease;
             }}
             @keyframes stageIn {{
                 from {{ opacity: 0; transform: translateY(6px); }}
@@ -453,16 +444,6 @@ def render_page(title: str, body: str) -> str:
                 border-radius: var(--radius-md);
                 background: var(--panel-soft);
             }}
-            .step-overline {{ margin-bottom: 12px; }}
-            .step-headline {{
-                margin: 0 0 10px;
-                font-family: var(--font-display);
-                font-size: 20px;
-                font-weight: 700;
-                letter-spacing: -0.01em;
-                line-height: 1.2;
-            }}
-            .step-support {{ margin: 0 0 20px; max-width: 52ch; }}
             .step-fields {{
                 display: grid;
                 grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -509,6 +490,28 @@ def render_page(title: str, body: str) -> str:
                 display: inline-flex;
                 gap: 8px;
                 flex-wrap: wrap;
+            }}
+            .discipline-grid {{
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 14px 16px;
+            }}
+            .discipline-item {{
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 14px;
+                border: 1px solid var(--line);
+                border-radius: var(--radius-sm);
+                background: #fff;
+            }}
+            .discipline-question {{
+                flex: 1 1 auto;
+                font-size: 13px;
+                font-weight: 700;
+                line-height: 1.45;
+                color: var(--brand);
             }}
             .toggle-option {{
                 min-width: 72px;
@@ -677,7 +680,6 @@ def render_page(title: str, body: str) -> str:
                 font-family: var(--font-display);
                 font-size: 20px;
                 font-weight: 700;
-                letter-spacing: -0.01em;
             }}
             .completion-state p {{ color: var(--muted); line-height: 1.6; font-size: 14px; }}
             .loading-steps {{
@@ -764,6 +766,7 @@ def render_page(title: str, body: str) -> str:
                 .shell {{ padding: 20px 18px 48px; }}
                 .assessment-layout,
                 .stepper,
+                .discipline-grid,
                 .step-fields,
                 .review-strip,
                 .review-grid {{
@@ -776,7 +779,6 @@ def render_page(title: str, body: str) -> str:
                     flex-direction: column;
                     align-items: flex-start;
                 }}
-                .progress-metrics {{ text-align: left; }}
                 .stage,
                 .footer-bar,
                 .step-panel {{
@@ -829,45 +831,32 @@ def render_page(title: str, body: str) -> str:
         <script>
             (function() {{
                 const form = document.getElementById("auditForm");
+                if (!form) return;
                 const stages = Array.from(document.querySelectorAll(".stage"));
-                const stepEls = Array.from(document.querySelectorAll(".step"));
+                const tabs = Array.from(document.querySelectorAll(".step"));
                 const nextBtn = document.querySelector("[data-next-step]");
                 const prevBtn = document.querySelector("[data-prev-step]");
-                const submitBtn = form ? form.querySelector('button[type="submit"]') : null;
+                const submitBtn = form.querySelector('button[type="submit"]');
                 const progressFill = document.getElementById("progressFill");
                 const progressPercent = document.getElementById("progressPercent");
                 const progressStageLabel = document.getElementById("progressStageLabel");
                 const progressStageName = document.getElementById("progressStageName");
-                const progressStepLabel = document.getElementById("progressStepLabel");
                 const stepFooterCopy = document.getElementById("stepFooterCopy");
                 const downloadComplete = document.getElementById("downloadComplete");
                 const loadingSteps = Array.from(document.querySelectorAll(".loading-step"));
-                let isSubmitting = false;
-                let currentStageIndex = 0;
-                let currentStageStepIndex = 0;
-                let latestDownloadUrl = "";
-                let latestFilename = "recruitment_audit.pdf";
-                const completedSteps = new Set();
-                const stageDefinitions = stages.map((stage, stageIndex) => {{
-                    return {{
-                        element: stage,
-                        title: stage.getAttribute("data-stage-title") || "Stage " + (stageIndex + 1),
-                        steps: Array.from(stage.querySelectorAll(".stage-step")),
-                    }};
-                }});
-                const totalStepCount = stageDefinitions.reduce((count, stage) => count + stage.steps.length, 0);
                 const summaryMappings = [
                     ["summaryCompany", "company_name"],
                     ["summarySector", "sector"],
                     ["summaryLocation", "location"],
-                    ["summaryContact", "contact_name"],
+                    ["summaryHiringDemand", "annual_hiring_volume"],
+                    ["summaryKeyRoles", "key_roles_hired"],
                     ["reviewCompanyName", "company_name"],
+                    ["reviewContact", "contact_name"],
                     ["reviewSector", "sector"],
                     ["reviewLocation", "location"],
                     ["reviewHeadcount", "headcount"],
                     ["reviewAnnualHiringVolume", "annual_hiring_volume"],
                     ["reviewKeyRoles", "key_roles_hired"],
-                    ["reviewContact", "contact_name"],
                     ["reviewTimeToHire", "time_to_hire"],
                     ["reviewApplicationsPerRole", "applications_per_role"],
                     ["reviewOfferAcceptance", "offer_acceptance"],
@@ -876,59 +865,28 @@ def render_page(title: str, body: str) -> str:
                     ["reviewInterviewFeedbackTime", "interview_feedback_time"],
                     ["reviewCandidatesReachingInterview", "candidates_reaching_interview"],
                 ];
+                let currentStageIndex = 0;
+                let isSubmitting = false;
+                let latestDownloadUrl = "";
+                let latestFilename = "recruitment_audit.pdf";
 
                 function fieldFilled(field) {{
                     return String(field.value || "").trim() !== "";
                 }}
 
-                function stepKey(stageIndex, stepIndex) {{
-                    return String(stageIndex) + ":" + String(stepIndex);
-                }}
-
-                function stepFields(stageIndex, stepIndex) {{
-                    const stage = stageDefinitions[stageIndex];
-                    if (!stage || !stage.steps[stepIndex]) return [];
-                    return Array.from(stage.steps[stepIndex].querySelectorAll("input, select, textarea"));
-                }}
-
-                function stepIsComplete(stageIndex, stepIndex) {{
-                    const fields = stepFields(stageIndex, stepIndex);
-                    if (fields.length === 0) return true;
-                    return fields.every(fieldFilled);
-                }}
-
-                function syncCompletedSteps() {{
-                    Array.from(completedSteps).forEach((key) => {{
-                        const parts = key.split(":").map(Number);
-                        if (parts.length !== 2 || !stepIsComplete(parts[0], parts[1])) {{
-                            completedSteps.delete(key);
-                        }}
-                    }});
-                }}
-
-                function markCurrentStepComplete() {{
-                    if (stepIsComplete(currentStageIndex, currentStageStepIndex)) {{
-                        completedSteps.add(stepKey(currentStageIndex, currentStageStepIndex));
-                    }}
+                function stageFields(stageIndex) {{
+                    const stage = stages[stageIndex];
+                    if (!stage) return [];
+                    return Array.from(stage.querySelectorAll("input, select, textarea"));
                 }}
 
                 function stageIsComplete(stageIndex) {{
-                    const stage = stageDefinitions[stageIndex];
-                    if (!stage) return false;
-                    return stage.steps.every((_, stepIndex) => completedSteps.has(stepKey(stageIndex, stepIndex)));
-                }}
-
-                function currentStage() {{
-                    return stageDefinitions[currentStageIndex];
-                }}
-
-                function currentStepElement() {{
-                    const stage = currentStage();
-                    return stage ? stage.steps[currentStageStepIndex] : null;
+                    const fields = stageFields(stageIndex);
+                    return fields.length > 0 && fields.every(fieldFilled);
                 }}
 
                 function inputValue(name) {{
-                    const field = form ? form.elements.namedItem(name) : null;
+                    const field = form.elements.namedItem(name);
                     return field ? String(field.value || "").trim() : "";
                 }}
 
@@ -939,14 +897,13 @@ def render_page(title: str, body: str) -> str:
                 function renderReviewControls() {{
                     const container = document.getElementById("reviewControlPills");
                     if (!container) return;
-                    const controls = Array.from(document.querySelectorAll(".yes-no-field")).map((field) => {{
-                        const label = field.querySelector("label");
+                    container.innerHTML = Array.from(document.querySelectorAll(".yes-no-field")).map((field) => {{
+                        const label = field.querySelector(".discipline-question");
                         const input = field.querySelector('input[data-yes-no="true"]');
                         const value = input ? String(input.value || "").trim() : "";
                         const tone = value === "Yes" ? " is-yes" : (value === "No" ? " is-no" : "");
                         return `<span class="review-pill${{tone}}">${{label ? label.textContent : ""}}: ${{value || "Pending"}}</span>`;
-                    }});
-                    container.innerHTML = controls.join("");
+                    }}).join("");
                 }}
 
                 function updateSummaries() {{
@@ -954,8 +911,6 @@ def render_page(title: str, body: str) -> str:
                         const target = document.getElementById(targetId);
                         if (target) target.textContent = displayValue(inputValue(fieldName));
                     }});
-                    const summaryStage = document.getElementById("summaryStage");
-                    if (summaryStage) summaryStage.textContent = currentStage().title;
                     renderReviewControls();
                 }}
 
@@ -966,56 +921,48 @@ def render_page(title: str, body: str) -> str:
                     input.value = value;
                     group.classList.remove("is-invalid");
                     Array.from(group.querySelectorAll(".toggle-option")).forEach((button) => {{
-                        const isActive = button.getAttribute("data-value") === value;
-                        button.classList.toggle("is-active", isActive);
-                        button.setAttribute("aria-pressed", isActive ? "true" : "false");
+                        const active = button.getAttribute("data-value") === value;
+                        button.classList.toggle("is-active", active);
+                        button.setAttribute("aria-pressed", active ? "true" : "false");
                     }});
                     updateProgress();
                 }}
 
                 function updateProgress() {{
-                    syncCompletedSteps();
-                    const total = Math.round((completedSteps.size / totalStepCount) * 100);
-                    if (progressFill) progressFill.style.width = total + "%";
-                    if (progressPercent) progressPercent.textContent = total + "% complete";
-                    if (progressStageLabel) progressStageLabel.textContent = "Stage " + (currentStageIndex + 1) + " of " + stageDefinitions.length;
-                    if (progressStageName) progressStageName.textContent = currentStage().title;
-                    if (progressStepLabel) progressStepLabel.textContent = "Step " + (currentStageStepIndex + 1) + " of " + currentStage().steps.length;
+                    const completedCount = stages.filter((_, index) => stageIsComplete(index)).length;
+                    const percentage = Math.round((completedCount / stages.length) * 100);
+                    if (progressFill) progressFill.style.width = percentage + "%";
+                    if (progressPercent) progressPercent.textContent = percentage + "% complete";
+                    if (progressStageLabel) progressStageLabel.textContent = "Stage " + (currentStageIndex + 1) + " of " + stages.length;
+                    if (progressStageName) progressStageName.textContent = stages[currentStageIndex].getAttribute("data-stage-title") || "";
 
-                    stepEls.forEach((el, index) => {{
-                        el.classList.toggle("active", index === currentStageIndex);
-                        el.classList.toggle("complete", stageIsComplete(index));
+                    stages.forEach((stage, index) => {{
+                        stage.classList.toggle("active", index === currentStageIndex);
                     }});
 
-                    stageDefinitions.forEach((stage, stageIndex) => {{
-                        stage.element.classList.toggle("active", stageIndex === currentStageIndex);
-                        stage.steps.forEach((step, stepIndex) => {{
-                            step.classList.toggle("active", stageIndex === currentStageIndex && stepIndex === currentStageStepIndex);
-                            const localLabel = step.querySelector("[data-local-step-label]");
-                            if (localLabel) localLabel.textContent = "Step " + (stepIndex + 1) + " of " + stage.steps.length;
-                        }});
+                    tabs.forEach((tab, index) => {{
+                        const complete = stageIsComplete(index);
+                        const dot = tab.querySelector(".step-dot");
+                        tab.classList.toggle("active", index === currentStageIndex);
+                        tab.classList.toggle("complete", complete);
+                        if (dot) dot.textContent = complete && index !== currentStageIndex ? "✓" : String(index + 1).padStart(2, "0");
                     }});
 
-                    const atFirstStep = currentStageIndex === 0 && currentStageStepIndex === 0;
-                    const atFinalStep = currentStageIndex === stageDefinitions.length - 1 && currentStageStepIndex === currentStage().steps.length - 1;
-                    if (prevBtn) prevBtn.hidden = atFirstStep;
-                    if (nextBtn) nextBtn.hidden = atFinalStep;
-                    if (submitBtn) submitBtn.hidden = !atFinalStep;
+                    if (prevBtn) prevBtn.hidden = currentStageIndex === 0;
+                    if (nextBtn) nextBtn.hidden = currentStageIndex === stages.length - 1;
+                    if (submitBtn) submitBtn.hidden = currentStageIndex !== stages.length - 1;
                     if (stepFooterCopy) {{
-                        const support = currentStepElement() ? currentStepElement().querySelector(".step-support") : null;
-                        stepFooterCopy.textContent = support ? support.textContent : "Complete each step to build the final recruitment audit report.";
+                        stepFooterCopy.textContent = stages[currentStageIndex].getAttribute("data-stage-summary") || "Complete each stage to build the final recruitment audit report.";
                     }}
                     updateSummaries();
                 }}
 
-                function showStep(stageIndex, stepIndex) {{
-                    currentStageIndex = Math.max(0, Math.min(stageDefinitions.length - 1, stageIndex));
-                    currentStageStepIndex = Math.max(0, Math.min(currentStage().steps.length - 1, stepIndex));
+                function showStage(stageIndex) {{
+                    currentStageIndex = Math.max(0, Math.min(stages.length - 1, stageIndex));
                     updateProgress();
                 }}
 
-                function validateCurrentStep() {{
-                    const fields = stepFields(currentStageIndex, currentStageStepIndex);
+                function validateFields(fields) {{
                     for (const field of fields) {{
                         if (field.matches('[data-yes-no="true"]')) {{
                             if (!fieldFilled(field)) {{
@@ -1038,37 +985,15 @@ def render_page(title: str, body: str) -> str:
                     return true;
                 }}
 
-                function nextPosition() {{
-                    if (currentStageStepIndex < currentStage().steps.length - 1) {{
-                        return [currentStageIndex, currentStageStepIndex + 1];
-                    }}
-                    return [currentStageIndex + 1, 0];
+                function validateCurrentStage() {{
+                    return validateFields(stageFields(currentStageIndex));
                 }}
 
-                function previousPosition() {{
-                    if (currentStageStepIndex > 0) {{
-                        return [currentStageIndex, currentStageStepIndex - 1];
-                    }}
-                    const previousStageIndex = currentStageIndex - 1;
-                    return [previousStageIndex, stageDefinitions[previousStageIndex].steps.length - 1];
+                function validateAllStages() {{
+                    return validateFields(Array.from(form.querySelectorAll("input, select, textarea")));
                 }}
 
-                if (nextBtn) {{
-                    nextBtn.addEventListener("click", () => {{
-                        if (!validateCurrentStep()) return;
-                        markCurrentStepComplete();
-                        const target = nextPosition();
-                        showStep(target[0], target[1]);
-                    }});
-                }}
-                if (prevBtn) {{
-                    prevBtn.addEventListener("click", () => {{
-                        const target = previousPosition();
-                        showStep(target[0], target[1]);
-                    }});
-                }}
-
-                Array.from(document.querySelectorAll("#auditForm input, #auditForm select, #auditForm textarea")).forEach((field) => {{
+                Array.from(form.querySelectorAll("input, select, textarea")).forEach((field) => {{
                     field.addEventListener("input", updateProgress);
                     field.addEventListener("change", updateProgress);
                 }});
@@ -1078,6 +1003,28 @@ def render_page(title: str, body: str) -> str:
                         setToggleValue(button.getAttribute("data-target"), button.getAttribute("data-value"));
                     }});
                 }});
+
+                tabs.forEach((tab) => {{
+                    tab.addEventListener("click", () => {{
+                        const targetIndex = Number(tab.getAttribute("data-stage-index"));
+                        if (Number.isNaN(targetIndex) || targetIndex === currentStageIndex) return;
+                        if (targetIndex > currentStageIndex && !validateCurrentStage()) return;
+                        showStage(targetIndex);
+                    }});
+                }});
+
+                if (nextBtn) {{
+                    nextBtn.addEventListener("click", () => {{
+                        if (!validateCurrentStage()) return;
+                        showStage(currentStageIndex + 1);
+                    }});
+                }}
+
+                if (prevBtn) {{
+                    prevBtn.addEventListener("click", () => {{
+                        showStage(currentStageIndex - 1);
+                    }});
+                }}
 
                 function setLoadingState(activeIndex) {{
                     const overlay = document.getElementById("loadingOverlay");
@@ -1160,24 +1107,21 @@ def render_page(title: str, body: str) -> str:
                         event.preventDefault();
                         return;
                     }}
+                    if (!validateAllStages()) {{
+                        event.preventDefault();
+                        return;
+                    }}
                     isSubmitting = true;
-                    const submitButtons = Array.from(form.querySelectorAll('button[type="submit"], button[data-next-step], button[data-prev-step]'));
-                    submitButtons.forEach((button) => button.disabled = true);
+                    const buttons = Array.from(form.querySelectorAll('button[type="submit"], button[data-next-step], button[data-prev-step]'));
+                    buttons.forEach((button) => button.disabled = true);
 
                     let phaseIndex = 0;
                     const startedAt = Date.now();
-                    const phases = [
-                        0,
-                        1,
-                        2,
-                        3,
-                    ];
-
                     setLoadingState(0);
                     const timer = window.setInterval(() => {{
-                        if (phaseIndex < phases.length - 1) {{
+                        if (phaseIndex < loadingSteps.length - 1) {{
                             phaseIndex += 1;
-                            setLoadingState(phases[phaseIndex]);
+                            setLoadingState(phaseIndex);
                         }}
                     }}, 500);
 
@@ -1198,10 +1142,8 @@ def render_page(title: str, body: str) -> str:
                         const blob = await response.blob();
                         const disposition = response.headers.get("Content-Disposition") || "";
                         const match = disposition.match(/filename=([^;]+)/i);
-                        const filename = match ? match[1].trim().replace(/^\"|\"$/g, "") : "recruitment_audit.pdf";
-                        latestFilename = filename;
-
-                        setLoadingState(4);
+                        latestFilename = match ? match[1].trim().replace(/^\"|\"$/g, "") : "recruitment_audit.pdf";
+                        setLoadingState(loadingSteps.length);
 
                         if (latestDownloadUrl) {{
                             window.URL.revokeObjectURL(latestDownloadUrl);
@@ -1209,41 +1151,36 @@ def render_page(title: str, body: str) -> str:
                         latestDownloadUrl = window.URL.createObjectURL(blob);
                         const remainingDelay = Math.max(2200 - (Date.now() - startedAt), 0);
                         window.setTimeout(() => {{
-                            showCompletionState(filename);
+                            showCompletionState(latestFilename);
                             isSubmitting = false;
-                            submitButtons.forEach((button) => button.disabled = false);
+                            buttons.forEach((button) => button.disabled = false);
                         }}, remainingDelay);
                     }} catch (error) {{
                         resetOverlayState();
                         isSubmitting = false;
-                        submitButtons.forEach((button) => button.disabled = false);
+                        buttons.forEach((button) => button.disabled = false);
                         window.alert("The report could not be generated. Please try again.");
                     }} finally {{
                         window.clearInterval(timer);
                     }}
                 }}
 
-                if (form) {{
-                    form.addEventListener("keydown", function(event) {{
-                        if (event.key === "Enter" && event.target.tagName !== "TEXTAREA") {{
-                            event.preventDefault();
-                            if (submitBtn && !submitBtn.hidden) {{
-                                submitBtn.click();
-                            }} else if (nextBtn && !nextBtn.hidden) {{
-                                nextBtn.click();
-                            }}
-                        }}
-                    }});
-                    form.addEventListener("submit", function(event) {{
-                        if (!validateCurrentStep()) {{
-                            event.preventDefault();
-                            return;
-                        }}
-                        markCurrentStepComplete();
+                form.addEventListener("keydown", (event) => {{
+                    if (event.key === "Enter" && event.target.tagName !== "TEXTAREA") {{
                         event.preventDefault();
-                        downloadReport(event);
-                    }});
-                }}
+                        if (submitBtn && !submitBtn.hidden) {{
+                            submitBtn.click();
+                        }} else if (nextBtn && !nextBtn.hidden) {{
+                            nextBtn.click();
+                        }}
+                    }}
+                }});
+
+                form.addEventListener("submit", (event) => {{
+                    event.preventDefault();
+                    downloadReport(event);
+                }});
+
                 if (downloadComplete) {{
                     downloadComplete.addEventListener("click", triggerReportDownload);
                 }}
@@ -1251,8 +1188,9 @@ def render_page(title: str, body: str) -> str:
                 if (startNewAudit) {{
                     startNewAudit.addEventListener("click", resetAuditJourney);
                 }}
+
                 updateSummaries();
-                showStep(0, 0);
+                showStage(0);
             }})();
         </script>
     </body>
@@ -1270,8 +1208,8 @@ def form():
 
     def render_yes_no_field(field_name: str, label: str) -> str:
         return f"""
-        <div class="field yes-no-field">
-            <label for="{field_name}">{label}</label>
+        <div class="discipline-item yes-no-field">
+            <div class="discipline-question">{label}</div>
             <input id="{field_name}" name="{field_name}" type="hidden" data-yes-no="true">
             <div class="toggle-group" data-toggle-group="{field_name}" role="group" aria-label="{label}">
                 <button class="toggle-option is-yes" type="button" data-target="{field_name}" data-value="Yes">Yes</button>
@@ -1280,38 +1218,8 @@ def form():
         </div>
         """
 
-    process_step_copy = [
-        (
-            "Define how recruitment is planned and measured.",
-            "These controls show whether hiring is being managed with basic structure and visibility.",
-        ),
-        (
-            "Review the controls used before candidates enter the process.",
-            "This shows whether sourcing and screening are being run consistently enough to support good hiring decisions.",
-        ),
-        (
-            "Assess interview discipline and offer control.",
-            "These answers indicate how consistently interview decisions are made and how quickly offers move through approval.",
-        ),
-        (
-            "Check accountability after interview and offer.",
-            "These controls show whether ownership, feedback and onboarding are strong enough to support retention.",
-        ),
-    ]
-    process_control_steps_html = "\n".join(
-        f"""
-        <div class="stage-step{' active' if step_number == 1 else ''}" data-step-number="{step_number}">
-            <div class="step-panel">
-                <div class="step-overline" data-local-step-label>Step {step_number} of 4</div>
-                <h3 class="step-headline">{headline}</h3>
-                <p class="step-support">{support}</p>
-                <div class="step-fields">
-                    {''.join(render_yes_no_field(field_name, label) for field_name, label in YES_NO_FIELDS[(step_number - 1) * 3: step_number * 3])}
-                </div>
-            </div>
-        </div>
-        """
-        for step_number, (headline, support) in enumerate(process_step_copy, start=1)
+    discipline_fields_html = "\n".join(
+        render_yes_no_field(field_name, label) for field_name, label in YES_NO_FIELDS
     )
 
     body = f"""
@@ -1325,43 +1233,40 @@ def form():
             <div class="progress-top">
                 <div>
                     <div class="progress-title" id="progressStageLabel">Stage 1 of 4</div>
-                    <div class="progress-stage-name" id="progressStageName">Business Context</div>
+                    <div class="progress-stage-name" id="progressStageName">Organisation</div>
                 </div>
-                <div class="progress-metrics">
-                    <div class="progress-step-label" id="progressStepLabel">Step 1 of 4</div>
-                    <div class="progress-percent" id="progressPercent">0% complete</div>
-                </div>
+                <div class="progress-percent" id="progressPercent">0% complete</div>
             </div>
             <div class="track"><div class="track-fill" id="progressFill"></div></div>
             <div class="stepper">
-                <div class="step active">
+                <button class="step active" type="button" data-stage-index="0">
                     <div class="step-dot">01</div>
                     <div class="step-copy">
                         <div class="step-kicker">Stage 1</div>
-                        <div class="step-title">Business Context</div>
+                        <div class="step-title">Organisation</div>
                     </div>
-                </div>
-                <div class="step">
+                </button>
+                <button class="step" type="button" data-stage-index="1">
                     <div class="step-dot">02</div>
                     <div class="step-copy">
                         <div class="step-kicker">Stage 2</div>
-                        <div class="step-title">Hiring Performance</div>
+                        <div class="step-title">Performance</div>
                     </div>
-                </div>
-                <div class="step">
+                </button>
+                <button class="step" type="button" data-stage-index="2">
                     <div class="step-dot">03</div>
                     <div class="step-copy">
                         <div class="step-kicker">Stage 3</div>
-                        <div class="step-title">Process Control</div>
+                        <div class="step-title">Discipline</div>
                     </div>
-                </div>
-                <div class="step">
+                </button>
+                <button class="step" type="button" data-stage-index="3">
                     <div class="step-dot">04</div>
                     <div class="step-copy">
                         <div class="step-kicker">Stage 4</div>
                         <div class="step-title">Review</div>
                     </div>
-                </div>
+                </button>
             </div>
         </div>
     </div>
@@ -1375,227 +1280,143 @@ def form():
                 <div class="summary-item"><span class="summary-label">Company</span><span class="summary-value" id="summaryCompany">Pending</span></div>
                 <div class="summary-item"><span class="summary-label">Sector</span><span class="summary-value" id="summarySector">Pending</span></div>
                 <div class="summary-item"><span class="summary-label">Location</span><span class="summary-value" id="summaryLocation">Pending</span></div>
-                <div class="summary-item"><span class="summary-label">Contact</span><span class="summary-value" id="summaryContact">Pending</span></div>
-                <div class="summary-item"><span class="summary-label">Current stage</span><span class="summary-value" id="summaryStage">Business Context</span></div>
+                <div class="summary-item"><span class="summary-label">Hiring demand</span><span class="summary-value" id="summaryHiringDemand">Pending</span></div>
+                <div class="summary-item"><span class="summary-label">Key roles</span><span class="summary-value" id="summaryKeyRoles">Pending</span></div>
             </div>
         </aside>
 
         <form id="auditForm" method="post" action="/generate">
             <div class="panel assessment-panel">
-                <section class="stage active" data-stage="1" data-stage-title="Business Context">
+                <section class="stage active" data-stage="1" data-stage-title="Organisation" data-stage-summary="Capture the organisation profile used to anchor the audit and benchmark selection.">
                     <div class="section-head">
                         <div>
                             <div class="section-kicker">Stage 1</div>
-                            <h2 class="section-title">Business Context</h2>
-                            <p class="section-copy">Set the context for the assessment before performance and control are reviewed.</p>
+                            <h2 class="section-title">Organisation</h2>
+                            <p class="section-copy">Capture the organisation profile used to anchor the audit and benchmark selection.</p>
                         </div>
                     </div>
-
-                    <div class="stage-step active" data-step-number="1">
-                        <div class="step-panel">
-                            <div class="step-overline" data-local-step-label>Step 1 of 4</div>
-                            <h3 class="step-headline">Identify the business being assessed.</h3>
-                            <p class="step-support">These details set the benchmark position and report identity.</p>
-                            <div class="step-fields">
-                                <div class="field">
-                                    <label for="company_name">What is the name of your company?</label>
-                                    <input id="company_name" name="company_name" required>
-                                </div>
-                                <div class="field">
-                                    <label for="sector">Which sector does your business operate in?</label>
-                                    <select id="sector" name="sector" required>
-                                        <option value="">Select…</option>
-                                        {sector_options}
-                                    </select>
+                    <div class="step-panel">
+                        <div class="step-fields">
+                            <div class="field">
+                                <label for="company_name">What is the name of your company?</label>
+                                <input id="company_name" name="company_name" required>
+                            </div>
+                            <div class="field">
+                                <label for="contact_name">What is the name of the audit contact?</label>
+                                <input id="contact_name" name="contact_name" autocomplete="name" required>
+                            </div>
+                            <div class="field">
+                                <label for="sector">Which sector does your business operate in?</label>
+                                <select id="sector" name="sector" required>
+                                    <option value="">Select…</option>
+                                    {sector_options}
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label for="location">Where is the business based?</label>
+                                <input id="location" name="location" autocomplete="address-level2" required>
+                            </div>
+                            <div class="field has-suffix">
+                                <label for="headcount">How many employees does the business have?</label>
+                                <div class="input-wrap">
+                                    <input id="headcount" name="headcount" inputmode="numeric" pattern="[0-9, ]+" title="Use numbers only." required>
+                                    <span class="suffix">employees</span>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="stage-step" data-step-number="2">
-                        <div class="step-panel">
-                            <div class="step-overline" data-local-step-label>Step 2 of 4</div>
-                            <h3 class="step-headline">Confirm where the hiring model is operating.</h3>
-                            <p class="step-support">This establishes the operating location and office footprint.</p>
-                            <div class="step-fields">
-                                <div class="field">
-                                    <label for="location">Where is the business based?</label>
-                                    <input id="location" name="location" autocomplete="address-level2" required>
-                                </div>
-                                <div class="field full">
-                                    <label for="office_address">What is the office address?</label>
-                                    <textarea id="office_address" name="office_address" rows="3" autocomplete="street-address" required></textarea>
+                            <div class="field has-suffix">
+                                <label for="annual_hiring_volume">How many hires do you typically make each year?</label>
+                                <div class="input-wrap">
+                                    <input id="annual_hiring_volume" name="annual_hiring_volume" inputmode="numeric" pattern="[0-9, ]+" title="Use numbers only." required>
+                                    <span class="suffix">hires</span>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="stage-step" data-step-number="3">
-                        <div class="step-panel">
-                            <div class="step-overline" data-local-step-label>Step 3 of 4</div>
-                            <h3 class="step-headline">Capture the scale of hiring demand.</h3>
-                            <p class="step-support">These inputs show the size of the business and the annual load on recruitment.</p>
-                            <div class="step-fields">
-                                <div class="field has-suffix">
-                                    <label for="headcount">How many employees does the business have?</label>
-                                    <div class="input-wrap">
-                                        <input id="headcount" name="headcount" inputmode="numeric" pattern="[0-9, ]+" title="Use numbers only." required>
-                                        <span class="suffix">employees</span>
-                                    </div>
-                                </div>
-                                <div class="field has-suffix">
-                                    <label for="annual_hiring_volume">How many hires do you typically make each year?</label>
-                                    <div class="input-wrap">
-                                        <input id="annual_hiring_volume" name="annual_hiring_volume" inputmode="numeric" pattern="[0-9, ]+" title="Use numbers only." required>
-                                        <span class="suffix">hires</span>
-                                    </div>
-                                </div>
-                                <div class="field full">
-                                    <label for="key_roles_hired">Which roles or job titles do you hire for most often?</label>
-                                    <input id="key_roles_hired" name="key_roles_hired" placeholder="e.g. Sales Managers, Service Engineers, Finance Business Partners" required>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="stage-step" data-step-number="4">
-                        <div class="step-panel">
-                            <div class="step-overline" data-local-step-label>Step 4 of 4</div>
-                            <h3 class="step-headline">Set the audit contact.</h3>
-                            <p class="step-support">These details are used for report delivery and follow-up.</p>
-                            <div class="step-fields">
-                                <div class="field">
-                                    <label for="contact_name">What is the name of the person completing this audit?</label>
-                                    <input id="contact_name" name="contact_name" autocomplete="name" required>
-                                </div>
-                                <div class="field">
-                                    <label for="job_title">What is their job title?</label>
-                                    <input id="job_title" name="job_title" autocomplete="organization-title" required>
-                                </div>
-                                <div class="field">
-                                    <label for="phone_number">What is the best phone number to use?</label>
-                                    <input id="phone_number" name="phone_number" type="tel" autocomplete="tel" inputmode="tel" pattern="[0-9+()\\-\\s]{{7,}}" title="Enter a valid phone number." required>
-                                </div>
-                                <div class="field">
-                                    <label for="email_address">What is the best email address to use?</label>
-                                    <input id="email_address" name="email_address" type="email" autocomplete="email" required>
-                                </div>
+                            <div class="field full">
+                                <label for="key_roles_hired">Which roles or job titles do you hire for most often?</label>
+                                <input id="key_roles_hired" name="key_roles_hired" placeholder="e.g. Sales Managers, Service Engineers, Finance Business Partners" required>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                <section class="stage" data-stage="2" data-stage-title="Hiring Performance">
+                <section class="stage" data-stage="2" data-stage-title="Performance" data-stage-summary="Capture the operating metrics that show pace, conversion and early retention performance.">
                     <div class="section-head">
                         <div>
                             <div class="section-kicker">Stage 2</div>
-                            <h2 class="section-title">Hiring Performance</h2>
-                            <p class="section-copy">Capture the operational metrics that show where hiring is strong and where it is slowing down.</p>
+                            <h2 class="section-title">Performance</h2>
+                            <p class="section-copy">Capture the operating metrics that show pace, conversion and early retention performance.</p>
                         </div>
                     </div>
-
-                    <div class="stage-step active" data-step-number="1">
-                        <div class="step-panel">
-                            <div class="step-overline" data-local-step-label>Step 1 of 4</div>
-                            <h3 class="step-headline">Measure pace and top-of-funnel volume.</h3>
-                            <p class="step-support">These figures show how quickly roles are filled and how much candidate interest reaches the process.</p>
-                            <div class="step-fields">
-                                <div class="field has-suffix">
-                                    <label for="time_to_hire">How long does it currently take to hire a role?</label>
-                                    <div class="input-wrap">
-                                        <input id="time_to_hire" name="time_to_hire" placeholder="e.g. 42" required>
-                                        <span class="suffix">days</span>
-                                    </div>
-                                </div>
-                                <div class="field has-suffix">
-                                    <label for="applications_per_role">How many applications do you receive for a typical role?</label>
-                                    <div class="input-wrap">
-                                        <input id="applications_per_role" name="applications_per_role" placeholder="e.g. 36" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." required>
-                                        <span class="suffix">applications</span>
-                                    </div>
+                    <div class="step-panel">
+                        <div class="step-fields">
+                            <div class="field has-suffix">
+                                <label for="time_to_hire">How long does it currently take to hire a role?</label>
+                                <div class="input-wrap">
+                                    <input id="time_to_hire" name="time_to_hire" placeholder="e.g. 42" required>
+                                    <span class="suffix">days</span>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="stage-step" data-step-number="2">
-                        <div class="step-panel">
-                            <div class="step-overline" data-local-step-label>Step 2 of 4</div>
-                            <h3 class="step-headline">Check offer acceptance and early retention.</h3>
-                            <p class="step-support">These measures show whether the business is securing the right hires and keeping them.</p>
-                            <div class="step-fields">
-                                <div class="field has-suffix">
-                                    <label for="offer_acceptance">What percentage of offers are accepted?</label>
-                                    <div class="input-wrap">
-                                        <input id="offer_acceptance" name="offer_acceptance" placeholder="e.g. 72" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." required>
-                                        <span class="suffix">%</span>
-                                    </div>
-                                </div>
-                                <div class="field has-suffix">
-                                    <label for="first_year_attrition">What percentage of hires leave within the first year?</label>
-                                    <div class="input-wrap">
-                                        <input id="first_year_attrition" name="first_year_attrition" placeholder="e.g. 18" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." required>
-                                        <span class="suffix">%</span>
-                                    </div>
+                            <div class="field has-suffix">
+                                <label for="applications_per_role">How many applications do you receive for a typical role?</label>
+                                <div class="input-wrap">
+                                    <input id="applications_per_role" name="applications_per_role" placeholder="e.g. 36" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." required>
+                                    <span class="suffix">applications</span>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="stage-step" data-step-number="3">
-                        <div class="step-panel">
-                            <div class="step-overline" data-local-step-label>Step 3 of 4</div>
-                            <h3 class="step-headline">Review interview design and response speed.</h3>
-                            <p class="step-support">These answers show how much friction is built into the interview process.</p>
-                            <div class="step-fields">
-                                <div class="field has-suffix">
-                                    <label for="interview_stages">How many interview stages are typically used?</label>
-                                    <div class="input-wrap">
-                                        <input id="interview_stages" name="interview_stages" placeholder="e.g. 2" inputmode="numeric" pattern="[0-9 ]+" title="Use numbers only." required>
-                                        <span class="suffix">stages</span>
-                                    </div>
-                                </div>
-                                <div class="field has-suffix">
-                                    <label for="interview_feedback_time">How long does interview feedback usually take to return?</label>
-                                    <div class="input-wrap">
-                                        <input id="interview_feedback_time" name="interview_feedback_time" placeholder="e.g. 2" required>
-                                        <span class="suffix">days</span>
-                                    </div>
+                            <div class="field has-suffix">
+                                <label for="offer_acceptance">What percentage of offers are accepted?</label>
+                                <div class="input-wrap">
+                                    <input id="offer_acceptance" name="offer_acceptance" placeholder="e.g. 72" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." required>
+                                    <span class="suffix">%</span>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="stage-step" data-step-number="4">
-                        <div class="step-panel">
-                            <div class="step-overline" data-local-step-label>Step 4 of 4</div>
-                            <h3 class="step-headline">Measure how much shortlist volume reaches interview.</h3>
-                            <p class="step-support">This shows whether the funnel is producing enough viable candidates for decision-making.</p>
-                            <div class="step-fields">
-                                <div class="field has-suffix full">
-                                    <label for="candidates_reaching_interview">How many candidates typically reach interview for each role?</label>
-                                    <div class="input-wrap">
-                                        <input id="candidates_reaching_interview" name="candidates_reaching_interview" placeholder="e.g. 5" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." required>
-                                        <span class="suffix">candidates</span>
-                                    </div>
+                            <div class="field has-suffix">
+                                <label for="first_year_attrition">What percentage of hires leave within the first year?</label>
+                                <div class="input-wrap">
+                                    <input id="first_year_attrition" name="first_year_attrition" placeholder="e.g. 18" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." required>
+                                    <span class="suffix">%</span>
+                                </div>
+                            </div>
+                            <div class="field has-suffix">
+                                <label for="interview_stages">How many interview stages are typically used?</label>
+                                <div class="input-wrap">
+                                    <input id="interview_stages" name="interview_stages" placeholder="e.g. 2" inputmode="numeric" pattern="[0-9 ]+" title="Use numbers only." required>
+                                    <span class="suffix">stages</span>
+                                </div>
+                            </div>
+                            <div class="field has-suffix">
+                                <label for="interview_feedback_time">How long does interview feedback usually take to return?</label>
+                                <div class="input-wrap">
+                                    <input id="interview_feedback_time" name="interview_feedback_time" placeholder="e.g. 2" required>
+                                    <span class="suffix">days</span>
+                                </div>
+                            </div>
+                            <div class="field full has-suffix">
+                                <label for="candidates_reaching_interview">How many candidates typically reach interview for each role?</label>
+                                <div class="input-wrap">
+                                    <input id="candidates_reaching_interview" name="candidates_reaching_interview" placeholder="e.g. 5" inputmode="decimal" pattern="[0-9., ]+" title="Use numbers only." required>
+                                    <span class="suffix">candidates</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                <section class="stage" data-stage="3" data-stage-title="Process Control">
+                <section class="stage" data-stage="3" data-stage-title="Discipline" data-stage-summary="Assess whether recruitment is planned, controlled and governed consistently in practice.">
                     <div class="section-head">
                         <div>
                             <div class="section-kicker">Stage 3</div>
-                            <h2 class="section-title">Process Control</h2>
-                            <p class="section-copy">Assess how consistently recruitment is governed, owned and run in practice.</p>
+                            <h2 class="section-title">Discipline</h2>
+                            <p class="section-copy">Assess whether recruitment is planned, controlled and governed consistently in practice.</p>
                         </div>
                     </div>
-                    {process_control_steps_html}
+                    <div class="step-panel">
+                        <div class="discipline-grid">
+                            {discipline_fields_html}
+                        </div>
+                    </div>
                 </section>
 
-                <section class="stage" data-stage="4" data-stage-title="Review">
+                <section class="stage" data-stage="4" data-stage-title="Review" data-stage-summary="Review the completed input set before generating the audit report.">
                     <div class="section-head">
                         <div>
                             <div class="section-kicker">Stage 4</div>
@@ -1603,33 +1424,28 @@ def form():
                             <p class="section-copy">Check the final input set before generating the audit report.</p>
                         </div>
                     </div>
-                    <div class="stage-step active" data-step-number="1">
-                        <div class="step-panel">
-                            <div class="step-overline" data-local-step-label>Step 1 of 1</div>
-                            <h3 class="step-headline">Review the assessment input.</h3>
-                            <p class="step-support">This summary reflects the data that will be used to score the model and generate the report.</p>
-                            <div class="review-strip">
-                                <div class="review-card"><div class="review-label">Company</div><div class="review-value" id="reviewCompanyName">Pending</div></div>
-                                <div class="review-card"><div class="review-label">Sector</div><div class="review-value" id="reviewSector">Pending</div></div>
-                                <div class="review-card"><div class="review-label">Location</div><div class="review-value" id="reviewLocation">Pending</div></div>
-                                <div class="review-card"><div class="review-label">Headcount</div><div class="review-value" id="reviewHeadcount">Pending</div></div>
-                            </div>
-                            <div class="review-grid">
-                                <div class="review-metric"><div class="review-label">Annual hiring volume</div><div class="review-value" id="reviewAnnualHiringVolume">Pending</div></div>
-                                <div class="review-metric"><div class="review-label">Key roles</div><div class="review-value" id="reviewKeyRoles">Pending</div></div>
-                                <div class="review-metric"><div class="review-label">Contact</div><div class="review-value" id="reviewContact">Pending</div></div>
-                                <div class="review-metric"><div class="review-label">Time to hire</div><div class="review-value" id="reviewTimeToHire">Pending</div></div>
-                                <div class="review-metric"><div class="review-label">Applications per role</div><div class="review-value" id="reviewApplicationsPerRole">Pending</div></div>
-                                <div class="review-metric"><div class="review-label">Offer acceptance</div><div class="review-value" id="reviewOfferAcceptance">Pending</div></div>
-                                <div class="review-metric"><div class="review-label">First-year attrition</div><div class="review-value" id="reviewFirstYearAttrition">Pending</div></div>
-                                <div class="review-metric"><div class="review-label">Interview stages</div><div class="review-value" id="reviewInterviewStages">Pending</div></div>
-                                <div class="review-metric"><div class="review-label">Feedback time</div><div class="review-value" id="reviewInterviewFeedbackTime">Pending</div></div>
-                                <div class="review-metric"><div class="review-label">Candidates reaching interview</div><div class="review-value" id="reviewCandidatesReachingInterview">Pending</div></div>
-                            </div>
-                            <div class="review-pill-card">
-                                <div class="review-label">Process controls</div>
-                                <div class="review-pill-grid" id="reviewControlPills"></div>
-                            </div>
+                    <div class="step-panel">
+                        <div class="review-strip">
+                            <div class="review-card"><div class="review-label">Company</div><div class="review-value" id="reviewCompanyName">Pending</div></div>
+                            <div class="review-card"><div class="review-label">Contact</div><div class="review-value" id="reviewContact">Pending</div></div>
+                            <div class="review-card"><div class="review-label">Sector</div><div class="review-value" id="reviewSector">Pending</div></div>
+                            <div class="review-card"><div class="review-label">Location</div><div class="review-value" id="reviewLocation">Pending</div></div>
+                        </div>
+                        <div class="review-grid">
+                            <div class="review-metric"><div class="review-label">Employees</div><div class="review-value" id="reviewHeadcount">Pending</div></div>
+                            <div class="review-metric"><div class="review-label">Annual hiring volume</div><div class="review-value" id="reviewAnnualHiringVolume">Pending</div></div>
+                            <div class="review-metric"><div class="review-label">Key roles</div><div class="review-value" id="reviewKeyRoles">Pending</div></div>
+                            <div class="review-metric"><div class="review-label">Time to hire</div><div class="review-value" id="reviewTimeToHire">Pending</div></div>
+                            <div class="review-metric"><div class="review-label">Applications per role</div><div class="review-value" id="reviewApplicationsPerRole">Pending</div></div>
+                            <div class="review-metric"><div class="review-label">Offer acceptance</div><div class="review-value" id="reviewOfferAcceptance">Pending</div></div>
+                            <div class="review-metric"><div class="review-label">First-year attrition</div><div class="review-value" id="reviewFirstYearAttrition">Pending</div></div>
+                            <div class="review-metric"><div class="review-label">Interview stages</div><div class="review-value" id="reviewInterviewStages">Pending</div></div>
+                            <div class="review-metric"><div class="review-label">Feedback time</div><div class="review-value" id="reviewInterviewFeedbackTime">Pending</div></div>
+                            <div class="review-metric"><div class="review-label">Candidates reaching interview</div><div class="review-value" id="reviewCandidatesReachingInterview">Pending</div></div>
+                        </div>
+                        <div class="review-pill-card">
+                            <div class="review-label">Process controls</div>
+                            <div class="review-pill-grid" id="reviewControlPills"></div>
                         </div>
                     </div>
                 </section>
