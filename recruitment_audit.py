@@ -674,7 +674,7 @@ def create_overall_score_chart(company_name: str, total_score: int) -> Path:
     rating = _rating_for_score(score)
     fig, ax = plt.subplots(figsize=(6.4, 1.85))
     _apply_chart_style(fig, ax)
-    ax.barh([0], [40], left=0, color="#D94F3D", height=0.38)
+    ax.barh([0], [40], left=0, color="#B91C1C", height=0.38)
     ax.barh([0], [35], left=40, color="#E8A838", height=0.38)
     ax.barh([0], [45], left=75, color="#3A7D44", height=0.38)
     ax.set_xlim(0, 120)
@@ -705,7 +705,7 @@ def create_overall_score_chart(company_name: str, total_score: int) -> Path:
     for spine in ax.spines.values():
         spine.set_visible(False)
     fig.subplots_adjust(left=0.08, right=0.97, top=0.60, bottom=0.24)
-    fig.savefig(path, dpi=300, bbox_inches="tight", facecolor="#FBF8F2")
+    fig.savefig(path, dpi=300, bbox_inches="tight", facecolor="#FAFBFC")
     plt.close(fig)
     return path
 
@@ -738,12 +738,12 @@ def create_section_score_chart(company_name: str, section_scores: list[int], ben
         fig.text(0.97, 0.915, "Sector average", fontsize=9, color="#999999", ha="right")
     fig.tight_layout(rect=(0, 0.01, 1, 0.90))
     fig.subplots_adjust(left=0.44, right=0.96)
-    fig.savefig(path, dpi=300, bbox_inches="tight", facecolor="#FBF8F2")
+    fig.savefig(path, dpi=300, bbox_inches="tight", facecolor="#FAFBFC")
     plt.close(fig)
     return path
 
 
-def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataFrame, sector: str, role: str) -> Path:
+def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataFrame, sector: str, role: str) -> tuple[Path, int]:
     path = _output_dir() / f"{_slug(company_name)}_benchmark_compare.png"
     benchmark_row = get_benchmark(sector, role, benchmark)
     items = [
@@ -760,9 +760,9 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         _apply_chart_style(fig, ax)
         ax.axis("off")
         ax.text(0.5, 0.5, "No benchmark comparison available", ha="center", va="center", fontsize=10, color="black")
-        fig.savefig(path, dpi=300, bbox_inches="tight", facecolor="#FBF8F2")
+        fig.savefig(path, dpi=300, bbox_inches="tight", facecolor="#FAFBFC")
         plt.close(fig)
-        return path
+        return path, 0
 
     fig, axes = plt.subplots(len(items), 1, figsize=(7.2, 1.4 + len(items) * 1.8))
     if len(items) == 1:
@@ -785,12 +785,12 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
         inset.hlines(0, 0, scale_max, color="#D8DCE3", linewidth=6, zorder=1)
         inset.axvline(benchmark_value, color="#1A2E4A", linewidth=2.0, zorder=3)
         if label == "Applications per role":
-            inset.scatter([client_value], [0], color=delta_colour, s=120, marker="D", zorder=4)
+            inset.scatter([client_value], [0], color=delta_colour, s=130, marker="D", zorder=4)
         else:
             inset.barh([0], [client_value], left=0, color=delta_colour, height=0.56, zorder=2)
         inset.set_xticks([])
         inset.set_yticks([])
-        inset.set_facecolor("#FBF8F2")
+        inset.set_facecolor("#FAFBFC")
         for spine in inset.spines.values():
             spine.set_visible(False)
         left_label, right_label = _benchmark_axis_labels(label, higher_is_better)
@@ -803,9 +803,9 @@ def create_benchmark_chart(company_name: str, metrics: dict, benchmark: pd.DataF
     fig.suptitle("Benchmark comparison", fontsize=12, fontweight="bold", color="#1F2A40", y=0.985)
     fig.text(0.10, 0.948, company_name, fontsize=8.8, color="#5F6876")
     fig.tight_layout(rect=(0, 0.01, 1, 0.93), h_pad=1.5)
-    fig.savefig(path, dpi=300, bbox_inches="tight", facecolor="#FBF8F2")
+    fig.savefig(path, dpi=300, bbox_inches="tight", facecolor="#FAFBFC")
     plt.close(fig)
-    return path
+    return path, len(items)
 
 
 def _benchmark_visual_delta(
@@ -873,6 +873,7 @@ def save_pdf_report(
     section_chart: Path,
     overall_chart: Path,
     benchmark_chart: Path,
+    benchmark_chart_item_count: int,
 ) -> Path:
     output_path = _output_dir() / f"{_slug(data['company_name'])}_recruitment_audit.pdf"
     report = _clean_report(_normalise_report(report, data["section_scores"]), data, benchmark_summary)
@@ -900,7 +901,7 @@ def save_pdf_report(
     _add_score_summary(story, styles, data)
     _add_benchmark_snapshot(story, styles, benchmark_summary)
     _add_priority_matrix(story, styles, report)
-    _add_charts_section(story, styles, section_chart, benchmark_chart)
+    _add_charts_section(story, styles, section_chart, benchmark_chart, benchmark_chart_item_count)
     _add_detailed_findings(story, styles, report)
     _add_list_section(story, styles, "Key strengths", report["top_strengths"])
     _add_list_section(story, styles, "Priority problems", report["top_problems"])
@@ -1207,6 +1208,10 @@ def _scaled_pdf_image(path: Path, width: float, min_height: float | None = None)
     return Image(str(path), width=width, height=height)
 
 
+def _fixed_pdf_image(path: Path, width: float, height: float) -> Image:
+    return Image(str(path), width=width, height=height)
+
+
 def _score_colours(score: int) -> tuple[colors.Color, colors.Color]:
     if score >= 8:
         return GREEN_BG, GREEN_TEXT
@@ -1319,7 +1324,7 @@ def _add_md_letter(story: list, styles: StyleSheet1, data: dict) -> None:
         sign_off_block.append(Spacer(1, 3 * mm))
     else:
         sign_off_block.append(Spacer(1, 3 * mm))
-        sign_off_block.append(Paragraph("[signature]", styles["Small"]))
+        sign_off_block.append(Paragraph(f"<i>{MANAGING_DIRECTOR_NAME}</i>", styles["Small"]))
         sign_off_block.append(Spacer(1, 3 * mm))
     sign_off_block.append(Paragraph(MANAGING_DIRECTOR_NAME, styles["BodyTight"]))
     sign_off_block.append(Paragraph(MANAGING_DIRECTOR_TITLE, styles["BodyTight"]))
@@ -1524,7 +1529,13 @@ def _add_priority_matrix(story: list, styles: StyleSheet1, report: dict) -> None
     story.append(matrix)
 
 
-def _add_charts_section(story: list, styles: StyleSheet1, section_chart: Path, benchmark_chart: Path) -> None:
+def _add_charts_section(
+    story: list,
+    styles: StyleSheet1,
+    section_chart: Path,
+    benchmark_chart: Path,
+    benchmark_chart_item_count: int,
+) -> None:
     story.append(PageBreak())
     story.append(Spacer(1, -3 * mm))
     story.append(Paragraph("Charts and visual analysis", styles["Heading1"]))
@@ -1534,7 +1545,8 @@ def _add_charts_section(story: list, styles: StyleSheet1, section_chart: Path, b
     if benchmark_chart.exists():
         story.append(Spacer(1, 7 * mm))
         story.append(Paragraph("Benchmark comparison", styles["Heading2"]))
-        story.append(_scaled_pdf_image(benchmark_chart, CHART_WIDTH))
+        benchmark_height = CHART_WIDTH * (0.22 * max(benchmark_chart_item_count, 1) + 0.12)
+        story.append(_fixed_pdf_image(benchmark_chart, CHART_WIDTH, benchmark_height))
 
 
 def _add_detailed_findings(story: list, styles: StyleSheet1, report: dict) -> None:
@@ -1965,7 +1977,7 @@ def _score_hex(score: int) -> str:
         return "#3A7D44"
     if score >= 6:
         return "#E8A838"
-    return "#D94F3D"
+    return "#B91C1C"
 
 
 def _section_chart_score_hex(score: int) -> str:
@@ -1973,7 +1985,7 @@ def _section_chart_score_hex(score: int) -> str:
         return "#3A7D44"
     if score >= 5:
         return "#E8A838"
-    return "#D94F3D"
+    return "#B91C1C"
 
 
 def _score_indicator_markup(score: int) -> str:
@@ -3209,8 +3221,8 @@ def _build_day_plan(sections: list[dict], day: int) -> list[str]:
 
 
 def _apply_chart_style(fig, ax) -> None:
-    fig.patch.set_facecolor("#FBF8F2")
-    ax.set_facecolor("#FBF8F2")
+    fig.patch.set_facecolor("#FAFBFC")
+    ax.set_facecolor("#FAFBFC")
     ax.tick_params(axis="x", colors="#1F2A40", labelsize=8)
     ax.tick_params(axis="y", colors="#1F2A40", labelsize=8)
     for spine in ax.spines.values():
