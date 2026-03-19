@@ -237,160 +237,180 @@ def render_page(title: str, body: str) -> str:
                 font-family: var(--font-sans);
             }}
             body {{ min-height: 100vh; }}
-            .shell {{ max-width: 1080px; margin: 0 auto; padding: 24px 28px 56px; }}
+            .shell {{ max-width: 960px; margin: 0 auto; padding: 24px 20px 64px; }}
             .topbar {{
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
                 gap: 16px;
-                margin-bottom: 18px;
+                padding-bottom: 20px;
+                margin-bottom: 24px;
+                border-bottom: 1px solid #e5e7eb;
             }}
             .brand-name {{
-                font-family: var(--font-display);
-                font-size: 20px;
-                font-weight: 700;
+                font-size: 14px;
+                font-weight: 600;
+                color: #1a2336;
+                letter-spacing: 0.02em;
             }}
+            .brand-name span {{ color: #9e7c3e; }}
             .trust-pill {{
                 display: inline-flex;
                 align-items: center;
-                padding: 7px 12px;
-                border: 1px solid var(--line);
+                padding: 5px 12px;
+                border: 1px solid #e5e7eb;
                 border-radius: 999px;
-                background: var(--panel-soft);
-                color: var(--muted);
-                font-size: 12px;
-                font-weight: 700;
+                background: #fff;
+                color: #6b7280;
+                font-size: 11px;
+                font-weight: 600;
+                letter-spacing: 0.02em;
+                text-transform: uppercase;
             }}
-            .progress-shell {{ position: sticky; top: 12px; z-index: 20; margin-bottom: 18px; }}
-            .progress-bar {{
-                padding: 16px 18px;
-                border: 1px solid var(--line);
-                border-radius: var(--radius-lg);
-                background: var(--panel);
-                box-shadow: var(--shadow-md);
-            }}
+            .progress-shell {{ margin-bottom: 28px; }}
+            .progress-bar {{ padding: 0; border: 0; background: transparent; box-shadow: none; }}
             .progress-top {{
                 display: flex;
-                align-items: flex-start;
+                align-items: center;
                 justify-content: space-between;
                 gap: 16px;
-                margin-bottom: 14px;
+                margin-bottom: 8px;
             }}
             .progress-title,
             .section-kicker,
             .sidebar-kicker,
             .completion-kicker {{
-                font-size: 11px;
-                font-weight: 800;
-                letter-spacing: 0.06em;
+                font-size: 12px;
+                font-weight: 600;
+                letter-spacing: 0.04em;
                 text-transform: uppercase;
-                color: var(--muted);
+                color: #9e7c3e;
             }}
             .progress-stage-name {{
                 margin-top: 4px;
-                font-family: var(--font-display);
                 font-size: 20px;
-                font-weight: 700;
+                font-weight: 600;
+                color: #1a2336;
             }}
-            .progress-percent {{ margin-top: 4px; font-size: 13px; font-weight: 700; color: var(--brand); }}
+            .progress-percent {{ font-size: 13px; font-weight: 500; color: #6b7280; }}
             .track {{
                 width: 100%;
                 height: 3px;
-                margin-bottom: 14px;
+                margin-bottom: 28px;
                 overflow: hidden;
                 border-radius: 999px;
-                background: #e7e2da;
+                background: #e5e7eb;
             }}
             .track-fill {{
                 width: 0%;
                 height: 100%;
                 border-radius: 999px;
-                background: var(--brand);
-                transition: width 0.24s ease;
+                background: #1a2336;
+                transition: width 0.35s ease;
             }}
-            .stepper {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }}
+            .stepper {{
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 0;
+                margin-bottom: 4px;
+                overflow: hidden;
+                border: 1px solid #e5e7eb;
+                border-radius: 10px;
+                background: #fff;
+            }}
             .step {{
                 appearance: none;
                 display: flex;
                 align-items: center;
-                gap: 12px;
-                min-width: 0;
+                justify-content: center;
+                gap: 8px;
                 padding: 12px;
                 cursor: pointer;
-                border: 1px solid var(--line);
-                border-radius: var(--radius-md);
-                background: var(--panel-soft);
-                text-align: left;
+                border: 0;
+                border-right: 1px solid #e5e7eb;
+                border-radius: 0;
+                background: transparent;
+                color: #9ca3af;
+                text-align: center;
+                position: relative;
             }}
+            .step:last-child {{ border-right: none; }}
             .step-dot {{
                 flex: 0 0 auto;
                 display: grid;
                 place-items: center;
-                width: 30px;
-                height: 30px;
+                width: 20px;
+                height: 20px;
                 border-radius: 999px;
-                background: #e6e9ef;
-                color: var(--muted);
-                font-size: 12px;
-                font-weight: 800;
+                background: #f3f4f6;
+                color: #9ca3af;
+                font-size: 11px;
+                font-weight: 600;
             }}
             .step-copy {{ min-width: 0; }}
-            .step-kicker {{ margin-bottom: 3px; }}
+            .step-kicker {{ display: none; }}
             .step-title {{
-                overflow: hidden;
                 font-size: 13px;
-                font-weight: 700;
-                text-overflow: ellipsis;
-                white-space: nowrap;
+                font-weight: 500;
             }}
             .step.active {{
-                border-color: var(--line-strong);
-                background: var(--panel);
+                color: #1a2336;
+                background: #fafbfc;
+                font-weight: 600;
             }}
             .step.active .step-dot {{
-                background: var(--brand);
+                background: #1a2336;
                 color: #fff;
             }}
+            .step.active::after {{
+                content: "";
+                position: absolute;
+                left: 16px;
+                right: 16px;
+                bottom: 0;
+                height: 2px;
+                border-radius: 1px;
+                background: #1a2336;
+            }}
             .step.complete {{
-                border-color: rgba(22, 101, 52, 0.16);
-                background: #f3faf5;
+                color: #059669;
+                background: transparent;
             }}
             .step.complete .step-dot {{
-                background: var(--success-soft);
-                color: var(--success);
+                background: #d1fae5;
+                color: #059669;
             }}
             .assessment-layout {{
                 display: grid;
                 grid-template-columns: minmax(0, 1fr) 280px;
-                gap: 18px;
+                gap: 20px;
                 align-items: start;
             }}
             .assessment-layout form {{ min-width: 0; }}
             .panel {{
-                border: 1px solid var(--line);
+                border: 1px solid #e5e7eb;
                 border-radius: var(--radius-lg);
-                background: var(--panel);
-                box-shadow: var(--shadow-lg);
+                background: #fff;
+                box-shadow: none;
                 overflow: hidden;
             }}
             .assessment-panel {{ width: 100%; }}
             .sidebar-card {{
                 position: sticky;
-                top: 126px;
-                padding: 20px;
+                top: 24px;
+                padding: 18px;
             }}
             .sidebar-title {{
                 margin: 0 0 8px;
-                font-family: var(--font-display);
-                font-size: 20px;
-                font-weight: 700;
+                font-size: 16px;
+                font-weight: 600;
+                color: #1a2336;
             }}
             .sidebar-copy,
             .section-copy,
-            .step-support,
             .footer-copy,
             .loading-card p {{
-                color: var(--muted);
+                color: #6b7280;
                 line-height: 1.6;
                 font-size: 14px;
             }}
@@ -401,48 +421,47 @@ def render_page(title: str, body: str) -> str:
                 justify-content: space-between;
                 gap: 10px;
                 padding: 11px 12px;
-                border: 1px solid var(--line);
+                border: 1px solid #e5e7eb;
                 border-radius: var(--radius-sm);
-                background: var(--panel-soft);
+                background: #fafbfc;
             }}
             .summary-label,
             .review-label {{
                 font-size: 11px;
-                font-weight: 700;
-                letter-spacing: 0.04em;
+                font-weight: 600;
+                letter-spacing: 0.03em;
                 text-transform: uppercase;
-                color: var(--muted);
+                color: #9ca3af;
             }}
             .summary-value,
             .review-value {{
-                font-size: 13px;
-                font-weight: 700;
-                color: var(--brand);
+                font-size: 14px;
+                font-weight: 600;
+                color: #1a2336;
                 text-align: right;
             }}
             .stage {{
                 display: none;
-                min-height: 460px;
-                padding: 24px 24px 8px;
+                padding: 32px;
             }}
             .stage.active {{ display: block; }}
-            .section-head {{ margin-bottom: 24px; }}
-            .section-kicker {{ margin-bottom: 8px; color: var(--accent); }}
+            .section-head {{ margin-bottom: 28px; }}
+            .section-kicker {{ margin-bottom: 6px; }}
             .section-title {{
                 margin: 0 0 8px;
-                font-family: var(--font-display);
                 font-size: 20px;
-                font-weight: 700;
+                font-weight: 600;
+                color: #1a2336;
             }}
             @keyframes stageIn {{
                 from {{ opacity: 0; transform: translateY(6px); }}
                 to {{ opacity: 1; transform: translateY(0); }}
             }}
             .step-panel {{
-                padding: 24px;
-                border: 1px solid var(--line);
-                border-radius: var(--radius-md);
-                background: var(--panel-soft);
+                padding: 0;
+                border: 0;
+                border-radius: 0;
+                background: transparent;
             }}
             .step-fields {{
                 display: grid;
@@ -452,89 +471,95 @@ def render_page(title: str, body: str) -> str:
             .field {{ display: flex; flex-direction: column; gap: 6px; }}
             .field.full {{ grid-column: 1 / -1; }}
             label {{
-                font-size: 12px;
-                font-weight: 700;
+                font-size: 13px;
+                font-weight: 600;
                 line-height: 1.45;
-                color: var(--brand);
+                color: #374151;
             }}
             input, select, textarea {{
                 width: 100%;
-                border: 1px solid var(--line);
+                border: 1px solid #d1d5db;
                 border-radius: var(--radius-sm);
                 background: #fff;
                 color: var(--ink);
                 font: inherit;
                 outline: none;
-                padding: 14px 14px;
+                padding: 11px 14px;
                 transition: border-color 0.18s ease, box-shadow 0.18s ease;
             }}
             input:focus, select:focus, textarea:focus {{
-                border-color: var(--line-strong);
-                box-shadow: 0 0 0 4px rgba(20, 32, 51, 0.06);
+                border-color: #1a2336;
+                box-shadow: 0 0 0 3px rgba(26, 35, 54, 0.08);
             }}
+            input:hover, select:hover, textarea:hover {{ border-color: #9ca3af; }}
+            input::placeholder, textarea::placeholder {{ color: #c0c5cc; }}
             .input-wrap {{ position: relative; }}
-            .input-wrap input {{ padding-right: 78px; }}
+            .input-wrap input {{ padding-right: 70px; }}
             .suffix {{
                 position: absolute;
                 top: 50%;
                 right: 12px;
                 transform: translateY(-50%);
                 font-size: 11px;
-                font-weight: 700;
-                letter-spacing: 0.04em;
+                font-weight: 600;
+                letter-spacing: 0.03em;
                 text-transform: uppercase;
-                color: var(--muted);
+                color: #9ca3af;
                 pointer-events: none;
             }}
             .toggle-group {{
                 display: inline-flex;
-                gap: 8px;
-                flex-wrap: wrap;
+                gap: 0;
+                overflow: hidden;
+                border: 1px solid #e5e7eb;
+                border-radius: 6px;
+                flex-wrap: nowrap;
             }}
             .discipline-grid {{
                 display: grid;
                 grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 14px 16px;
+                gap: 10px;
             }}
             .discipline-item {{
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
                 gap: 12px;
-                padding: 14px;
-                border: 1px solid var(--line);
+                padding: 12px 16px;
+                border: 1px solid #e5e7eb;
                 border-radius: var(--radius-sm);
                 background: #fff;
             }}
             .discipline-question {{
                 flex: 1 1 auto;
                 font-size: 13px;
-                font-weight: 700;
+                font-weight: 500;
                 line-height: 1.45;
-                color: var(--brand);
+                color: #374151;
             }}
             .toggle-option {{
-                min-width: 72px;
-                padding: 11px 14px;
-                border: 1px solid var(--line);
-                border-radius: 999px;
+                min-width: 56px;
+                padding: 6px 14px;
+                border: 0;
+                border-right: 1px solid #e5e7eb;
+                border-radius: 0;
                 background: #fff;
-                color: var(--muted);
+                color: #9ca3af;
                 font: inherit;
-                font-size: 13px;
-                font-weight: 700;
+                font-size: 12px;
+                font-weight: 600;
                 cursor: pointer;
                 transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
             }}
+            .toggle-option:last-child {{ border-right: 0; }}
+            .toggle-option:hover {{ background: #f9fafb; color: #6b7280; }}
             .toggle-option.is-active.is-yes {{
-                border-color: rgba(22, 101, 52, 0.24);
-                background: var(--success-soft);
-                color: var(--success);
+                background: #d1fae5;
+                color: #047857;
             }}
             .toggle-option.is-active.is-no {{
-                border-color: rgba(185, 28, 28, 0.22);
-                background: var(--error-soft);
-                color: var(--error);
+                background: #fee2e2;
+                color: #b91c1c;
             }}
             .toggle-group.is-invalid .toggle-option {{
                 border-color: rgba(185, 28, 28, 0.4);
@@ -547,23 +572,36 @@ def render_page(title: str, body: str) -> str:
             .review-strip {{
                 grid-template-columns: repeat(4, minmax(0, 1fr));
                 margin-bottom: 16px;
+                gap: 0;
+                overflow: hidden;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                background: #fafbfc;
             }}
             .review-grid {{
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                margin-bottom: 16px;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 8px;
+                margin-bottom: 20px;
             }}
+            .review-strip .review-card {{
+                border: 0;
+                border-right: 1px solid #e5e7eb;
+                border-radius: 0;
+                background: transparent;
+            }}
+            .review-strip .review-card:last-child {{ border-right: 0; }}
             .review-card,
             .review-metric,
             .review-pill-card {{
-                padding: 14px;
-                border: 1px solid var(--line);
+                padding: 12px 14px;
+                border: 1px solid #e5e7eb;
                 border-radius: var(--radius-sm);
-                background: #fff;
+                background: #f9fafb;
             }}
             .review-pill-grid {{
-                display: flex;
-                flex-wrap: wrap;
-                gap: 8px;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 6px;
                 margin-top: 12px;
             }}
             .review-pill {{
@@ -571,63 +609,65 @@ def render_page(title: str, body: str) -> str:
                 align-items: center;
                 gap: 6px;
                 padding: 8px 10px;
-                border-radius: 999px;
+                border-radius: 6px;
                 font-size: 12px;
-                font-weight: 700;
-                border: 1px solid var(--line);
-                background: var(--panel-soft);
-                color: var(--muted);
+                font-weight: 500;
+                border: 0;
+                background: #f3f4f6;
+                color: #9ca3af;
             }}
             .review-pill.is-yes {{
-                border-color: rgba(22, 101, 52, 0.24);
-                background: var(--success-soft);
-                color: var(--success);
+                background: #d1fae5;
+                color: #047857;
             }}
             .review-pill.is-no {{
-                border-color: rgba(185, 28, 28, 0.22);
-                background: var(--error-soft);
-                color: var(--error);
+                background: #fee2e2;
+                color: #b91c1c;
             }}
             .footer-bar {{
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
                 gap: 16px;
-                padding: 18px 24px 24px;
-                border-top: 1px solid var(--line);
-                background: var(--panel-soft);
+                padding: 20px 32px;
+                border-top: 1px solid #e5e7eb;
+                background: #fafbfc;
             }}
-            .footer-copy {{ max-width: 54ch; }}
+            .footer-copy {{ max-width: 44ch; font-size: 12px; color: #9ca3af; }}
             .button-row {{
                 display: flex;
-                gap: 10px;
+                gap: 8px;
                 flex-wrap: wrap;
                 justify-content: flex-end;
             }}
             .button {{
                 appearance: none;
-                border: 1px solid transparent;
+                border: 1px solid #d1d5db;
                 border-radius: var(--radius-sm);
-                padding: 13px 18px;
-                font-size: 14px;
-                font-weight: 700;
+                padding: 10px 22px;
+                font-size: 13px;
+                font-weight: 600;
                 cursor: pointer;
                 text-decoration: none;
+                background: #fff;
+                color: #374151;
             }}
-            .button:hover {{ opacity: 0.96; }}
+            .button:hover {{ background: #f9fafb; border-color: #9ca3af; opacity: 1; }}
             .button-primary {{
-                background: var(--brand);
+                background: #1a2336;
                 color: #fff;
+                border-color: #1a2336;
             }}
+            .button-primary:hover {{ background: #263044; border-color: #263044; }}
             .button-secondary {{
                 background: #fff;
-                color: var(--brand);
-                border-color: var(--line);
+                color: #374151;
+                border-color: #d1d5db;
             }}
             .button-ghost {{
-                background: var(--panel-soft);
-                color: var(--muted);
-                border-color: var(--line);
+                background: #fff;
+                color: #374151;
+                border-color: #d1d5db;
             }}
             .button[hidden] {{ display: none !important; }}
             .loading-overlay {{
@@ -638,82 +678,96 @@ def render_page(title: str, body: str) -> str:
                 align-items: center;
                 justify-content: center;
                 padding: 16px;
-                background: rgba(20, 32, 51, 0.18);
+                background: rgba(244, 245, 247, 0.85);
             }}
             .loading-card {{
-                width: min(540px, calc(100vw - 32px));
+                width: min(420px, calc(100vw - 40px));
                 padding: 28px;
-                border: 1px solid var(--line);
-                border-radius: var(--radius-lg);
-                background: var(--panel);
-                box-shadow: var(--shadow-lg);
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+                background: #fff;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.10);
             }}
             .loading-head {{
                 display: flex;
                 align-items: center;
-                gap: 10px;
-                margin-bottom: 10px;
+                gap: 8px;
+                margin-bottom: 16px;
             }}
             .loading-pill {{
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                padding: 8px 12px;
-                border-radius: 999px;
-                background: var(--panel-soft);
-                color: var(--brand);
-                font-size: 12px;
-                font-weight: 800;
-                text-transform: uppercase;
+                background: transparent;
+                padding: 0;
+                border-radius: 0;
+                color: #1a2336;
+                font-size: 0;
             }}
             .spinner {{
-                width: 16px;
-                height: 16px;
-                border: 2px solid rgba(20, 32, 51, 0.16);
-                border-top-color: var(--brand);
+                width: 28px;
+                height: 28px;
+                border: 2.5px solid #e5e7eb;
+                border-top-color: #1a2336;
                 border-radius: 999px;
-                animation: spin 0.9s linear infinite;
+                animation: spin 0.75s linear infinite;
             }}
             .loading-card h3,
             .completion-state h3 {{
-                margin: 0 0 10px;
-                font-family: var(--font-display);
-                font-size: 20px;
-                font-weight: 700;
+                margin: 0 0 4px;
+                font-size: 17px;
+                font-weight: 600;
+                color: #1a2336;
             }}
-            .completion-state p {{ color: var(--muted); line-height: 1.6; font-size: 14px; }}
+            .completion-state p,
+            .loading-card p {{ color: #6b7280; line-height: 1.5; font-size: 13px; }}
             .loading-steps {{
-                display: grid;
+                display: flex;
+                flex-direction: column;
                 gap: 10px;
                 margin-top: 18px;
             }}
             .loading-step {{
                 display: flex;
                 align-items: center;
-                justify-content: space-between;
-                gap: 12px;
-                padding: 12px 14px;
-                border: 1px solid var(--line);
-                border-radius: var(--radius-sm);
-                background: var(--panel-soft);
-                color: var(--muted);
+                justify-content: flex-start;
+                gap: 10px;
+                padding: 0;
+                border: 0;
+                border-radius: 0;
+                background: transparent;
+                color: #9ca3af;
                 font-size: 13px;
             }}
+            .loading-step-dot {{
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                flex-shrink: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 10px;
+                font-weight: 700;
+                border: 1.5px solid #e5e7eb;
+                color: #d1d5db;
+            }}
             .loading-step-state {{
-                font-size: 11px;
-                font-weight: 800;
-                letter-spacing: 0.04em;
-                text-transform: uppercase;
+                display: none;
             }}
             .loading-step.is-active {{
-                border-color: var(--line-strong);
-                color: var(--brand);
-                background: #fff;
+                color: #1a2336;
+                font-weight: 600;
+            }}
+            .loading-step.is-active .loading-step-dot {{
+                border-color: #1a2336;
+                background: #1a2336;
+                color: #fff;
             }}
             .loading-step.is-complete {{
-                border-color: rgba(22, 101, 52, 0.16);
-                color: var(--success);
-                background: #f3faf5;
+                color: #059669;
+            }}
+            .loading-step.is-complete .loading-step-dot {{
+                border-color: #059669;
+                background: #d1fae5;
+                color: #059669;
             }}
             .completion-state {{ display: none; }}
             .completion-list {{
@@ -723,10 +777,10 @@ def render_page(title: str, body: str) -> str:
             }}
             .completion-item {{
                 padding: 12px 14px;
-                border: 1px solid rgba(22, 101, 52, 0.16);
-                border-radius: var(--radius-sm);
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
                 background: #f3faf5;
-                color: var(--brand);
+                color: #1a2336;
                 font-size: 13px;
                 line-height: 1.55;
             }}
@@ -768,10 +822,18 @@ def render_page(title: str, body: str) -> str:
                 .stepper,
                 .discipline-grid,
                 .step-fields,
-                .review-strip,
-                .review-grid {{
+                .review-grid,
+                .review-pill-grid {{
                     grid-template-columns: 1fr;
                 }}
+                .review-strip {{
+                    grid-template-columns: 1fr;
+                }}
+                .review-strip .review-card {{
+                    border-right: 0;
+                    border-bottom: 1px solid #e5e7eb;
+                }}
+                .review-strip .review-card:last-child {{ border-bottom: 0; }}
                 .sidebar-card {{ position: static; order: 2; }}
                 .progress-top,
                 .footer-bar,
@@ -779,6 +841,7 @@ def render_page(title: str, body: str) -> str:
                     flex-direction: column;
                     align-items: flex-start;
                 }}
+                .stepper {{ grid-template-columns: repeat(2, 1fr); }}
                 .stage,
                 .footer-bar,
                 .step-panel {{
@@ -801,15 +864,15 @@ def render_page(title: str, body: str) -> str:
                     <div class="loading-head">
                         <div class="loading-pill"><span class="spinner"></span> Analysing</div>
                     </div>
-                    <h3>Analysing your recruitment model…</h3>
+                    <h3>Generating your audit report</h3>
                     <p>
-                        Reviewing process control, hiring performance and benchmark positioning
+                        Scoring the operating model, benchmarking against sector data and assembling the report.
                     </p>
                     <div class="loading-steps">
-                        <div class="loading-step is-active"><span>Scoring maturity model</span><span class="loading-step-state">In progress</span></div>
-                        <div class="loading-step"><span>Benchmarking against sector</span><span class="loading-step-state">Pending</span></div>
-                        <div class="loading-step"><span>Generating charts</span><span class="loading-step-state">Pending</span></div>
-                        <div class="loading-step"><span>Assembling report</span><span class="loading-step-state">Pending</span></div>
+                        <div class="loading-step is-active"><span class="loading-step-dot">1</span><span>Scoring maturity model</span><span class="loading-step-state">In progress</span></div>
+                        <div class="loading-step"><span class="loading-step-dot">2</span><span>Benchmarking against sector</span><span class="loading-step-state">Pending</span></div>
+                        <div class="loading-step"><span class="loading-step-dot">3</span><span>Generating charts</span><span class="loading-step-state">Pending</span></div>
+                        <div class="loading-step"><span class="loading-step-dot">4</span><span>Assembling report</span><span class="loading-step-state">Pending</span></div>
                     </div>
                 </div>
 
@@ -1224,7 +1287,7 @@ def form():
 
     body = f"""
     <div class="topbar">
-        <div class="brand-name">Bradford &amp; Marsh Consulting</div>
+        <div class="brand-name">Bradford <span>&amp;</span> Marsh Consulting</div>
         <div class="trust-pill">Confidential assessment</div>
     </div>
 
