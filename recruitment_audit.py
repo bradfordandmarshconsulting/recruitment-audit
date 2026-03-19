@@ -191,6 +191,30 @@ THINGS YOU MUST NEVER DO:
 - Never use "synergy", "leverage", "holistic", "robust", "best practice", "going forward".
 - Never start consecutive sections with the same word.
 - Never use more than one exclamation mark in the entire report. Prefer zero.
+
+ADDITIONAL RULES:
+
+DATA HANDLING:
+- If any metric was flagged as an estimate, note this once in the executive overview as "some figures are based on client estimates" but otherwise treat them as real numbers throughout the report. Do not repeatedly caveat them.
+- Every section that has a relevant benchmark metric must include the comparison. Do not skip benchmarks.
+- If a metric is missing despite validation, state clearly: "[Metric] was not provided - this limits the analysis in this section." Do not fabricate analysis around missing data.
+
+LANGUAGE VARIATION:
+- You are writing 12 section analyses. Each must read differently.
+- Never reuse the same sentence structure across sections.
+- The following phrases may appear at most once in the entire report:
+  - "This area is working but not consistently"
+  - "Without a tighter operating standard, results will continue to vary"
+  - "The gap at [X] will keep creating uneven delivery if it is not addressed directly"
+  - "by role, manager or workload"
+  - any close variant of these
+- For each section, vary the opening sentence structure, how you describe the root cause, how you frame the risk, how you explain the commercial impact, and the action language.
+- A reader should not feel like they have read the same paragraph twelve times.
+
+THINGS YOU MUST NEVER DO:
+- Never use "based on the information provided" or "according to the data"
+- Never use "synergy", "leverage", "holistic", "robust", "best practice", "going forward"
+- Never start consecutive sections with the same word
 """.strip()
 
 EDITING_PROMPT = """
@@ -699,6 +723,11 @@ def _build_user_prompt(data: dict, benchmark_summary: dict) -> str:
         f"- {key.replace('_', ' ').title()}: {value or 'Not provided'}"
         for key, value in data["raw_metrics"].items()
     )
+    estimated_metrics = [
+        metric.replace("_", " ").title()
+        for metric, is_estimate in data.get("estimate_flags", {}).items()
+        if is_estimate
+    ]
     flags_block = "\n".join(
         f"- {key.replace('_', ' ').title()}: {'Yes' if value else 'No'}"
         for key, value in data["process_flags"].items()
@@ -716,9 +745,13 @@ Company profile
 - Headcount: {data['headcount']}
 - Annual hiring volume: {data['annual_hiring_volume']}
 - Key roles / job titles hired: {data['key_roles_hired']}
+- Advertising channels: {data.get('advertising_channels', '') or 'Not provided'}
 
 Metrics supplied
 {metrics_block}
+
+Estimated metrics
+{chr(10).join(f"- {metric}" for metric in estimated_metrics) or "- None"}
 
 Operating controls
 {flags_block}
@@ -3029,12 +3062,14 @@ def _build_executive_overview(data: dict, report: dict, benchmark_summary: dict)
     if comparisons:
         highlight = comparisons[0]
         benchmark_line = f"Against the UK benchmark, {highlight['label'].lower()} is {highlight['comment'].lower()}."
+    estimate_line = "Some figures are based on client estimates." if any(data.get("estimate_flags", {}).values()) else ""
+    evidence_line = " ".join(part for part in [estimate_line, benchmark_line] if part)
 
     sentences = [
         f"The recruitment operating model is {_rating_for_score(data['total_score']).lower()} at {data['total_score']}/120.",
         f"{strongest[0]} is the strongest area at {strongest[1]}/10, while {weakest[0].lower()} is the weakest at {weakest[1]}/10.",
         f"The main commercial issue is pressure in {weakest[0].lower()}, which is adding delay, management time and avoidable hiring risk.",
-        benchmark_line,
+        evidence_line,
         f"The immediate next move is to {next_step.rstrip('.').lower()}.",
     ]
     text = " ".join(sentence for sentence in sentences if sentence)
