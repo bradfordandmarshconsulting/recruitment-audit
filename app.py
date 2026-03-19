@@ -207,280 +207,584 @@ def render_page(title: str, body: str) -> str:
         <style>
             :root {{
                 --bg: #f4efe8;
-                --bg-strong: #e6dfd6;
-                --panel: rgba(255, 255, 255, 0.92);
-                --panel-strong: #ffffff;
-                --panel-soft: #f8f3ed;
+                --panel: #ffffff;
+                --panel-soft: #faf8f4;
                 --ink: #142033;
                 --muted: #5d6778;
-                --muted-2: #8f98a6;
-                --line: rgba(89, 103, 122, 0.20);
-                --line-strong: rgba(48, 61, 79, 0.34);
+                --line: rgba(20, 32, 51, 0.12);
+                --line-strong: rgba(20, 32, 51, 0.22);
                 --brand: #142033;
-                --brand-2: #2b3950;
                 --accent: #b88d57;
-                --accent-soft: rgba(184, 141, 87, 0.14);
-                --success: #047857;
-                --success-soft: rgba(4, 120, 87, 0.10);
+                --success: #166534;
+                --success-soft: #e7f6ec;
                 --error: #b91c1c;
-                --error-soft: rgba(185, 28, 28, 0.08);
-                --shadow-xl: 0 24px 56px rgba(20, 32, 51, 0.10);
-                --shadow-lg: 0 16px 34px rgba(20, 32, 51, 0.08);
-                --shadow-md: 0 8px 20px rgba(20, 32, 51, 0.05);
-                --radius-2xl: 28px;
-                --radius-xl: 22px;
-                --radius-lg: 18px;
-                --radius-md: 14px;
+                --error-soft: #fceceb;
+                --shadow-lg: 0 18px 40px rgba(20, 32, 51, 0.08);
+                --shadow-md: 0 8px 22px rgba(20, 32, 51, 0.05);
+                --radius-lg: 12px;
+                --radius-md: 10px;
+                --radius-sm: 8px;
                 --font-sans: "Aptos", "Inter", "Segoe UI", sans-serif;
                 --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
             }}
-
             * {{ box-sizing: border-box; }}
             html, body {{
                 margin: 0;
                 padding: 0;
                 min-height: 100%;
-                font-family: var(--font-sans);
+                background: var(--bg);
                 color: var(--ink);
-                background: linear-gradient(180deg, #faf7f2 0%, var(--bg) 52%, #eee7de 100%);
+                font-family: var(--font-sans);
             }}
             body {{ min-height: 100vh; }}
-            .shell {{ max-width: 960px; margin: 0 auto; padding: 28px 30px 72px; }}
-            .topbar {{ display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 16px; }}
-            .brand-lockup {{ display: flex; align-items: center; gap: 16px; }}
-            .brand-mark {{
-                width: 62px; height: 62px; border-radius: 18px; display: grid; place-items: center;
-                background: var(--brand);
-                color: white; font-family: var(--font-display); font-size: 23px; letter-spacing: 0.04em;
-                box-shadow: 0 12px 24px rgba(20, 32, 51, 0.12);
-                position: relative; overflow: hidden;
-            }}
-            .brand-mark:after {{
-                content: ""; position: absolute; inset: 1px; border-radius: 17px;
-                border: 1px solid rgba(255,255,255,0.10);
-            }}
-            .brand {{ display: flex; flex-direction: column; gap: 4px; }}
-            .brand-overline {{ font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }}
-            .brand-name {{ font-size: 20px; font-weight: 700; letter-spacing: -0.02em; font-family: var(--font-display); }}
-            .brand-sub {{ color: var(--muted); font-size: 13px; max-width: 48ch; line-height: 1.5; }}
-            .trust-pill {{
-                color: var(--muted);
-                border-radius: 999px;
-                padding: 8px 0;
-                font-size: 12px;
-                font-weight: 700;
-                letter-spacing: 0.02em;
-                text-transform: none;
-            }}
-            .hero {{
-                background: rgba(255,255,255,0.82);
-                color: var(--ink);
-                border: 1px solid rgba(20, 32, 51, 0.07);
-                border-radius: 28px;
-                box-shadow: var(--shadow-md);
-                padding: 26px 28px;
+            .shell {{ max-width: 1080px; margin: 0 auto; padding: 24px 28px 56px; }}
+            .topbar {{
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
                 margin-bottom: 18px;
             }}
-            .hero h1 {{ margin: 0 0 10px; font-size: clamp(26px, 2.8vw, 34px); line-height: 1.1; letter-spacing: -0.03em; font-family: var(--font-display); font-weight: 700; color: var(--brand); }}
-            .hero p {{ margin: 0; max-width: 40ch; color: var(--muted); font-size: 16px; line-height: 1.6; }}
-            .hero-trust {{ margin-top: 14px; color: var(--muted); font-size: 12px; letter-spacing: 0.02em; }}
-
-            .progress-shell {{ position: sticky; top: 12px; z-index: 30; margin-bottom: 18px; }}
+            .brand-name {{
+                font-family: var(--font-display);
+                font-size: 20px;
+                font-weight: 700;
+                letter-spacing: -0.01em;
+            }}
+            .trust-pill {{
+                display: inline-flex;
+                align-items: center;
+                padding: 7px 12px;
+                border: 1px solid var(--line);
+                border-radius: 999px;
+                background: var(--panel-soft);
+                color: var(--muted);
+                font-size: 12px;
+                font-weight: 700;
+            }}
+            .progress-shell {{ position: sticky; top: 12px; z-index: 20; margin-bottom: 18px; }}
             .progress-bar {{
-                background: rgba(255,255,255,0.8); border: 1px solid rgba(20, 32, 51, 0.08);
-                box-shadow: var(--shadow-md); backdrop-filter: blur(10px);
-                border-radius: 22px; padding: 16px 18px;
-            }}
-            .progress-top {{ display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }}
-            .progress-title {{ font-size: 13px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }}
-            .progress-stage-name {{ margin-top: 4px; font-size: 22px; letter-spacing: -0.03em; line-height: 1.1; font-family: var(--font-display); font-weight: 700; color: var(--brand); }}
-            .progress-metrics {{ display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }}
-            .progress-step-label {{ font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }}
-            .progress-percent {{ font-size: 14px; font-weight: 800; color: var(--brand); }}
-            .track {{ width: 100%; height: 10px; border-radius: 999px; background: rgba(148, 163, 184, 0.18); overflow: hidden; margin-bottom: 14px; }}
-            .track-fill {{ width: 0%; height: 100%; border-radius: 999px; background: #142033; transition: width 0.28s ease; }}
-            .stepper {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }}
-            .step {{
-                min-width: 0; display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-radius: 16px;
-                border: 1px solid rgba(20, 32, 51, 0.06); background: rgba(248, 250, 252, 0.76);
-                transition: box-shadow 0.22s ease, border-color 0.22s ease, background 0.22s ease;
-            }}
-            .step-dot {{ width: 34px; height: 34px; border-radius: 999px; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: var(--muted); background: rgba(148, 163, 184, 0.14); flex: 0 0 auto; }}
-            .step-copy {{ min-width: 0; }}
-            .step-kicker {{ color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; margin-bottom: 4px; }}
-            .step-title {{ font-size: 14px; font-weight: 800; color: var(--brand); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
-            .step.active {{ background: rgba(255,255,255,0.98); border-color: rgba(15, 23, 42, 0.18); box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06); }}
-            .step.active .step-dot {{ background: var(--brand); color: white; }}
-            .step.complete {{ background: rgba(4, 120, 87, 0.05); border-color: rgba(4, 120, 87, 0.12); }}
-            .step.complete .step-dot {{ background: rgba(4, 120, 87, 0.14); color: var(--success); }}
-
-            .assessment-wrap {{ display: flex; justify-content: center; }}
-            .panel {{
-                background: rgba(255,255,255,0.9);
-                border: 1px solid rgba(20, 32, 51, 0.08); backdrop-filter: blur(10px);
-                border-radius: var(--radius-2xl); box-shadow: var(--shadow-lg); overflow: hidden;
-            }}
-            .assessment-panel {{ width: min(100%, 760px); }}
-            .stage {{ display: none; padding: 42px 42px 24px; animation: stageIn 0.22s ease; min-height: 460px; }}
-            .stage.active {{ display: block; }}
-            @keyframes stageIn {{ from {{ opacity: 0; transform: translateY(8px); }} to {{ opacity: 1; transform: translateY(0); }} }}
-
-            .section-head {{ display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 26px; }}
-            .section-kicker {{ display: inline-flex; align-items: center; gap: 8px; margin-bottom: 10px; color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }}
-            .section-title {{ margin: 0 0 8px; font-size: 30px; letter-spacing: -0.04em; line-height: 1.08; font-family: var(--font-display); font-weight: 700; }}
-            .section-copy {{ margin: 0; max-width: 56ch; color: var(--muted); line-height: 1.6; font-size: 15px; }}
-            .stage-step {{ display: none; }}
-            .stage-step.active {{ display: block; animation: stageIn 0.24s ease; }}
-            .step-panel {{
-                padding: 28px;
-                border: 1px solid rgba(20, 32, 51, 0.07);
-                border-radius: 24px;
-                background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248, 250, 252, 0.84));
+                padding: 16px 18px;
+                border: 1px solid var(--line);
+                border-radius: var(--radius-lg);
+                background: var(--panel);
                 box-shadow: var(--shadow-md);
             }}
-            .step-overline {{ color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 14px; }}
-            .step-headline {{ margin: 0 0 10px; font-size: 28px; letter-spacing: -0.04em; line-height: 1.08; font-family: var(--font-display); font-weight: 700; color: var(--brand); }}
-            .step-support {{ margin: 0 0 26px; color: var(--muted); line-height: 1.7; font-size: 15px; max-width: 50ch; }}
-            .step-fields {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 18px; }}
+            .progress-top {{
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 16px;
+                margin-bottom: 14px;
+            }}
+            .progress-title,
+            .progress-step-label,
+            .section-kicker,
+            .step-overline,
+            .sidebar-kicker,
+            .completion-kicker {{
+                font-size: 11px;
+                font-weight: 800;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+                color: var(--muted);
+            }}
+            .progress-stage-name {{
+                margin-top: 4px;
+                font-family: var(--font-display);
+                font-size: 20px;
+                font-weight: 700;
+                letter-spacing: -0.01em;
+            }}
+            .progress-metrics {{ text-align: right; }}
+            .progress-percent {{ margin-top: 4px; font-size: 13px; font-weight: 700; color: var(--brand); }}
+            .track {{
+                width: 100%;
+                height: 8px;
+                margin-bottom: 14px;
+                overflow: hidden;
+                border-radius: 999px;
+                background: #e7e2da;
+            }}
+            .track-fill {{
+                width: 0%;
+                height: 100%;
+                border-radius: 999px;
+                background: var(--brand);
+                transition: width 0.24s ease;
+            }}
+            .stepper {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }}
+            .step {{
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                min-width: 0;
+                padding: 12px;
+                border: 1px solid var(--line);
+                border-radius: var(--radius-md);
+                background: var(--panel-soft);
+            }}
+            .step-dot {{
+                flex: 0 0 auto;
+                display: grid;
+                place-items: center;
+                width: 30px;
+                height: 30px;
+                border-radius: 999px;
+                background: #e6e9ef;
+                color: var(--muted);
+                font-size: 12px;
+                font-weight: 800;
+            }}
+            .step-copy {{ min-width: 0; }}
+            .step-kicker {{ margin-bottom: 3px; }}
+            .step-title {{
+                overflow: hidden;
+                font-size: 13px;
+                font-weight: 700;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }}
+            .step.active {{
+                border-color: var(--line-strong);
+                background: var(--panel);
+            }}
+            .step.active .step-dot {{
+                background: var(--brand);
+                color: #fff;
+            }}
+            .step.complete {{
+                border-color: rgba(22, 101, 52, 0.16);
+                background: #f3faf5;
+            }}
+            .step.complete .step-dot {{
+                background: var(--success-soft);
+                color: var(--success);
+            }}
+            .assessment-layout {{
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) 280px;
+                gap: 18px;
+                align-items: start;
+            }}
+            .assessment-layout form {{ min-width: 0; }}
+            .panel {{
+                border: 1px solid var(--line);
+                border-radius: var(--radius-lg);
+                background: var(--panel);
+                box-shadow: var(--shadow-lg);
+                overflow: hidden;
+            }}
+            .assessment-panel {{ width: 100%; }}
+            .sidebar-card {{
+                position: sticky;
+                top: 126px;
+                padding: 20px;
+            }}
+            .sidebar-title {{
+                margin: 0 0 8px;
+                font-family: var(--font-display);
+                font-size: 20px;
+                font-weight: 700;
+                letter-spacing: -0.01em;
+            }}
+            .sidebar-copy,
+            .section-copy,
+            .step-support,
+            .footer-copy,
+            .loading-card p {{
+                color: var(--muted);
+                line-height: 1.6;
+                font-size: 14px;
+            }}
+            .summary-list {{ display: grid; gap: 10px; margin-top: 18px; }}
+            .summary-item {{
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                padding: 11px 12px;
+                border: 1px solid var(--line);
+                border-radius: var(--radius-sm);
+                background: var(--panel-soft);
+            }}
+            .summary-label,
+            .review-label {{
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
+                color: var(--muted);
+            }}
+            .summary-value,
+            .review-value {{
+                font-size: 13px;
+                font-weight: 700;
+                color: var(--brand);
+                text-align: right;
+            }}
+            .stage {{
+                display: none;
+                min-height: 460px;
+                padding: 24px 24px 8px;
+            }}
+            .stage.active {{ display: block; }}
+            .section-head {{ margin-bottom: 24px; }}
+            .section-kicker {{ margin-bottom: 8px; color: var(--accent); }}
+            .section-title {{
+                margin: 0 0 8px;
+                font-family: var(--font-display);
+                font-size: 20px;
+                font-weight: 700;
+                letter-spacing: -0.01em;
+            }}
+            .stage-step {{ display: none; }}
+            .stage-step.active {{
+                display: block;
+                animation: stageIn 0.22s ease;
+            }}
+            @keyframes stageIn {{
+                from {{ opacity: 0; transform: translateY(6px); }}
+                to {{ opacity: 1; transform: translateY(0); }}
+            }}
+            .step-panel {{
+                padding: 24px;
+                border: 1px solid var(--line);
+                border-radius: var(--radius-md);
+                background: var(--panel-soft);
+            }}
+            .step-overline {{ margin-bottom: 12px; }}
+            .step-headline {{
+                margin: 0 0 10px;
+                font-family: var(--font-display);
+                font-size: 20px;
+                font-weight: 700;
+                letter-spacing: -0.01em;
+                line-height: 1.2;
+            }}
+            .step-support {{ margin: 0 0 20px; max-width: 52ch; }}
+            .step-fields {{
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 20px 16px;
+            }}
             .field {{ display: flex; flex-direction: column; gap: 6px; }}
             .field.full {{ grid-column: 1 / -1; }}
-            label {{ font-size: 12px; font-weight: 700; color: var(--brand); letter-spacing: 0.01em; }}
-            .hint {{ color: var(--muted); font-size: 12px; line-height: 1.6; }}
+            label {{
+                font-size: 12px;
+                font-weight: 700;
+                line-height: 1.45;
+                color: var(--brand);
+            }}
             input, select, textarea {{
-                width: 100%; border: 1px solid rgba(100, 116, 139, 0.16); background: rgba(255,255,255,0.96);
-                border-radius: 16px; padding: 17px 16px; font: inherit; color: var(--ink); outline: none;
-                transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+                width: 100%;
+                border: 1px solid var(--line);
+                border-radius: var(--radius-sm);
+                background: #fff;
+                color: var(--ink);
+                font: inherit;
+                outline: none;
+                padding: 14px 14px;
+                transition: border-color 0.18s ease, box-shadow 0.18s ease;
             }}
-            input:hover, select:hover, textarea:hover {{ border-color: rgba(51, 65, 85, 0.22); background: rgba(255,255,255,0.98); }}
-            input:focus, select:focus, textarea:focus {{ border-color: rgba(15, 23, 42, 0.30); box-shadow: 0 0 0 6px rgba(15, 23, 42, 0.08); background: white; }}
+            input:focus, select:focus, textarea:focus {{
+                border-color: var(--line-strong);
+                box-shadow: 0 0 0 4px rgba(20, 32, 51, 0.06);
+            }}
             .input-wrap {{ position: relative; }}
-            .input-wrap input {{ padding-right: 88px; }}
-            .suffix {{ position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 12px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; pointer-events: none; }}
-
-            .footer-bar {{ display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 24px 38px 32px; border-top: 1px solid rgba(148, 163, 184, 0.16); background: rgba(248,250,252,0.58); }}
-            .footer-copy {{ max-width: 60ch; color: var(--muted); line-height: 1.7; font-size: 13px; }}
-            .button-row {{ display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }}
+            .input-wrap input {{ padding-right: 78px; }}
+            .suffix {{
+                position: absolute;
+                top: 50%;
+                right: 12px;
+                transform: translateY(-50%);
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
+                color: var(--muted);
+                pointer-events: none;
+            }}
+            .toggle-group {{
+                display: inline-flex;
+                gap: 8px;
+                flex-wrap: wrap;
+            }}
+            .toggle-option {{
+                min-width: 72px;
+                padding: 11px 14px;
+                border: 1px solid var(--line);
+                border-radius: 999px;
+                background: #fff;
+                color: var(--muted);
+                font: inherit;
+                font-size: 13px;
+                font-weight: 700;
+                cursor: pointer;
+                transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+            }}
+            .toggle-option.is-active.is-yes {{
+                border-color: rgba(22, 101, 52, 0.24);
+                background: var(--success-soft);
+                color: var(--success);
+            }}
+            .toggle-option.is-active.is-no {{
+                border-color: rgba(185, 28, 28, 0.22);
+                background: var(--error-soft);
+                color: var(--error);
+            }}
+            .toggle-group.is-invalid .toggle-option {{
+                border-color: rgba(185, 28, 28, 0.4);
+            }}
+            .review-strip,
+            .review-grid {{
+                display: grid;
+                gap: 12px;
+            }}
+            .review-strip {{
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                margin-bottom: 16px;
+            }}
+            .review-grid {{
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                margin-bottom: 16px;
+            }}
+            .review-card,
+            .review-metric,
+            .review-pill-card {{
+                padding: 14px;
+                border: 1px solid var(--line);
+                border-radius: var(--radius-sm);
+                background: #fff;
+            }}
+            .review-pill-grid {{
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-top: 12px;
+            }}
+            .review-pill {{
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 8px 10px;
+                border-radius: 999px;
+                font-size: 12px;
+                font-weight: 700;
+                border: 1px solid var(--line);
+                background: var(--panel-soft);
+                color: var(--muted);
+            }}
+            .review-pill.is-yes {{
+                border-color: rgba(22, 101, 52, 0.24);
+                background: var(--success-soft);
+                color: var(--success);
+            }}
+            .review-pill.is-no {{
+                border-color: rgba(185, 28, 28, 0.22);
+                background: var(--error-soft);
+                color: var(--error);
+            }}
+            .footer-bar {{
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
+                padding: 18px 24px 24px;
+                border-top: 1px solid var(--line);
+                background: var(--panel-soft);
+            }}
+            .footer-copy {{ max-width: 54ch; }}
+            .button-row {{
+                display: flex;
+                gap: 10px;
+                flex-wrap: wrap;
+                justify-content: flex-end;
+            }}
             .button {{
-                appearance: none; border: none; border-radius: 16px; padding: 15px 20px; font-size: 14px; font-weight: 800;
-                letter-spacing: 0.01em; cursor: pointer; text-decoration: none;
-                transition: box-shadow 0.22s ease, opacity 0.22s ease, background 0.22s ease, border-color 0.22s ease;
+                appearance: none;
+                border: 1px solid transparent;
+                border-radius: var(--radius-sm);
+                padding: 13px 18px;
+                font-size: 14px;
+                font-weight: 700;
+                cursor: pointer;
+                text-decoration: none;
             }}
-            .button-primary {{ color: white; background: #142033; box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16); }}
-            .button-secondary {{ background: rgba(255,255,255,0.96); color: var(--brand); border: 1px solid rgba(15, 23, 42, 0.12); box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05); }}
-            .button-ghost {{ background: rgba(248, 250, 252, 0.96); color: var(--muted); border: 1px solid rgba(148, 163, 184, 0.18); }}
-            .button[hidden] {{ display: none !important; }}
             .button:hover {{ opacity: 0.96; }}
-
-            .sidebar {{ position: sticky; top: 118px; display: grid; gap: 14px; }}
-            .sidebar-card {{
-                background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,255,255,0.88));
-                border: 1px solid rgba(255,255,255,0.72); border-radius: 24px; padding: 22px; box-shadow: var(--shadow-md); backdrop-filter: blur(14px);
+            .button-primary {{
+                background: var(--brand);
+                color: #fff;
             }}
-            .sidebar-card.brand-card {{
-                background: linear-gradient(165deg, rgba(20, 32, 51, 0.98), rgba(39, 52, 73, 0.95));
-                color: white;
+            .button-secondary {{
+                background: #fff;
+                color: var(--brand);
+                border-color: var(--line);
             }}
-            .sidebar-card.brand-card .sidebar-kicker {{ color: rgba(184, 141, 87, 0.92); }}
-            .sidebar-card.brand-card .sidebar-title,
-            .sidebar-card.brand-card p,
-            .sidebar-card.brand-card .sidebar-copy {{ color: rgba(255,255,255,0.88); }}
-            .sidebar-kicker {{ color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: 0.10em; text-transform: uppercase; margin-bottom: 10px; }}
-            .sidebar-title {{ margin: 0 0 10px; font-size: 22px; letter-spacing: -0.04em; font-family: var(--font-display); font-weight: 700; }}
-            .sidebar-copy, .sidebar-card p {{ margin: 0; color: var(--muted); line-height: 1.75; font-size: 14px; }}
-            .sidebar-mark {{
-                width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; margin-bottom: 14px;
-                background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.10);
-                font-family: var(--font-display); font-size: 22px; letter-spacing: 0.04em;
+            .button-ghost {{
+                background: var(--panel-soft);
+                color: var(--muted);
+                border-color: var(--line);
             }}
-            .sidebar-rule {{ width: 56px; height: 2px; background: rgba(184, 141, 87, 0.92); margin: 16px 0; }}
-            .summary-list {{ display: grid; gap: 10px; margin-top: 18px; }}
-            .summary-item {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 16px; background: rgba(248, 250, 252, 0.88); border: 1px solid rgba(148, 163, 184, 0.10); }}
-            .summary-label {{ color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }}
-            .summary-value {{ text-align: right; font-weight: 800; color: var(--brand); font-size: 13px; }}
-            .metric-chip-row {{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }}
-            .chip {{ display: inline-flex; align-items: center; gap: 7px; padding: 10px 12px; border-radius: 999px; background: rgba(15, 23, 42, 0.04); color: var(--brand); font-size: 12px; font-weight: 700; }}
-            .chip-dot {{ width: 8px; height: 8px; border-radius: 999px; background: var(--accent); }}
-            .capture-list {{ display: grid; gap: 10px; margin-top: 16px; }}
-            .capture-item {{ display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; border-radius: 16px; background: rgba(248, 250, 252, 0.9); border: 1px solid rgba(148, 163, 184, 0.12); }}
-            .capture-item strong {{ font-size: 13px; }}
-            .capture-state {{ font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }}
-            .capture-item.complete {{ background: rgba(4, 120, 87, 0.06); border-color: rgba(4, 120, 87, 0.14); }}
-            .capture-item.complete .capture-state {{ color: var(--success); }}
-            .trust-grid {{ display: grid; gap: 10px; margin-top: 14px; }}
-            .trust-row {{ display: flex; align-items: flex-start; gap: 10px; color: var(--muted); font-size: 13px; line-height: 1.65; }}
-            .trust-mark {{ width: 20px; height: 20px; border-radius: 999px; background: rgba(15, 23, 42, 0.06); color: var(--brand); display: grid; place-items: center; font-size: 12px; font-weight: 900; flex: 0 0 auto; margin-top: 1px; }}
-            .preview-list {{ display: grid; gap: 10px; margin-top: 16px; }}
-            .preview-row {{
-                display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 16px;
-                background: rgba(248, 250, 252, 0.9); border: 1px solid rgba(148, 163, 184, 0.12);
-            }}
-            .preview-index {{
-                width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center;
-                background: rgba(20, 32, 51, 0.08); color: var(--brand); font-size: 12px; font-weight: 800; flex: 0 0 auto;
-            }}
-            .preview-copy strong {{ display: block; color: var(--brand); font-size: 13px; margin-bottom: 4px; }}
-            .preview-copy span {{ color: var(--muted); font-size: 13px; line-height: 1.55; }}
-            .source-note {{
-                margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(148, 163, 184, 0.16);
-                color: var(--muted); font-size: 12px; line-height: 1.7;
-            }}
-            .cred-row {{
-                display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid rgba(148, 163, 184, 0.12);
-            }}
-            .cred-row:last-child {{ border-bottom: none; }}
-            .cred-label {{ color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }}
-            .cred-value {{ color: var(--brand); font-size: 13px; font-weight: 800; text-align: right; }}
-
-            .status {{ border-radius: 26px; padding: 30px; border: 1px solid var(--line); background: rgba(255,255,255,0.94); box-shadow: var(--shadow-lg); }}
-            .status.success {{ background: rgba(236, 253, 245, 0.96); border-color: rgba(167, 243, 208, 0.92); }}
-            .status.error {{ background: rgba(254, 242, 242, 0.96); border-color: rgba(254, 202, 202, 0.96); }}
-            .status h2 {{ margin: 0 0 10px; font-size: 30px; letter-spacing: -0.03em; }}
-            .status p {{ margin: 8px 0; line-height: 1.7; }}
-            .status pre {{ white-space: pre-wrap; background: rgba(255,255,255,0.80); border: 1px solid rgba(209, 213, 219, 0.8); padding: 16px; border-radius: 12px; overflow-x: auto; font-size: 12px; line-height: 1.5; margin-top: 18px; }}
-            .back-link {{ display: inline-block; margin-top: 18px; color: var(--ink); font-weight: 800; text-decoration: none; }}
-
+            .button[hidden] {{ display: none !important; }}
             .loading-overlay {{
-                position: fixed; inset: 0; background: rgba(245, 247, 251, 0.76); backdrop-filter: blur(8px);
-                display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px;
+                position: fixed;
+                inset: 0;
+                z-index: 1000;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                padding: 16px;
+                background: rgba(20, 32, 51, 0.18);
             }}
             .loading-card {{
-                width: min(560px, calc(100vw - 32px)); background: rgba(255,255,255,0.96); border: 1px solid rgba(255,255,255,0.92);
-                border-radius: 28px; box-shadow: var(--shadow-xl); padding: 30px;
+                width: min(540px, calc(100vw - 32px));
+                padding: 28px;
+                border: 1px solid var(--line);
+                border-radius: var(--radius-lg);
+                background: var(--panel);
+                box-shadow: var(--shadow-lg);
             }}
-            .loading-head {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }}
-            .loading-pill {{ display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 999px; background: rgba(15, 23, 42, 0.05); color: var(--brand); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }}
-            .spinner {{ width: 16px; height: 16px; border-radius: 999px; border: 2.5px solid rgba(15, 23, 42, 0.14); border-top-color: #111827; animation: spin 0.9s linear infinite; }}
-            .loading-card h3 {{ margin: 0 0 10px; font-size: 28px; letter-spacing: -0.04em; font-family: var(--font-display); font-weight: 700; }}
-            .loading-card p {{ margin: 0; color: var(--muted); line-height: 1.75; }}
-            .loading-track {{ width: 100%; height: 12px; border-radius: 999px; background: rgba(148, 163, 184, 0.18); overflow: hidden; margin: 20px 0 14px; }}
-            .loading-fill {{ height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #0f172a, #334155, #a16207); transition: width 0.35s ease; }}
-            .loading-meta {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 13px; margin-bottom: 12px; }}
-            .loading-list {{ display: grid; gap: 9px; margin-top: 14px; }}
-            .loading-list-item {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 16px; background: rgba(248, 250, 252, 0.9); border: 1px solid rgba(148, 163, 184, 0.12); color: var(--muted); font-size: 13px; }}
-            .loading-list-item.is-active {{ border-color: rgba(15, 23, 42, 0.10); background: rgba(15, 23, 42, 0.04); color: var(--brand); }}
+            .loading-head {{
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 10px;
+            }}
+            .loading-pill {{
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 12px;
+                border-radius: 999px;
+                background: var(--panel-soft);
+                color: var(--brand);
+                font-size: 12px;
+                font-weight: 800;
+                text-transform: uppercase;
+            }}
+            .spinner {{
+                width: 16px;
+                height: 16px;
+                border: 2px solid rgba(20, 32, 51, 0.16);
+                border-top-color: var(--brand);
+                border-radius: 999px;
+                animation: spin 0.9s linear infinite;
+            }}
+            .loading-card h3,
+            .completion-state h3 {{
+                margin: 0 0 10px;
+                font-family: var(--font-display);
+                font-size: 20px;
+                font-weight: 700;
+                letter-spacing: -0.01em;
+            }}
+            .completion-state p {{ color: var(--muted); line-height: 1.6; font-size: 14px; }}
+            .loading-steps {{
+                display: grid;
+                gap: 10px;
+                margin-top: 18px;
+            }}
+            .loading-step {{
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 12px 14px;
+                border: 1px solid var(--line);
+                border-radius: var(--radius-sm);
+                background: var(--panel-soft);
+                color: var(--muted);
+                font-size: 13px;
+            }}
+            .loading-step-state {{
+                font-size: 11px;
+                font-weight: 800;
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
+            }}
+            .loading-step.is-active {{
+                border-color: var(--line-strong);
+                color: var(--brand);
+                background: #fff;
+            }}
+            .loading-step.is-complete {{
+                border-color: rgba(22, 101, 52, 0.16);
+                color: var(--success);
+                background: #f3faf5;
+            }}
             .completion-state {{ display: none; }}
-            .completion-kicker {{ color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }}
-            .completion-list {{ display: grid; gap: 10px; margin: 18px 0; }}
-            .completion-item {{ padding: 12px 14px; border-radius: 16px; background: rgba(4, 120, 87, 0.06); border: 1px solid rgba(4, 120, 87, 0.14); color: var(--brand); font-size: 13px; line-height: 1.6; }}
-            .completion-actions {{ display: flex; justify-content: flex-end; gap: 10px; margin-top: 12px; }}
-            @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
-
-            @media (max-width: 1120px) {{
-                .stepper {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+            .completion-list {{
+                display: grid;
+                gap: 10px;
+                margin: 18px 0;
             }}
+            .completion-item {{
+                padding: 12px 14px;
+                border: 1px solid rgba(22, 101, 52, 0.16);
+                border-radius: var(--radius-sm);
+                background: #f3faf5;
+                color: var(--brand);
+                font-size: 13px;
+                line-height: 1.55;
+            }}
+            .completion-actions {{
+                display: flex;
+                justify-content: flex-end;
+                gap: 10px;
+                margin-top: 14px;
+                flex-wrap: wrap;
+            }}
+            .status {{
+                padding: 28px;
+                border: 1px solid var(--line);
+                border-radius: var(--radius-lg);
+                background: var(--panel);
+                box-shadow: var(--shadow-lg);
+            }}
+            .status.error {{ background: #fff7f7; }}
+            .status h2 {{
+                margin: 0 0 10px;
+                font-size: 24px;
+                letter-spacing: -0.01em;
+            }}
+            .status p {{ line-height: 1.6; }}
+            .status pre {{
+                overflow-x: auto;
+                padding: 14px;
+                border: 1px solid var(--line);
+                border-radius: var(--radius-sm);
+                background: #fff;
+                font-size: 12px;
+                line-height: 1.5;
+            }}
+            .back-link {{ display: inline-block; margin-top: 16px; color: var(--ink); font-weight: 700; text-decoration: none; }}
+            @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
             @media (max-width: 980px) {{
-                .step-fields, .stepper {{ grid-template-columns: 1fr; }}
-                .topbar, .footer-bar, .progress-top {{ flex-direction: column; align-items: flex-start; }}
-                .stage, .footer-bar {{ padding-left: 22px; padding-right: 22px; }}
+                .shell {{ padding: 20px 18px 48px; }}
+                .assessment-layout,
+                .stepper,
+                .step-fields,
+                .review-strip,
+                .review-grid {{
+                    grid-template-columns: 1fr;
+                }}
+                .sidebar-card {{ position: static; order: 2; }}
+                .progress-top,
+                .footer-bar,
+                .topbar {{
+                    flex-direction: column;
+                    align-items: flex-start;
+                }}
+                .progress-metrics {{ text-align: left; }}
+                .stage,
+                .footer-bar,
+                .step-panel {{
+                    padding-left: 20px;
+                    padding-right: 20px;
+                }}
                 .button-row {{ width: 100%; }}
                 .button {{ width: 100%; }}
-                .hero {{ padding: 22px; }}
-                .hero h1 {{ font-size: 24px; max-width: none; }}
-                .shell {{ padding-top: 20px; }}
-                .brand-lockup {{ align-items: flex-start; }}
-                .progress-metrics {{ align-items: flex-start; }}
-                .step-panel {{ padding: 22px; }}
-                .step-headline {{ font-size: 24px; }}
             }}
         </style>
     </head>
@@ -494,28 +798,16 @@ def render_page(title: str, body: str) -> str:
                 <div id="loadingState">
                     <div class="loading-head">
                         <div class="loading-pill"><span class="spinner"></span> Analysing</div>
-                        <div id="loadingPercent">0%</div>
                     </div>
-                    <div class="brand-overline" style="margin-bottom: 8px;">Bradford &amp; Marsh Consulting</div>
                     <h3>Analysing your recruitment model…</h3>
                     <p>
                         Reviewing process control, hiring performance and benchmark positioning
                     </p>
-
-                    <div class="loading-track">
-                        <div class="loading-fill" id="loadingFill"></div>
-                    </div>
-
-                    <div class="loading-meta">
-                        <div id="loadingStatus">Preparing submission</div>
-                        <div>Preparing download</div>
-                    </div>
-
-                    <div class="loading-list">
-                        <div class="loading-list-item is-active"><span>Reviewing business profile</span><span>01</span></div>
-                        <div class="loading-list-item"><span>Analysing hiring performance</span><span>02</span></div>
-                        <div class="loading-list-item"><span>Reviewing process control</span><span>03</span></div>
-                        <div class="loading-list-item"><span>Preparing final report</span><span>04</span></div>
+                    <div class="loading-steps">
+                        <div class="loading-step is-active"><span>Scoring maturity model</span><span class="loading-step-state">In progress</span></div>
+                        <div class="loading-step"><span>Benchmarking against sector</span><span class="loading-step-state">Pending</span></div>
+                        <div class="loading-step"><span>Generating charts</span><span class="loading-step-state">Pending</span></div>
+                        <div class="loading-step"><span>Assembling report</span><span class="loading-step-state">Pending</span></div>
                     </div>
                 </div>
 
@@ -549,6 +841,7 @@ def render_page(title: str, body: str) -> str:
                 const progressStepLabel = document.getElementById("progressStepLabel");
                 const stepFooterCopy = document.getElementById("stepFooterCopy");
                 const downloadComplete = document.getElementById("downloadComplete");
+                const loadingSteps = Array.from(document.querySelectorAll(".loading-step"));
                 let isSubmitting = false;
                 let currentStageIndex = 0;
                 let currentStageStepIndex = 0;
@@ -563,6 +856,26 @@ def render_page(title: str, body: str) -> str:
                     }};
                 }});
                 const totalStepCount = stageDefinitions.reduce((count, stage) => count + stage.steps.length, 0);
+                const summaryMappings = [
+                    ["summaryCompany", "company_name"],
+                    ["summarySector", "sector"],
+                    ["summaryLocation", "location"],
+                    ["summaryContact", "contact_name"],
+                    ["reviewCompanyName", "company_name"],
+                    ["reviewSector", "sector"],
+                    ["reviewLocation", "location"],
+                    ["reviewHeadcount", "headcount"],
+                    ["reviewAnnualHiringVolume", "annual_hiring_volume"],
+                    ["reviewKeyRoles", "key_roles_hired"],
+                    ["reviewContact", "contact_name"],
+                    ["reviewTimeToHire", "time_to_hire"],
+                    ["reviewApplicationsPerRole", "applications_per_role"],
+                    ["reviewOfferAcceptance", "offer_acceptance"],
+                    ["reviewFirstYearAttrition", "first_year_attrition"],
+                    ["reviewInterviewStages", "interview_stages"],
+                    ["reviewInterviewFeedbackTime", "interview_feedback_time"],
+                    ["reviewCandidatesReachingInterview", "candidates_reaching_interview"],
+                ];
 
                 function fieldFilled(field) {{
                     return String(field.value || "").trim() !== "";
@@ -580,7 +893,8 @@ def render_page(title: str, body: str) -> str:
 
                 function stepIsComplete(stageIndex, stepIndex) {{
                     const fields = stepFields(stageIndex, stepIndex);
-                    return fields.length > 0 && fields.every(fieldFilled);
+                    if (fields.length === 0) return true;
+                    return fields.every(fieldFilled);
                 }}
 
                 function syncCompletedSteps() {{
@@ -611,6 +925,52 @@ def render_page(title: str, body: str) -> str:
                 function currentStepElement() {{
                     const stage = currentStage();
                     return stage ? stage.steps[currentStageStepIndex] : null;
+                }}
+
+                function inputValue(name) {{
+                    const field = form ? form.elements.namedItem(name) : null;
+                    return field ? String(field.value || "").trim() : "";
+                }}
+
+                function displayValue(value) {{
+                    return value || "Pending";
+                }}
+
+                function renderReviewControls() {{
+                    const container = document.getElementById("reviewControlPills");
+                    if (!container) return;
+                    const controls = Array.from(document.querySelectorAll(".yes-no-field")).map((field) => {{
+                        const label = field.querySelector("label");
+                        const input = field.querySelector('input[data-yes-no="true"]');
+                        const value = input ? String(input.value || "").trim() : "";
+                        const tone = value === "Yes" ? " is-yes" : (value === "No" ? " is-no" : "");
+                        return `<span class="review-pill${{tone}}">${{label ? label.textContent : ""}}: ${{value || "Pending"}}</span>`;
+                    }});
+                    container.innerHTML = controls.join("");
+                }}
+
+                function updateSummaries() {{
+                    summaryMappings.forEach(([targetId, fieldName]) => {{
+                        const target = document.getElementById(targetId);
+                        if (target) target.textContent = displayValue(inputValue(fieldName));
+                    }});
+                    const summaryStage = document.getElementById("summaryStage");
+                    if (summaryStage) summaryStage.textContent = currentStage().title;
+                    renderReviewControls();
+                }}
+
+                function setToggleValue(targetName, value) {{
+                    const input = document.getElementById(targetName);
+                    const group = document.querySelector(`[data-toggle-group="${{targetName}}"]`);
+                    if (!input || !group) return;
+                    input.value = value;
+                    group.classList.remove("is-invalid");
+                    Array.from(group.querySelectorAll(".toggle-option")).forEach((button) => {{
+                        const isActive = button.getAttribute("data-value") === value;
+                        button.classList.toggle("is-active", isActive);
+                        button.setAttribute("aria-pressed", isActive ? "true" : "false");
+                    }});
+                    updateProgress();
                 }}
 
                 function updateProgress() {{
@@ -645,6 +1005,7 @@ def render_page(title: str, body: str) -> str:
                         const support = currentStepElement() ? currentStepElement().querySelector(".step-support") : null;
                         stepFooterCopy.textContent = support ? support.textContent : "Complete each step to build the final recruitment audit report.";
                     }}
+                    updateSummaries();
                 }}
 
                 function showStep(stageIndex, stepIndex) {{
@@ -656,6 +1017,18 @@ def render_page(title: str, body: str) -> str:
                 function validateCurrentStep() {{
                     const fields = stepFields(currentStageIndex, currentStageStepIndex);
                     for (const field of fields) {{
+                        if (field.matches('[data-yes-no="true"]')) {{
+                            if (!fieldFilled(field)) {{
+                                const group = document.querySelector(`[data-toggle-group="${{field.id}}"]`);
+                                if (group) {{
+                                    group.classList.add("is-invalid");
+                                    const firstButton = group.querySelector(".toggle-option");
+                                    if (firstButton) firstButton.focus();
+                                }}
+                                return false;
+                            }}
+                            continue;
+                        }}
                         if (!field.checkValidity()) {{
                             field.reportValidity();
                             field.focus();
@@ -700,17 +1073,23 @@ def render_page(title: str, body: str) -> str:
                     field.addEventListener("change", updateProgress);
                 }});
 
-                function setLoadingState(pct, text, activeIndex) {{
+                Array.from(document.querySelectorAll(".toggle-option")).forEach((button) => {{
+                    button.addEventListener("click", () => {{
+                        setToggleValue(button.getAttribute("data-target"), button.getAttribute("data-value"));
+                    }});
+                }});
+
+                function setLoadingState(activeIndex) {{
                     const overlay = document.getElementById("loadingOverlay");
-                    const loadingFill = document.getElementById("loadingFill");
-                    const loadingPercent = document.getElementById("loadingPercent");
-                    const loadingStatus = document.getElementById("loadingStatus");
-                    const loadingItems = Array.from(document.querySelectorAll(".loading-list-item"));
                     if (overlay) overlay.style.display = "flex";
-                    if (loadingFill) loadingFill.style.width = pct + "%";
-                    if (loadingPercent) loadingPercent.textContent = pct + "%";
-                    if (loadingStatus) loadingStatus.textContent = text;
-                    loadingItems.forEach((item, itemIndex) => item.classList.toggle("is-active", itemIndex === activeIndex));
+                    loadingSteps.forEach((item, itemIndex) => {{
+                        const state = item.querySelector(".loading-step-state");
+                        item.classList.toggle("is-active", itemIndex === activeIndex);
+                        item.classList.toggle("is-complete", itemIndex < activeIndex);
+                        if (state) {{
+                            state.textContent = itemIndex < activeIndex ? "Complete" : (itemIndex === activeIndex ? "In progress" : "Pending");
+                        }}
+                    }});
                 }}
 
                 function showCompletionState(filename) {{
@@ -762,6 +1141,7 @@ def render_page(title: str, body: str) -> str:
                     if (overlay) overlay.style.display = "none";
                     if (loadingState) loadingState.style.display = "block";
                     if (completionState) completionState.style.display = "none";
+                    setLoadingState(0);
                 }}
 
                 function triggerReportDownload() {{
@@ -784,27 +1164,22 @@ def render_page(title: str, body: str) -> str:
                     const submitButtons = Array.from(form.querySelectorAll('button[type="submit"], button[data-next-step], button[data-prev-step]'));
                     submitButtons.forEach((button) => button.disabled = true);
 
-                    let visualProgress = 0;
                     let phaseIndex = 0;
                     const startedAt = Date.now();
                     const phases = [
-                        {{ target: 18, text: "Reviewing business profile", index: 0 }},
-                        {{ target: 42, text: "Analysing hiring performance", index: 1 }},
-                        {{ target: 71, text: "Reviewing process control", index: 2 }},
-                        {{ target: 92, text: "Preparing final report", index: 3 }},
+                        0,
+                        1,
+                        2,
+                        3,
                     ];
 
-                    setLoadingState(0, "Preparing analysis", 0);
+                    setLoadingState(0);
                     const timer = window.setInterval(() => {{
-                        const phase = phases[Math.min(phaseIndex, phases.length - 1)];
-                        if (visualProgress < phase.target) {{
-                            visualProgress += 1;
-                        }} else if (phaseIndex < phases.length - 1) {{
+                        if (phaseIndex < phases.length - 1) {{
                             phaseIndex += 1;
+                            setLoadingState(phases[phaseIndex]);
                         }}
-                        const active = phases[Math.min(phaseIndex, phases.length - 1)];
-                        setLoadingState(visualProgress, active.text, active.index);
-                    }}, 140);
+                    }}, 500);
 
                     try {{
                         const response = await fetch(form.action, {{
@@ -820,17 +1195,13 @@ def render_page(title: str, body: str) -> str:
                             return;
                         }}
 
-                        visualProgress = 96;
-                        setLoadingState(96, "Finalising download", 3);
-
                         const blob = await response.blob();
                         const disposition = response.headers.get("Content-Disposition") || "";
                         const match = disposition.match(/filename=([^;]+)/i);
                         const filename = match ? match[1].trim().replace(/^\"|\"$/g, "") : "recruitment_audit.pdf";
                         latestFilename = filename;
 
-                        visualProgress = 100;
-                        setLoadingState(100, "Report ready", 3);
+                        setLoadingState(4);
 
                         if (latestDownloadUrl) {{
                             window.URL.revokeObjectURL(latestDownloadUrl);
@@ -880,6 +1251,7 @@ def render_page(title: str, body: str) -> str:
                 if (startNewAudit) {{
                     startNewAudit.addEventListener("click", resetAuditJourney);
                 }}
+                updateSummaries();
                 showStep(0, 0);
             }})();
         </script>
@@ -900,11 +1272,11 @@ def form():
         return f"""
         <div class="field yes-no-field">
             <label for="{field_name}">{label}</label>
-            <select id="{field_name}" name="{field_name}" required>
-                <option value="">Select…</option>
-                <option value="Yes">Yes</option>
-                <option value="No">No</option>
-            </select>
+            <input id="{field_name}" name="{field_name}" type="hidden" data-yes-no="true">
+            <div class="toggle-group" data-toggle-group="{field_name}" role="group" aria-label="{label}">
+                <button class="toggle-option is-yes" type="button" data-target="{field_name}" data-value="Yes">Yes</button>
+                <button class="toggle-option is-no" type="button" data-target="{field_name}" data-value="No">No</button>
+            </div>
         </div>
         """
 
@@ -944,21 +1316,8 @@ def form():
 
     body = f"""
     <div class="topbar">
-        <div class="brand-lockup">
-            <div class="brand-mark">B&amp;M</div>
-                <div class="brand">
-                    <div class="brand-overline">Bradford & Marsh Consulting</div>
-                    <div class="brand-name">Recruitment Operating Model Audit</div>
-                    <div class="brand-sub">Controlled diagnostic for evaluating recruitment performance, operating discipline and hiring risk.</div>
-                </div>
-        </div>
-        <div class="trust-pill">Used to evaluate recruitment performance across UK businesses</div>
-    </div>
-
-    <div class="hero">
-        <h1>Recruitment Operating Model Audit</h1>
-        <p>Assess hiring efficiency, control, and risk across your recruitment process.</p>
-        <div class="hero-trust">Used to evaluate recruitment performance across UK businesses</div>
+        <div class="brand-name">Bradford &amp; Marsh Consulting</div>
+        <div class="trust-pill">Confidential assessment</div>
     </div>
 
     <div class="progress-shell">
@@ -966,71 +1325,82 @@ def form():
             <div class="progress-top">
                 <div>
                     <div class="progress-title" id="progressStageLabel">Stage 1 of 4</div>
-                    <div class="progress-stage-name" id="progressStageName">Business Profile</div>
+                    <div class="progress-stage-name" id="progressStageName">Business Context</div>
                 </div>
                 <div class="progress-metrics">
-                    <div class="progress-step-label" id="progressStepLabel">Step 1 of 3</div>
+                    <div class="progress-step-label" id="progressStepLabel">Step 1 of 4</div>
                     <div class="progress-percent" id="progressPercent">0% complete</div>
                 </div>
             </div>
             <div class="track"><div class="track-fill" id="progressFill"></div></div>
-
             <div class="stepper">
                 <div class="step active">
                     <div class="step-dot">01</div>
                     <div class="step-copy">
                         <div class="step-kicker">Stage 1</div>
-                        <div class="step-title">Business Profile</div>
+                        <div class="step-title">Business Context</div>
                     </div>
                 </div>
                 <div class="step">
                     <div class="step-dot">02</div>
                     <div class="step-copy">
                         <div class="step-kicker">Stage 2</div>
-                        <div class="step-title">Hiring Context</div>
+                        <div class="step-title">Hiring Performance</div>
                     </div>
                 </div>
                 <div class="step">
                     <div class="step-dot">03</div>
                     <div class="step-copy">
                         <div class="step-kicker">Stage 3</div>
-                        <div class="step-title">Hiring Performance</div>
+                        <div class="step-title">Process Control</div>
                     </div>
                 </div>
                 <div class="step">
                     <div class="step-dot">04</div>
                     <div class="step-copy">
                         <div class="step-kicker">Stage 4</div>
-                        <div class="step-title">Process Control</div>
+                        <div class="step-title">Review</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="assessment-wrap">
+    <div class="assessment-layout">
+        <aside class="panel sidebar-card">
+            <div class="sidebar-kicker">Assessment overview</div>
+            <h3 class="sidebar-title">Live profile</h3>
+            <p class="sidebar-copy">This summary updates as the assessment is completed.</p>
+            <div class="summary-list">
+                <div class="summary-item"><span class="summary-label">Company</span><span class="summary-value" id="summaryCompany">Pending</span></div>
+                <div class="summary-item"><span class="summary-label">Sector</span><span class="summary-value" id="summarySector">Pending</span></div>
+                <div class="summary-item"><span class="summary-label">Location</span><span class="summary-value" id="summaryLocation">Pending</span></div>
+                <div class="summary-item"><span class="summary-label">Contact</span><span class="summary-value" id="summaryContact">Pending</span></div>
+                <div class="summary-item"><span class="summary-label">Current stage</span><span class="summary-value" id="summaryStage">Business Context</span></div>
+            </div>
+        </aside>
+
         <form id="auditForm" method="post" action="/generate">
             <div class="panel assessment-panel">
-                <section class="stage active" data-stage="1" data-stage-title="Business Profile">
+                <section class="stage active" data-stage="1" data-stage-title="Business Context">
                     <div class="section-head">
                         <div>
                             <div class="section-kicker">Stage 1</div>
-                            <h2 class="section-title">Business Profile</h2>
-                            <p class="section-copy">Set the business context used to interpret the audit.</p>
+                            <h2 class="section-title">Business Context</h2>
+                            <p class="section-copy">Set the context for the assessment before performance and control are reviewed.</p>
                         </div>
                     </div>
 
                     <div class="stage-step active" data-step-number="1">
                         <div class="step-panel">
-                            <div class="step-overline" data-local-step-label>Step 1 of 3</div>
+                            <div class="step-overline" data-local-step-label>Step 1 of 4</div>
                             <h3 class="step-headline">Identify the business being assessed.</h3>
-                            <p class="step-support">These details anchor the report and benchmark position.</p>
+                            <p class="step-support">These details set the benchmark position and report identity.</p>
                             <div class="step-fields">
                                 <div class="field">
                                     <label for="company_name">What is the name of your company?</label>
                                     <input id="company_name" name="company_name" required>
                                 </div>
-
                                 <div class="field">
                                     <label for="sector">Which sector does your business operate in?</label>
                                     <select id="sector" name="sector" required>
@@ -1044,15 +1414,14 @@ def form():
 
                     <div class="stage-step" data-step-number="2">
                         <div class="step-panel">
-                            <div class="step-overline" data-local-step-label>Step 2 of 3</div>
-                            <h3 class="step-headline">Confirm location and operating footprint.</h3>
-                            <p class="step-support">This defines where the hiring model is being run and managed.</p>
+                            <div class="step-overline" data-local-step-label>Step 2 of 4</div>
+                            <h3 class="step-headline">Confirm where the hiring model is operating.</h3>
+                            <p class="step-support">This establishes the operating location and office footprint.</p>
                             <div class="step-fields">
                                 <div class="field">
                                     <label for="location">Where is the business based?</label>
                                     <input id="location" name="location" autocomplete="address-level2" required>
                                 </div>
-
                                 <div class="field full">
                                     <label for="office_address">What is the office address?</label>
                                     <textarea id="office_address" name="office_address" rows="3" autocomplete="street-address" required></textarea>
@@ -1063,9 +1432,9 @@ def form():
 
                     <div class="stage-step" data-step-number="3">
                         <div class="step-panel">
-                            <div class="step-overline" data-local-step-label>Step 3 of 3</div>
-                            <h3 class="step-headline">Capture the scale of the hiring requirement.</h3>
-                            <p class="step-support">These inputs show the size of the business and the demand placed on recruitment.</p>
+                            <div class="step-overline" data-local-step-label>Step 3 of 4</div>
+                            <h3 class="step-headline">Capture the scale of hiring demand.</h3>
+                            <p class="step-support">These inputs show the size of the business and the annual load on recruitment.</p>
                             <div class="step-fields">
                                 <div class="field has-suffix">
                                     <label for="headcount">How many employees does the business have?</label>
@@ -1074,7 +1443,6 @@ def form():
                                         <span class="suffix">employees</span>
                                     </div>
                                 </div>
-
                                 <div class="field has-suffix">
                                     <label for="annual_hiring_volume">How many hires do you typically make each year?</label>
                                     <div class="input-wrap">
@@ -1082,50 +1450,32 @@ def form():
                                         <span class="suffix">hires</span>
                                     </div>
                                 </div>
+                                <div class="field full">
+                                    <label for="key_roles_hired">Which roles or job titles do you hire for most often?</label>
+                                    <input id="key_roles_hired" name="key_roles_hired" placeholder="e.g. Sales Managers, Service Engineers, Finance Business Partners" required>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </section>
 
-                <section class="stage" data-stage="2" data-stage-title="Hiring Context">
-                    <div class="section-head">
-                        <div>
-                            <div class="section-kicker">Stage 2</div>
-                            <h2 class="section-title">Hiring Context</h2>
-                            <p class="section-copy">Identify the stakeholder and the roles that shape recruitment demand.</p>
-                        </div>
-                    </div>
-
-                    <div class="stage-step active" data-step-number="1">
+                    <div class="stage-step" data-step-number="4">
                         <div class="step-panel">
-                            <div class="step-overline" data-local-step-label>Step 1 of 3</div>
-                            <h3 class="step-headline">Identify the audit contact.</h3>
-                            <p class="step-support">This ensures the report is addressed correctly and positioned for internal review.</p>
+                            <div class="step-overline" data-local-step-label>Step 4 of 4</div>
+                            <h3 class="step-headline">Set the audit contact.</h3>
+                            <p class="step-support">These details are used for report delivery and follow-up.</p>
                             <div class="step-fields">
                                 <div class="field">
                                     <label for="contact_name">What is the name of the person completing this audit?</label>
                                     <input id="contact_name" name="contact_name" autocomplete="name" required>
                                 </div>
-
                                 <div class="field">
                                     <label for="job_title">What is their job title?</label>
                                     <input id="job_title" name="job_title" autocomplete="organization-title" required>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="stage-step" data-step-number="2">
-                        <div class="step-panel">
-                            <div class="step-overline" data-local-step-label>Step 2 of 3</div>
-                            <h3 class="step-headline">Confirm how Bradford & Marsh should contact you.</h3>
-                            <p class="step-support">These details are used for report delivery and any follow-up discussion.</p>
-                            <div class="step-fields">
                                 <div class="field">
                                     <label for="phone_number">What is the best phone number to use?</label>
                                     <input id="phone_number" name="phone_number" type="tel" autocomplete="tel" inputmode="tel" pattern="[0-9+()\\-\\s]{{7,}}" title="Enter a valid phone number." required>
                                 </div>
-
                                 <div class="field">
                                     <label for="email_address">What is the best email address to use?</label>
                                     <input id="email_address" name="email_address" type="email" autocomplete="email" required>
@@ -1133,29 +1483,14 @@ def form():
                             </div>
                         </div>
                     </div>
-
-                    <div class="stage-step" data-step-number="3">
-                        <div class="step-panel">
-                            <div class="step-overline" data-local-step-label>Step 3 of 3</div>
-                            <h3 class="step-headline">Set the core hiring scope.</h3>
-                            <p class="step-support">This clarifies the roles that define the current recruitment model.</p>
-                            <div class="step-fields">
-                                <div class="field full">
-                                    <label for="key_roles_hired">Which roles or job titles do you hire for most often?</label>
-                                    <input id="key_roles_hired" name="key_roles_hired" placeholder="e.g. Sales Managers, Service Engineers, Finance Business Partners" required>
-                                    <div class="hint">Use representative job titles, not a numeric count.</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </section>
 
-                <section class="stage" data-stage="3" data-stage-title="Hiring Performance">
+                <section class="stage" data-stage="2" data-stage-title="Hiring Performance">
                     <div class="section-head">
                         <div>
-                            <div class="section-kicker">Stage 3</div>
+                            <div class="section-kicker">Stage 2</div>
                             <h2 class="section-title">Hiring Performance</h2>
-                            <p class="section-copy">Capture the operational metrics that show where hiring is strong or under pressure.</p>
+                            <p class="section-copy">Capture the operational metrics that show where hiring is strong and where it is slowing down.</p>
                         </div>
                     </div>
 
@@ -1172,7 +1507,6 @@ def form():
                                         <span class="suffix">days</span>
                                     </div>
                                 </div>
-
                                 <div class="field has-suffix">
                                     <label for="applications_per_role">How many applications do you receive for a typical role?</label>
                                     <div class="input-wrap">
@@ -1197,7 +1531,6 @@ def form():
                                         <span class="suffix">%</span>
                                     </div>
                                 </div>
-
                                 <div class="field has-suffix">
                                     <label for="first_year_attrition">What percentage of hires leave within the first year?</label>
                                     <div class="input-wrap">
@@ -1212,7 +1545,7 @@ def form():
                     <div class="stage-step" data-step-number="3">
                         <div class="step-panel">
                             <div class="step-overline" data-local-step-label>Step 3 of 4</div>
-                            <h3 class="step-headline">Review interview design and decision speed.</h3>
+                            <h3 class="step-headline">Review interview design and response speed.</h3>
                             <p class="step-support">These answers show how much friction is built into the interview process.</p>
                             <div class="step-fields">
                                 <div class="field has-suffix">
@@ -1222,7 +1555,6 @@ def form():
                                         <span class="suffix">stages</span>
                                     </div>
                                 </div>
-
                                 <div class="field has-suffix">
                                     <label for="interview_feedback_time">How long does interview feedback usually take to return?</label>
                                     <div class="input-wrap">
@@ -1252,22 +1584,58 @@ def form():
                     </div>
                 </section>
 
-                <section class="stage" data-stage="4" data-stage-title="Process Control">
+                <section class="stage" data-stage="3" data-stage-title="Process Control">
                     <div class="section-head">
                         <div>
-                            <div class="section-kicker">Stage 4</div>
+                            <div class="section-kicker">Stage 3</div>
                             <h2 class="section-title">Process Control</h2>
                             <p class="section-copy">Assess how consistently recruitment is governed, owned and run in practice.</p>
                         </div>
                     </div>
-
                     {process_control_steps_html}
                 </section>
 
-                <div class="footer-bar">
-                    <div class="footer-copy" id="stepFooterCopy">
-                        Complete each step to build the final recruitment audit report.
+                <section class="stage" data-stage="4" data-stage-title="Review">
+                    <div class="section-head">
+                        <div>
+                            <div class="section-kicker">Stage 4</div>
+                            <h2 class="section-title">Review</h2>
+                            <p class="section-copy">Check the final input set before generating the audit report.</p>
+                        </div>
                     </div>
+                    <div class="stage-step active" data-step-number="1">
+                        <div class="step-panel">
+                            <div class="step-overline" data-local-step-label>Step 1 of 1</div>
+                            <h3 class="step-headline">Review the assessment input.</h3>
+                            <p class="step-support">This summary reflects the data that will be used to score the model and generate the report.</p>
+                            <div class="review-strip">
+                                <div class="review-card"><div class="review-label">Company</div><div class="review-value" id="reviewCompanyName">Pending</div></div>
+                                <div class="review-card"><div class="review-label">Sector</div><div class="review-value" id="reviewSector">Pending</div></div>
+                                <div class="review-card"><div class="review-label">Location</div><div class="review-value" id="reviewLocation">Pending</div></div>
+                                <div class="review-card"><div class="review-label">Headcount</div><div class="review-value" id="reviewHeadcount">Pending</div></div>
+                            </div>
+                            <div class="review-grid">
+                                <div class="review-metric"><div class="review-label">Annual hiring volume</div><div class="review-value" id="reviewAnnualHiringVolume">Pending</div></div>
+                                <div class="review-metric"><div class="review-label">Key roles</div><div class="review-value" id="reviewKeyRoles">Pending</div></div>
+                                <div class="review-metric"><div class="review-label">Contact</div><div class="review-value" id="reviewContact">Pending</div></div>
+                                <div class="review-metric"><div class="review-label">Time to hire</div><div class="review-value" id="reviewTimeToHire">Pending</div></div>
+                                <div class="review-metric"><div class="review-label">Applications per role</div><div class="review-value" id="reviewApplicationsPerRole">Pending</div></div>
+                                <div class="review-metric"><div class="review-label">Offer acceptance</div><div class="review-value" id="reviewOfferAcceptance">Pending</div></div>
+                                <div class="review-metric"><div class="review-label">First-year attrition</div><div class="review-value" id="reviewFirstYearAttrition">Pending</div></div>
+                                <div class="review-metric"><div class="review-label">Interview stages</div><div class="review-value" id="reviewInterviewStages">Pending</div></div>
+                                <div class="review-metric"><div class="review-label">Feedback time</div><div class="review-value" id="reviewInterviewFeedbackTime">Pending</div></div>
+                                <div class="review-metric"><div class="review-label">Candidates reaching interview</div><div class="review-value" id="reviewCandidatesReachingInterview">Pending</div></div>
+                            </div>
+                            <div class="review-pill-card">
+                                <div class="review-label">Process controls</div>
+                                <div class="review-pill-grid" id="reviewControlPills"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="footer-bar">
+                    <div class="footer-copy" id="stepFooterCopy">Complete each step to build the final recruitment audit report.</div>
                     <div class="button-row">
                         <button class="button button-ghost" type="button" data-prev-step>Back</button>
                         <button class="button button-secondary" type="button" data-next-step>Continue</button>
@@ -1350,7 +1718,9 @@ def generate():
 
         section_chart = create_section_score_chart(data["company_name"], data["section_scores"], benchmark, data["sector"])
         overall_chart = create_overall_score_chart(data["company_name"], data["total_score"])
-        benchmark_chart = create_benchmark_chart(data["company_name"], data["metrics"], benchmark, data["sector"], data["key_roles_hired"])
+        benchmark_chart, benchmark_chart_item_count = create_benchmark_chart(
+            data["company_name"], data["metrics"], benchmark, data["sector"], data["key_roles_hired"]
+        )
 
         pdf_path = save_pdf_report(
             data=data,
@@ -1359,6 +1729,7 @@ def generate():
             section_chart=section_chart,
             overall_chart=overall_chart,
             benchmark_chart=benchmark_chart,
+            benchmark_chart_item_count=benchmark_chart_item_count,
         )
         try:
             send_audit_notification(data, report, pdf_path)
